@@ -4,6 +4,7 @@ import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../auth/presentation/widgets/update_password_modal.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../profile/domain/models/profile_model.dart';
 import '../../../profile/presentation/controllers/profile_controller.dart';
@@ -149,30 +150,114 @@ class _UserProfileCardState extends State<UserProfileCard> {
             ),
           ],
         ),
-        content: Text(
-          'Se enviará un correo electrónico a "${widget.email}" a través de nuestro servicio seguro (Supabase + Brevo).\n\nAl pulsar el enlace del correo, regresarás a la app donde podrás introducir y confirmar tu nueva contraseña.',
-          style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 13, height: 1.4),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Puedes actualizar tu contraseña directamente ahora mismo, o recibir un enlace seguro en tu correo registrado (${widget.email}).',
+              style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openDirectPasswordModal();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: LiquidTheme.primaryLiquid.withValues(alpha: 0.12),
+                  border: Border.all(color: LiquidTheme.primaryCyan.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_note_rounded, color: LiquidTheme.primaryCyan, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cambiar directamente aquí',
+                            style: TextStyle(color: LiquidTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          Text(
+                            'Introduce y confirma tu nueva clave al instante',
+                            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, color: LiquidTheme.primaryCyan, size: 14),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await _sendPasswordReset();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: LiquidTheme.surfaceDark,
+                  border: Border.all(color: LiquidTheme.glassBorderColor),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.mark_email_read_rounded, color: LiquidTheme.primaryLiquid, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Enviar enlace al correo',
+                            style: TextStyle(color: LiquidTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          Text(
+                            'Vía servicio Brevo / Supabase a ${widget.email}',
+                            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.send_rounded, color: LiquidTheme.primaryLiquid, size: 14),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('Cancelar', style: TextStyle(color: LiquidTheme.textSecondary)),
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _sendPasswordReset();
-            },
-            child: Text(
-              'Enviar Correo',
-              style: TextStyle(
-                color: LiquidTheme.primaryCyan,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
         ],
       ),
+    );
+  }
+
+  void _openDirectPasswordModal() {
+    final authCtrl = widget.authController;
+    if (authCtrl == null) return;
+
+    UpdatePasswordModal.show(
+      context,
+      authController: authCtrl,
+      onPasswordUpdated: () {
+        setState(() {
+          _passwordResetFeedback = '¡Contraseña actualizada con éxito!';
+        });
+      },
     );
   }
 

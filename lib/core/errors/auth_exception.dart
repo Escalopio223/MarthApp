@@ -27,9 +27,10 @@ class AppAuthException implements Exception {
       return AppAuthException('Demasiados intentos. Por favor, espera unos momentos.');
     }
     if (msg.contains('error sending confirmation email') ||
+        msg.contains('error sending recovery email') ||
         msg.contains('unexpected_failure')) {
       return AppAuthException(
-          'Error del servidor de correo. Desactiva "Confirm email" en Supabase o revisa la configuración.');
+          'Error del servidor de correo. Verifica la configuración SMTP de Brevo en Supabase (Settings -> Authentication -> SMTP Settings) o el remitente verificado.');
     }
 
     return AppAuthException(e.message);

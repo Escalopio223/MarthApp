@@ -26,10 +26,8 @@ insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do update set public = true;
 
--- Habilitar RLS en storage.objects
-alter table storage.objects enable row level security;
-
 -- Políticas de seguridad para storage.objects en el bucket 'avatars'
+-- (Nota: storage.objects ya tiene RLS habilitado por defecto en Supabase)
 drop policy if exists "Los avatares son de lectura pública" on storage.objects;
 create policy "Los avatares son de lectura pública"
   on storage.objects for select
