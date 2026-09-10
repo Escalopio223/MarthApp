@@ -20,7 +20,7 @@ class GlassCard extends StatelessWidget {
     super.key,
     required this.child,
     this.borderRadius = 22.0,
-    this.blur = LiquidTheme.glassBlur, // 20.0
+    this.blur = 20.0,
     this.padding = const EdgeInsets.all(24.0),
     this.margin,
     this.surfaceColor,

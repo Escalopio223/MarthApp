@@ -114,7 +114,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
           ),
         ),
         const SizedBox(height: 22),
-        const Text(
+        Text(
           '¡Contraseña Actualizada!',
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -124,7 +124,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        const Text(
+        Text(
           'Tu clave de acceso ha sido cambiada correctamente. Entrando a MarthApp...',
           textAlign: TextAlign.center,
           style: TextStyle(
@@ -134,7 +134,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        const CircularProgressIndicator(
+        CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(LiquidTheme.accentEmerald),
         ),
       ],
@@ -171,7 +171,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Actualizar Contraseña',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -182,7 +182,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Introduce tu nueva contraseña segura para tu cuenta de MarthApp.',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -205,7 +205,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
               ),
               child: Text(
                 _authController.errorMessage!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: LiquidTheme.accentCoral,
                   fontSize: 13,
                 ),
@@ -217,10 +217,10 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
           TextFormField(
             controller: _passwordController,
             obscureText: _obscurePassword,
-            style: const TextStyle(color: LiquidTheme.textPrimary),
+            style: TextStyle(color: LiquidTheme.textPrimary),
             decoration: InputDecoration(
               labelText: 'Nueva Contraseña',
-              prefixIcon: const Icon(Icons.lock_outline_rounded,
+              prefixIcon: Icon(Icons.lock_outline_rounded,
                   color: LiquidTheme.primaryCyan),
               hintText: 'Mínimo 6 caracteres',
               suffixIcon: IconButton(
@@ -248,10 +248,10 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: _obscureConfirmPassword,
-            style: const TextStyle(color: LiquidTheme.textPrimary),
+            style: TextStyle(color: LiquidTheme.textPrimary),
             decoration: InputDecoration(
               labelText: 'Confirmar Nueva Contraseña',
-              prefixIcon: const Icon(Icons.lock_reset_rounded,
+              prefixIcon: Icon(Icons.lock_reset_rounded,
                   color: LiquidTheme.primaryCyan),
               hintText: 'Repite la contraseña',
               suffixIcon: IconButton(

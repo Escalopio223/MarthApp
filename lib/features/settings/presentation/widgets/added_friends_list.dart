@@ -20,7 +20,7 @@ class AddedFriendsList extends StatelessWidget {
         const SizedBox(height: 20),
         Divider(color: LiquidTheme.glassBorderColor),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Amigos Añadidos:',
           style: TextStyle(
             color: LiquidTheme.textSecondary,
@@ -45,12 +45,12 @@ class AddedFriendsList extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.person,
+                  Icon(Icons.person,
                       size: 14, color: LiquidTheme.primaryLiquid),
                   const SizedBox(width: 6),
                   Text(
                     f,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: LiquidTheme.textPrimary,
                       fontSize: 12,
                     ),

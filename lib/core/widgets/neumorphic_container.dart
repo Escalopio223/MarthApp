@@ -10,7 +10,7 @@ class NeumorphicContainer extends StatelessWidget {
   final double borderRadius;
   final EdgeInsetsGeometry padding;
   final bool isInset;
-  final Color baseColor;
+  final Color? baseColor;
   final VoidCallback? onTap;
 
   const NeumorphicContainer({
@@ -19,22 +19,24 @@ class NeumorphicContainer extends StatelessWidget {
     this.borderRadius = 18.0,
     this.padding = const EdgeInsets.all(16.0),
     this.isInset = false,
-    this.baseColor = LiquidTheme.surfaceDark, // #1A1F26
+    this.baseColor,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveBaseColor = baseColor ?? LiquidTheme.surfaceDark;
+
     final container = AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       padding: padding,
       decoration: BoxDecoration(
-        color: baseColor,
+        color: effectiveBaseColor,
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: isInset
             ? LiquidTheme.neumorphicInsetShadows()
-            : LiquidTheme.neumorphicRaisedShadows(baseColor: baseColor),
+            : LiquidTheme.neumorphicRaisedShadows(baseColor: effectiveBaseColor),
         border: Border.all(
           color: LiquidTheme.glassBorderColor,
           width: 0.8,

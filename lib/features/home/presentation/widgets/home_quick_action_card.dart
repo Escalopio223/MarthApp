@@ -42,7 +42,7 @@ class HomeQuickActionCard extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
                 color: LiquidTheme.textPrimary,
@@ -51,7 +51,7 @@ class HomeQuickActionCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(
+              style: TextStyle(
                 color: LiquidTheme.textSecondary,
                 fontSize: 12,
               ),

@@ -38,7 +38,7 @@ class FriendCodeCard extends StatelessWidget {
         children: [
           _buildHeader(),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'Comparte tu código temporal. Es válido durante 1 minuto exacto y luego se elimina por seguridad.',
             style: TextStyle(
               color: LiquidTheme.textSecondary,
@@ -82,14 +82,14 @@ class FriendCodeCard extends StatelessWidget {
             color: LiquidTheme.primaryCyan.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.group_add_rounded,
             color: LiquidTheme.primaryCyan,
             size: 22,
           ),
         ),
         const SizedBox(width: 12),
-        const Expanded(
+        Expanded(
           child: Text(
             'Mi Código de Amigo',
             style: TextStyle(
@@ -116,7 +116,7 @@ class FriendCodeCard extends StatelessWidget {
             children: [
               Text(
                 code,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 3,
@@ -126,7 +126,7 @@ class FriendCodeCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               IconButton(
-                icon: const Icon(Icons.copy_rounded,
+                icon: Icon(Icons.copy_rounded,
                     color: LiquidTheme.textSecondary),
                 tooltip: 'Copiar código',
                 onPressed: () => _copyToClipboard(context, code),
@@ -187,11 +187,11 @@ class FriendCodeCard extends StatelessWidget {
           color: LiquidTheme.accentCoral.withValues(alpha: 0.3),
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(Icons.timer_off_rounded,
               color: LiquidTheme.accentCoral, size: 24),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'El código ha expirado y ha sido eliminado automáticamente.',
@@ -217,11 +217,11 @@ class FriendCodeCard extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.08),
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(Icons.info_outline_rounded,
               color: LiquidTheme.primaryCyan, size: 24),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'No tienes ningún código activo. Pulsa el botón para generar uno válido durante 1 minuto.',

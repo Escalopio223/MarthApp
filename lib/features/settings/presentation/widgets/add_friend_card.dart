@@ -31,11 +31,11 @@ class AddFriendCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.person_add_rounded,
                   color: LiquidTheme.primaryLiquid, size: 22),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Text(
                 'Añadir Amigo con Código',
                 style: TextStyle(
@@ -49,12 +49,12 @@ class AddFriendCard extends StatelessWidget {
           const SizedBox(height: 14),
           TextField(
             controller: inputController,
-            style: const TextStyle(
+            style: TextStyle(
               color: LiquidTheme.textPrimary,
               letterSpacing: 1.5,
             ),
             textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Ej. MARTH-8K2A',
               prefixIcon: Icon(Icons.key_rounded,
                   color: LiquidTheme.primaryLiquid),

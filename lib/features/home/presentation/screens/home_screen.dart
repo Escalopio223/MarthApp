@@ -22,7 +22,10 @@ class HomeScreen extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(authController: authController),
+        builder: (_) => SettingsScreen(
+          authController: authController,
+          themeController: LiquidThemeScope.of(context),
+        ),
       ),
     );
   }
@@ -113,7 +116,7 @@ class HomeScreen extends StatelessWidget {
               color: Color(0xFF0D1219), size: 22),
         ),
         const SizedBox(width: 10),
-        const Text(
+        Text(
           AppConstants.appName,
           style: TextStyle(
             fontWeight: FontWeight.bold,
@@ -136,7 +139,7 @@ class HomeScreen extends StatelessWidget {
         child: Container(
           width: 38,
           height: 38,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LiquidTheme.liquidPrimaryGradient,
           ),

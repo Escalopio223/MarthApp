@@ -29,12 +29,12 @@ class HomeGreetingCard extends StatelessWidget {
                 color: LiquidTheme.primaryCyan.withValues(alpha: 0.3),
               ),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.verified_rounded,
                     color: LiquidTheme.primaryCyan, size: 14),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
                   'Sesión Activa con Supabase',
                   style: TextStyle(
@@ -49,7 +49,7 @@ class HomeGreetingCard extends StatelessWidget {
           const SizedBox(height: 18),
           Text(
             '¡Hola, $username!',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
               color: LiquidTheme.textPrimary,
@@ -57,7 +57,7 @@ class HomeGreetingCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Bienvenido a tu panel principal en MarthApp. Tu aplicación conectada a Supabase con estilo Liquid UI.',
             style: TextStyle(
               color: LiquidTheme.textSecondary,

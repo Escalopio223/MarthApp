@@ -44,7 +44,7 @@ class UserProfileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Cuenta Activa',
                   style: TextStyle(
                     color: LiquidTheme.primaryCyan,
@@ -56,7 +56,7 @@ class UserProfileCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   email,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: LiquidTheme.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

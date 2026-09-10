@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/liquid_background.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../domain/friend_code_manager.dart';
 import '../widgets/add_friend_card.dart';
 import '../widgets/friend_code_card.dart';
+import '../widgets/theme_selector_card.dart';
 import '../widgets/user_profile_card.dart';
 
-/// Pantalla de Ajustes modularizada: perfil, códigos de amigo de 1 minuto y sesión
+/// Pantalla de Ajustes modularizada: perfil, selector de temas, códigos de amigo y sesión
 class SettingsScreen extends StatefulWidget {
   final AuthController authController;
   final FriendCodeManager? friendCodeManager;
+  final ThemeController? themeController;
 
   const SettingsScreen({
     super.key,
     required this.authController,
     this.friendCodeManager,
+    this.themeController,
   });
 
   @override
@@ -88,11 +92,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: LiquidTheme.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Ajustes',
           style: TextStyle(
             fontWeight: FontWeight.bold,
@@ -114,7 +118,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   UserProfileCard(email: email),
                   const SizedBox(height: 24),
 
-                  // 2. Tarjeta del código de amigo (1 min)
+                  // 2. Selector dinámico de temas (10 temas híbridos)
+                  ThemeSelectorCard(
+                    themeController: widget.themeController ??
+                        LiquidThemeScope.of(context),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // 3. Tarjeta del código de amigo (1 min)
                   FriendCodeCard(
                     friendCodeManager: _friendCodeManager,
                     onGenerateCode: () => _friendCodeManager.generateNewCode(),
@@ -149,8 +160,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       baseColor: LiquidTheme.surfaceDark,
       child: TextButton.icon(
         onPressed: _logout,
-        icon: const Icon(Icons.logout_rounded, color: LiquidTheme.accentCoral),
-        label: const Text(
+        icon: Icon(Icons.logout_rounded, color: LiquidTheme.accentCoral),
+        label: Text(
           'Cerrar Sesión',
           style: TextStyle(
             color: LiquidTheme.accentCoral,

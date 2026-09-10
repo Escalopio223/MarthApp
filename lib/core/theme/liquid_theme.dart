@@ -1,57 +1,67 @@
 import 'package:flutter/material.dart';
+import 'app_theme_config.dart';
+import 'theme_controller.dart';
 
-/// Sistema de diseño profesional para MarthApp:
-/// Modo oscuro híbrido basado en Glassmorfismo, Neumorfismo sutil ('Soft UI') y 'Liquid UI'.
+/// Sistema de diseño dinámico para MarthApp:
+/// Actúa como fachada reactiva que expone el tema activo de la aplicación
+/// manteniendo compatibilidad estática y soporte para InheritedWidget.
 class LiquidTheme {
   LiquidTheme._();
 
+  /// Tema actualmente activo en la aplicación (por defecto Midnight Blue)
+  static AppThemeConfig current = AppThemes.midnightBlue;
+
+  /// Obtiene el tema activo suscribiéndose reactivamente al contexto del árbol
+  static AppThemeConfig of(BuildContext context) {
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<LiquidThemeScope>();
+    return scope?.notifier?.currentTheme ?? current;
+  }
+
   // ===========================================================================
-  // 1. Paleta Cromática Exacta
+  // 1. Tokens de Color Dinámicos
   // ===========================================================================
 
-  /// Fondo principal (Canvas): #101419 (negro azulado profundo)
-  static const Color darkBackground = Color(0xFF101419);
+  /// Fondo principal (Canvas)
+  static Color get darkBackground => current.bgCanvas;
 
-  /// Superficie de componentes base: #1A1F26
-  static const Color surfaceDark = Color(0xFF1A1F26);
+  /// Superficie de componentes base
+  static Color get surfaceDark => current.bgSurface;
 
-  /// Sombra oscura neumórfica: #0D1014 (para sombreado inferior/derecho y hendiduras)
-  static const Color neumorphicDarkShadow = Color(0xFF0D1014);
+  /// Sombra neumórfica oscura
+  static Color get neumorphicDarkShadow => current.shadowDark;
 
-  /// Brillo claro neumórfico: #222932 (para realce superior/izquierdo de bordes)
-  static const Color neumorphicLightHighlight = Color(0xFF222932);
+  /// Brillo neumórfico claro (luz especular)
+  static Color get neumorphicLightHighlight => current.shadowLight;
 
-  /// Acento primario (Líquido): #7BB6FF (azul cian brillante)
-  static const Color primaryLiquid = Color(0xFF7BB6FF);
+  /// Acento primario (Líquido)
+  static Color get primaryLiquid => current.accentPrimary;
 
-  /// Alias retrocompatible para el acento primario
-  static const Color primaryCyan = primaryLiquid;
-  static const Color primaryIndigo = primaryLiquid;
+  /// Alias retrocompatibles
+  static Color get primaryCyan => current.accentPrimary;
+  static Color get primaryIndigo => current.accentPrimary;
 
-  /// Acento secundario: #BD93F9 (lila suave)
-  static const Color secondaryLilac = Color(0xFFBD93F9);
+  /// Acento secundario
+  static Color get secondaryLilac => current.accentSecondary;
 
-  /// Texto principal: #E6EDF3 (blanco azulado de alto contraste WCAG AA)
-  static const Color textPrimary = Color(0xFFE6EDF3);
+  /// Texto principal (alto contraste WCAG AA)
+  static Color get textPrimary => current.textPrimary;
 
-  /// Texto secundario y bordes estructurales: #8B9BB4
-  static const Color textSecondary = Color(0xFF8B9BB4);
-  static const Color structuralBorder = Color(0xFF8B9BB4);
+  /// Texto secundario y bordes estructurales
+  static Color get textSecondary => current.textSecondary;
+  static Color get structuralBorder => current.textSecondary;
 
-  /// Acentos de estado complementarios (WCAG AA)
+  /// Acentos de estado universales
   static const Color accentEmerald = Color(0xFF50FA7B);
   static const Color accentCoral = Color(0xFFFF5E7E);
 
   // ===========================================================================
-  // 2. Gradientes Líquidos (Liquid UI)
+  // 2. Gradientes Líquidos Dinámicos (135°)
   // ===========================================================================
 
-  /// Gradiente interactivo principal: linear-gradient(135deg, #7BB6FF 0%, #BD93F9 100%)
-  static const LinearGradient liquidPrimaryGradient = LinearGradient(
-    colors: [primaryLiquid, secondaryLilac],
-    begin: Alignment(-0.707, -0.707), // 135 grados
-    end: Alignment(0.707, 0.707),
-  );
+  /// Gradiente interactivo principal del tema activo a 135°
+  static LinearGradient get liquidPrimaryGradient =>
+      current.liquidPrimaryGradient;
 
   /// Gradiente esmeralda para estados de éxito
   static const LinearGradient liquidEmeraldGradient = LinearGradient(
@@ -61,119 +71,65 @@ class LiquidTheme {
   );
 
   /// Gradiente púrpura/lila
-  static const LinearGradient liquidPurpleGradient = LinearGradient(
-    colors: [Color(0xFF9D65FF), secondaryLilac],
+  static LinearGradient get liquidPurpleGradient => LinearGradient(
+    colors: [const Color(0xFF9D65FF), current.accentSecondary],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   // ===========================================================================
-  // 3. Sombras Neumórficas ('Soft UI' sutil sin bordes duros)
+  // 3. Sombras Neumórficas Dinámicas ('Soft UI' sutil)
   // ===========================================================================
 
-  /// Doble sombra suave para elementos elevados (Soft UI)
-  static List<BoxShadow> neumorphicRaisedShadows({
-    Color baseColor = surfaceDark,
-  }) =>
-      [
-        BoxShadow(
-          color: neumorphicDarkShadow.withValues(alpha: 0.9),
-          offset: const Offset(4, 4),
-          blurRadius: 10,
-        ),
-        BoxShadow(
-          color: neumorphicLightHighlight.withValues(alpha: 0.7),
-          offset: const Offset(-3, -3),
-          blurRadius: 8,
-        ),
-      ];
+  /// Doble sombra neumórfica para elementos elevados (calculada según dark/light)
+  static List<BoxShadow> neumorphicRaisedShadows({Color? baseColor}) =>
+      current.neumorphicRaisedShadows(baseColor: baseColor);
 
-  /// Doble sombra suave para elementos incrustados / hendiduras (Inset)
-  static List<BoxShadow> neumorphicInsetShadows() => [
-        BoxShadow(
-          color: neumorphicDarkShadow.withValues(alpha: 0.8),
-          offset: const Offset(2, 2),
-          blurRadius: 4,
-        ),
-        BoxShadow(
-          color: neumorphicLightHighlight.withValues(alpha: 0.4),
-          offset: const Offset(-2, -2),
-          blurRadius: 4,
-        ),
-      ];
+  /// Doble sombra neumórfica para hendiduras / elementos incrustados (Inset)
+  static List<BoxShadow> neumorphicInsetShadows() =>
+      current.neumorphicInsetShadows();
 
   // ===========================================================================
-  // 4. Parámetros Glassmorphism
+  // 4. Parámetros Glassmorphism Dinámicos
   // ===========================================================================
 
-  /// Opacidad entre 65% y 75% sobre #1A1F26
-  static Color get glassSurfaceColor => surfaceDark.withValues(alpha: 0.70);
+  /// Fondo translúcido con opacidad entre 65% y 75% sobre la superficie del tema
+  static Color get glassSurfaceColor => current.glassSurfaceColor;
 
-  /// Borde estructural sutil: 1px solid rgba(139, 155, 180, 0.2)
-  static Color get glassBorderColor => structuralBorder.withValues(alpha: 0.20);
+  /// Borde estructural sutil de 1px
+  static Color get glassBorderColor => current.glassBorderColor;
 
-  /// Desenfoque por defecto de 20px
-  static const double glassBlur = 20.0;
+  /// Desenfoque de fondo de 20px
+  static double get glassBlur => current.glassBlur;
 
   // ===========================================================================
-  // 5. Tema Global Flutter (Material 3 Dark Mode)
+  // 5. ThemeData Dinámico de Flutter
   // ===========================================================================
 
-  static ThemeData get themeData {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: darkBackground,
-      colorScheme: const ColorScheme.dark(
-        primary: primaryLiquid,
-        secondary: secondaryLilac,
-        surface: surfaceDark,
-        error: accentCoral,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: surfaceDark.withValues(alpha: 0.65),
-        hintStyle: TextStyle(
-          color: textSecondary.withValues(alpha: 0.7),
-          fontSize: 14,
-        ),
-        labelStyle: const TextStyle(color: textSecondary),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: glassBorderColor,
-            width: 1,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(
-            color: glassBorderColor,
-            width: 1,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: primaryLiquid,
-            width: 1.5,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: accentCoral,
-            width: 1.5,
-          ),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(
-            color: accentCoral,
-            width: 2,
-          ),
-        ),
-      ),
-    );
+  static ThemeData get themeData => current.themeData;
+}
+
+/// Scope de temas para propagar reactivamente los cambios de diseño en el árbol
+class LiquidThemeScope extends InheritedNotifier<ThemeController> {
+  final ThemeController controller;
+  static ThemeController? _fallbackController;
+
+  const LiquidThemeScope({
+    super.key,
+    required this.controller,
+    required super.child,
+  }) : super(notifier: controller);
+
+  static ThemeController? maybeOf(BuildContext context) {
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<LiquidThemeScope>();
+    return scope?.notifier;
+  }
+
+  static ThemeController of(BuildContext context) {
+    final controller = maybeOf(context);
+    if (controller != null) return controller;
+    _fallbackController ??= ThemeController();
+    return _fallbackController!;
   }
 }

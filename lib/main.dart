@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/liquid_theme.dart';
+import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/controllers/auth_controller.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
 import 'features/auth/presentation/screens/update_password_screen.dart';
@@ -38,18 +39,43 @@ SupabaseClient? get supabaseClient {
   }
 }
 
-class MarthApp extends StatelessWidget {
+class MarthApp extends StatefulWidget {
   final AuthController? authController;
+  final ThemeController? themeController;
 
-  const MarthApp({super.key, this.authController});
+  const MarthApp({super.key, this.authController, this.themeController});
+
+  @override
+  State<MarthApp> createState() => _MarthAppState();
+}
+
+class _MarthAppState extends State<MarthApp> {
+  late final ThemeController _themeController;
+
+  @override
+  void initState() {
+    super.initState();
+    _themeController = widget.themeController ?? ThemeController();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.appName,
-      debugShowCheckedModeBanner: false,
-      theme: LiquidTheme.themeData,
-      home: AuthGate(authController: authController),
+    return LiquidThemeScope(
+      controller: _themeController,
+      child: AnimatedBuilder(
+        animation: _themeController,
+        builder: (context, _) {
+          return MaterialApp(
+            title: AppConstants.appName,
+            debugShowCheckedModeBanner: false,
+            theme: _themeController.currentTheme.themeData,
+            home: AuthGate(
+              authController: widget.authController,
+              themeController: _themeController,
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -57,8 +83,9 @@ class MarthApp extends StatelessWidget {
 /// Enrutador raíz con precedencia estricta de eventos de autenticación
 class AuthGate extends StatefulWidget {
   final AuthController? authController;
+  final ThemeController? themeController;
 
-  const AuthGate({super.key, this.authController});
+  const AuthGate({super.key, this.authController, this.themeController});
 
   @override
   State<AuthGate> createState() => _AuthGateState();

@@ -95,7 +95,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
           ),
         ),
         const SizedBox(height: 18),
-        const Text(
+        Text(
           '¡Correo Enviado!',
           style: TextStyle(
             fontSize: 22,
@@ -107,7 +107,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
         Text(
           'Hemos enviado un enlace de recuperación a:\n${_emailController.text}\n\nAbre tu correo y pulsa en el enlace para actualizar tu contraseña en MarthApp.',
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             color: LiquidTheme.textSecondary,
             height: 1.5,
@@ -138,14 +138,14 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                   color: LiquidTheme.primaryCyan.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.lock_reset_rounded,
                   color: LiquidTheme.primaryCyan,
                   size: 22,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Recuperar Contraseña',
                   style: TextStyle(
@@ -156,13 +156,13 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: LiquidTheme.textSecondary),
+                icon: Icon(Icons.close, color: LiquidTheme.textSecondary),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Introduce el correo asociado a tu cuenta. Te enviaremos un enlace seguro para restablecer tu clave.',
             style: TextStyle(
               fontSize: 13,
@@ -184,7 +184,7 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
               ),
               child: Text(
                 widget.authController.errorMessage!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: LiquidTheme.accentCoral,
                   fontSize: 12,
                 ),
@@ -196,8 +196,8 @@ class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            style: const TextStyle(color: LiquidTheme.textPrimary),
-            decoration: const InputDecoration(
+            style: TextStyle(color: LiquidTheme.textPrimary),
+            decoration: InputDecoration(
               labelText: 'Correo Electrónico',
               prefixIcon: Icon(Icons.mail_outline_rounded,
                   color: LiquidTheme.primaryCyan),

@@ -11,7 +11,7 @@ class LiquidButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final IconData? icon;
-  final Gradient gradient;
+  final Gradient? gradient;
   final double height;
   final double borderRadius;
   final Color? textColor;
@@ -22,7 +22,7 @@ class LiquidButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.icon,
-    this.gradient = LiquidTheme.liquidPrimaryGradient,
+    this.gradient,
     this.height = 54.0,
     this.borderRadius = 18.0,
     this.textColor,
@@ -31,12 +31,12 @@ class LiquidButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEnabled = onPressed != null && !isLoading;
+    final effectiveGradient = gradient ?? LiquidTheme.liquidPrimaryGradient;
 
-    // Asegurar ratio de contraste WCAG AA sobre el degradado claro cian-lila
+    // Asegurar ratio de contraste WCAG AA sobre el degradado
     final effectiveTextColor = textColor ??
-        (gradient == LiquidTheme.liquidPrimaryGradient ||
-                gradient == LiquidTheme.liquidEmeraldGradient
-            ? const Color(0xFF0D1219)
+        (gradient == null || gradient == LiquidTheme.liquidPrimaryGradient
+            ? LiquidTheme.current.ctaTextColor
             : LiquidTheme.textPrimary);
 
     return AnimatedContainer(
@@ -51,7 +51,7 @@ class LiquidButton extends StatelessWidget {
                   LiquidTheme.surfaceDark.withValues(alpha: 0.7),
                 ],
               )
-            : gradient,
+            : effectiveGradient,
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: !isEnabled
             ? []

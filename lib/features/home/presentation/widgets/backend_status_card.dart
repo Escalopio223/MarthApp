@@ -19,11 +19,11 @@ class BackendStatusCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.cloud_done_rounded,
+              const Icon(Icons.cloud_done_rounded,
                   color: LiquidTheme.accentEmerald, size: 22),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Text(
                 'Backend Supabase Conectado',
                 style: TextStyle(
@@ -39,7 +39,7 @@ class BackendStatusCard extends StatelessWidget {
             'Proyecto: cntspvnxrmqchvtcdiwv\n'
             'SDK: supabase_flutter v2.17.2\n'
             'Usuario: $userEmail',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'monospace',
               fontSize: 12,
               color: LiquidTheme.textSecondary,

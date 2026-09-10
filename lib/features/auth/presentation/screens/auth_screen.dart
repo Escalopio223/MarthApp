@@ -249,8 +249,8 @@ class _AuthScreenState extends State<AuthScreen> {
     return TextFormField(
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
-      style: const TextStyle(color: LiquidTheme.textPrimary),
-      decoration: const InputDecoration(
+      style: TextStyle(color: LiquidTheme.textPrimary),
+      decoration: InputDecoration(
         labelText: 'Correo Electrónico',
         prefixIcon: Icon(Icons.mail_outline_rounded,
             color: LiquidTheme.primaryCyan),
@@ -272,10 +272,10 @@ class _AuthScreenState extends State<AuthScreen> {
     return TextFormField(
       controller: _passwordController,
       obscureText: _obscurePassword,
-      style: const TextStyle(color: LiquidTheme.textPrimary),
+      style: TextStyle(color: LiquidTheme.textPrimary),
       decoration: InputDecoration(
         labelText: 'Contraseña',
-        prefixIcon: const Icon(Icons.lock_outline_rounded,
+        prefixIcon: Icon(Icons.lock_outline_rounded,
             color: LiquidTheme.primaryCyan),
         hintText: 'Mínimo 6 caracteres',
         suffixIcon: IconButton(
@@ -308,10 +308,10 @@ class _AuthScreenState extends State<AuthScreen> {
     return TextFormField(
       controller: _confirmPasswordController,
       obscureText: _obscureConfirmPassword,
-      style: const TextStyle(color: LiquidTheme.textPrimary),
+      style: TextStyle(color: LiquidTheme.textPrimary),
       decoration: InputDecoration(
         labelText: 'Confirmar Contraseña',
-        prefixIcon: const Icon(
+        prefixIcon: Icon(
           Icons.lock_reset_rounded,
           color: LiquidTheme.primaryCyan,
         ),
@@ -355,7 +355,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 authController: _authController,
               );
             },
-            child: const Text(
+            child: Text(
               '¿Has olvidado tu contraseña?',
               style: TextStyle(
                 color: LiquidTheme.primaryLiquid,

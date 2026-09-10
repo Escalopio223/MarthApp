@@ -63,7 +63,7 @@ class LiquidBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 color: LiquidTheme.textPrimary, // #E6EDF3 para máximo contraste WCAG AA
                 fontSize: 13,
                 fontWeight: FontWeight.w500,

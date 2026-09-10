@@ -39,7 +39,7 @@ class SocialProviderConfig {
           backgroundColor: LiquidTheme.surfaceDark, // #1A1F26
           textColor: LiquidTheme.textPrimary, // #E6EDF3
           borderColor: LiquidTheme.glassBorderColor, // rgba(139, 155, 180, 0.2)
-          iconWidget: const Icon(
+          iconWidget: Icon(
             Icons.code_rounded,
             size: 22,
             color: LiquidTheme.textPrimary,
@@ -53,7 +53,7 @@ class SocialProviderConfig {
           backgroundColor: LiquidTheme.surfaceDark,
           textColor: LiquidTheme.textPrimary,
           borderColor: LiquidTheme.glassBorderColor,
-          iconWidget: const Icon(
+          iconWidget: Icon(
             Icons.login_rounded,
             size: 20,
             color: LiquidTheme.textPrimary,
