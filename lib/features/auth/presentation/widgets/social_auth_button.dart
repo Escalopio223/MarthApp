@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Configuración visual y de marca para cada proveedor OAuth
+/// Configuración visual y de marca para proveedores OAuth activos
 class SocialProviderConfig {
   final String name;
   final String label;
@@ -31,214 +31,41 @@ class SocialProviderConfig {
           iconWidget: _buildGoogleIcon(),
         );
 
-      case OAuthProvider.azure:
-        return SocialProviderConfig(
-          name: 'Azure (Microsoft)',
-          label: 'Continuar con Azure (Microsoft)',
-          backgroundColor: const Color(0xFF1E293B),
-          textColor: Colors.white,
-          borderColor: const Color(0xFF334155),
-          iconWidget: _buildMicrosoftIcon(),
-        );
-
-      case OAuthProvider.facebook:
-        return SocialProviderConfig(
-          name: 'Facebook',
-          label: 'Continuar con Facebook',
-          backgroundColor: const Color(0xFF1877F2),
-          textColor: Colors.white,
-          borderColor: const Color(0xFF166FE5),
-          iconWidget: _buildFacebookIcon(),
-        );
-
-      case OAuthProvider.twitter:
-        return SocialProviderConfig(
-          name: 'Twitter (X)',
-          label: 'Continuar con X',
-          backgroundColor: const Color(0xFF000000),
-          textColor: Colors.white,
-          borderColor: const Color(0xFF27272A),
-          iconWidget: _buildXIcon(),
-        );
-
       case OAuthProvider.github:
-        return SocialProviderConfig(
+        return const SocialProviderConfig(
           name: 'GitHub',
           label: 'Continuar con GitHub',
-          backgroundColor: const Color(0xFF1E2638),
+          backgroundColor: Color(0xFF1E2638),
           textColor: Colors.white,
-          borderColor: const Color(0xFF334155),
-          iconWidget: const Icon(Icons.code_rounded, size: 22, color: Colors.white),
-        );
-
-      case OAuthProvider.discord:
-        return SocialProviderConfig(
-          name: 'Discord',
-          label: 'Continuar con Discord',
-          backgroundColor: const Color(0xFF5865F2),
-          textColor: Colors.white,
-          borderColor: const Color(0xFF4752C4),
-          iconWidget: const Icon(Icons.sports_esports_rounded, size: 22, color: Colors.white),
+          borderColor: Color(0xFF334155),
+          iconWidget: Icon(Icons.code_rounded, size: 22, color: Colors.white),
         );
 
       default:
         return SocialProviderConfig(
           name: provider.name,
           label: 'Continuar con ${provider.name}',
-          backgroundColor: Colors.grey.shade900,
+          backgroundColor: const Color(0xFF1E2638),
           textColor: Colors.white,
-          borderColor: Colors.grey.shade700,
-          iconWidget: const Icon(Icons.login, size: 22, color: Colors.white),
+          borderColor: const Color(0xFF334155),
+          iconWidget: const Icon(Icons.login_rounded, size: 20, color: Colors.white),
         );
     }
   }
-
-  // Renderizadores de iconos vectoriales limpios oficiales
 
   static Widget _buildGoogleIcon() {
     return SizedBox(
       width: 22,
       height: 22,
-      child: CustomPaint(
-        painter: _GoogleLogoPainter(),
-      ),
-    );
-  }
-
-  static Widget _buildMicrosoftIcon() {
-    return SizedBox(
-      width: 20,
-      height: 20,
-      child: CustomPaint(
-        painter: _MicrosoftLogoPainter(),
-      ),
-    );
-  }
-
-  static Widget _buildFacebookIcon() {
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: const Text(
-        'f',
-        style: TextStyle(
-          color: Color(0xFF1877F2),
-          fontWeight: FontWeight.bold,
-          fontSize: 17,
-          fontFamily: 'sans-serif',
-          height: 1.1,
-        ),
-      ),
-    );
-  }
-
-  static Widget _buildXIcon() {
-    return const Center(
-      child: Text(
-        '𝕏',
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-          height: 1,
-        ),
-      ),
+      child: CustomPaint(painter: _GoogleLogoPainter()),
     );
   }
 }
 
-/// CustomPainter para el isotipo de 4 cuadrantes oficial de Microsoft (Azure)
-class _MicrosoftLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.width / 2 - 1.2; // tamaño de cada bloque
-    const gap = 2.4;
-
-    // Rojo (superior izquierda)
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, s, s),
-      Paint()..color = const Color(0xFFF25022),
-    );
-
-    // Verde (superior derecha)
-    canvas.drawRect(
-      Rect.fromLTWH(s + gap, 0, s, s),
-      Paint()..color = const Color(0xFF7FBA00),
-    );
-
-    // Azul (inferior izquierda)
-    canvas.drawRect(
-      Rect.fromLTWH(0, s + gap, s, s),
-      Paint()..color = const Color(0xFF00A4EF),
-    );
-
-    // Amarillo (inferior derecha)
-    canvas.drawRect(
-      Rect.fromLTWH(s + gap, s + gap, s, s),
-      Paint()..color = const Color(0xFFFFB900),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// CustomPainter para el isotipo de 4 colores oficial de Google
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-
-    final paintRed = Paint()
-      ..color = const Color(0xFFEA4335)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
-
-    final paintBlue = Paint()
-      ..color = const Color(0xFF4285F4)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
-
-    final paintYellow = Paint()
-      ..color = const Color(0xFFFBBC05)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
-
-    final paintGreen = Paint()
-      ..color = const Color(0xFF34A853)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
-
-    final rect = Rect.fromCircle(center: center, radius: radius - 2);
-
-    canvas.drawArc(rect, -0.6, 1.6, false, paintBlue);
-    canvas.drawArc(rect, 1.0, 1.4, false, paintGreen);
-    canvas.drawArc(rect, 2.4, 1.4, false, paintYellow);
-    canvas.drawArc(rect, 3.8, 1.5, false, paintRed);
-
-    final paintBar = Paint()
-      ..color = const Color(0xFF4285F4)
-      ..style = PaintingStyle.fill;
-    canvas.drawRect(
-      Rect.fromLTWH(center.dx - 1, center.dy - 1.8, radius - 1, 3.6),
-      paintBar,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Botón accesible de autenticación social con feedback y estado de carga
+/// Botón interactivo de autenticación social con retroalimentación visual
 class SocialAuthButton extends StatelessWidget {
   final OAuthProvider provider;
-  final VoidCallback? onPressed;
+  final VoidCallback onPressed;
   final bool isLoading;
   final bool isDisabled;
 
@@ -254,21 +81,18 @@ class SocialAuthButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final config = SocialProviderConfig.fromProvider(provider);
 
-    return Opacity(
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
       opacity: isDisabled ? 0.45 : 1.0,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 52.0,
+      child: Container(
+        height: 50,
         decoration: BoxDecoration(
           color: config.backgroundColor,
-          borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(
-            color: config.borderColor,
-            width: 1.0,
-          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: config.borderColor, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Colors.black.withValues(alpha: 0.18),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -277,54 +101,45 @@ class SocialAuthButton extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16.0),
-            onTap: isDisabled || isLoading ? null : onPressed,
+            borderRadius: BorderRadius.circular(16),
+            onTap: (isDisabled || isLoading) ? null : onPressed,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18.0),
-              child: Center(
-                child: isLoading
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                config.textColor,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Conectando...',
-                            style: TextStyle(
-                              color: config.textColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          config.iconWidget,
-                          Expanded(
-                            child: Text(
-                              config.label,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: config.textColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 22),
-                        ],
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isLoading) ...[
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation<Color>(config.textColor),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Conectando...',
+                      style: TextStyle(
+                        color: config.textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ] else ...[
+                    config.iconWidget,
+                    const SizedBox(width: 12),
+                    Text(
+                      config.label,
+                      style: TextStyle(
+                        color: config.textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -332,4 +147,69 @@ class SocialAuthButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Pintor vectorial para el logotipo oficial de Google
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..style = PaintingStyle.fill;
+    final w = size.width;
+    final h = size.height;
+
+    // Rojo (Google Red)
+    paint.color = const Color(0xFFEA4335);
+    final pathRed = Path()
+      ..moveTo(w * 0.5, h * 0.2)
+      ..cubicTo(w * 0.62, h * 0.2, w * 0.73, h * 0.25, w * 0.81, h * 0.32)
+      ..lineTo(w * 0.95, h * 0.18)
+      ..cubicTo(w * 0.83, h * 0.07, w * 0.67, 0, w * 0.5, 0)
+      ..cubicTo(w * 0.3, 0, w * 0.13, h * 0.11, w * 0.05, h * 0.28)
+      ..lineTo(w * 0.22, h * 0.41)
+      ..cubicTo(w * 0.26, h * 0.29, w * 0.37, h * 0.2, w * 0.5, h * 0.2)
+      ..close();
+    canvas.drawPath(pathRed, paint);
+
+    // Amarillo (Google Yellow)
+    paint.color = const Color(0xFFFBBC05);
+    final pathYellow = Path()
+      ..moveTo(w * 0.05, h * 0.28)
+      ..cubicTo(w * 0.02, h * 0.35, 0, h * 0.42, 0, h * 0.5)
+      ..cubicTo(0, h * 0.58, w * 0.02, h * 0.65, w * 0.05, h * 0.72)
+      ..lineTo(w * 0.22, h * 0.59)
+      ..cubicTo(w * 0.21, h * 0.56, w * 0.2, h * 0.53, w * 0.2, h * 0.5)
+      ..cubicTo(w * 0.2, h * 0.47, w * 0.21, h * 0.44, w * 0.22, h * 0.41)
+      ..close();
+    canvas.drawPath(pathYellow, paint);
+
+    // Verde (Google Green)
+    paint.color = const Color(0xFF34A853);
+    final pathGreen = Path()
+      ..moveTo(w * 0.5, h)
+      ..cubicTo(w * 0.67, h, w * 0.81, h * 0.94, w * 0.92, h * 0.84)
+      ..lineTo(w * 0.75, h * 0.71)
+      ..cubicTo(w * 0.68, h * 0.76, w * 0.6, h * 0.8, w * 0.5, h * 0.8)
+      ..cubicTo(w * 0.37, h * 0.8, w * 0.26, h * 0.71, w * 0.22, h * 0.59)
+      ..lineTo(w * 0.05, h * 0.72)
+      ..cubicTo(w * 0.13, h * 0.89, w * 0.3, h, w * 0.5, h)
+      ..close();
+    canvas.drawPath(pathGreen, paint);
+
+    // Azul (Google Blue)
+    paint.color = const Color(0xFF4285F4);
+    final pathBlue = Path()
+      ..moveTo(w, h * 0.5)
+      ..cubicTo(w, h * 0.46, w * 0.99, h * 0.43, w * 0.98, h * 0.39)
+      ..lineTo(w * 0.5, h * 0.39)
+      ..lineTo(w * 0.5, h * 0.61)
+      ..lineTo(w * 0.78, h * 0.61)
+      ..cubicTo(w * 0.77, h * 0.68, w * 0.73, h * 0.73, w * 0.67, h * 0.77)
+      ..lineTo(w * 0.84, h * 0.9)
+      ..cubicTo(w * 0.94, h * 0.81, w, h * 0.67, w, h * 0.5)
+      ..close();
+    canvas.drawPath(pathBlue, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -1,23 +1,25 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/auth_exception.dart';
+import '../domain/repositories/auth_repository.dart';
 
-/// Servicio modular de autenticación para MarthApp sobre Supabase Auth.
-/// Gestiona OAuth Social (Google, Microsoft, GitHub), credenciales directas
+/// Implementación del repositorio de autenticación para MarthApp sobre Supabase Auth.
+/// Gestiona OAuth Social (Google, GitHub), credenciales directas
 /// (Email/Password con sesión inmediata) y flujo de recuperación de contraseña.
-class AuthService {
+class AuthService implements IAuthRepository {
   final SupabaseClient _client;
 
   AuthService({SupabaseClient? client})
       : _client = client ?? Supabase.instance.client;
 
-  /// Obtener usuario actualmente autenticado
+  @override
   User? get currentUser => _client.auth.currentUser;
 
-  /// Obtener sesión activa
+  @override
   Session? get currentSession => _client.auth.currentSession;
 
-  /// Stream reactivo de cambios de autenticación
+  @override
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
   /// Helper para resolver el redirectTo adecuado según plataforma
@@ -25,26 +27,26 @@ class AuthService {
     if (kIsWeb) {
       return '${Uri.base.origin}/';
     }
-    return 'io.supabase.marthapp://$mobileCallbackPath';
+    return '${AppConstants.mobileDeepLinkScheme}://$mobileCallbackPath';
   }
 
   // ===========================================================================
-  // 1. Métodos OAuth Social (Google, Microsoft, GitHub)
+  // 1. Métodos OAuth Social (Google, GitHub)
   // ===========================================================================
 
-  /// Iniciar sesión con Google
+  @override
   Future<bool> signInWithGoogle() async {
     return _signInWithOAuth(
       provider: OAuthProvider.google,
-      mobileCallback: 'login-callback',
+      mobileCallback: AppConstants.loginCallbackPath,
     );
   }
 
-  /// Iniciar sesión con GitHub
+  @override
   Future<bool> signInWithGithub() async {
     return _signInWithOAuth(
       provider: OAuthProvider.github,
-      mobileCallback: 'login-callback',
+      mobileCallback: AppConstants.loginCallbackPath,
     );
   }
 
@@ -76,8 +78,7 @@ class AuthService {
   // 2. Credenciales directas (Email + Contraseña)
   // ===========================================================================
 
-  /// Registrar nuevo usuario con Email y Contraseña.
-  /// Conforme a la regla estricta: sesión activa inmediata sin esperar correo.
+  @override
   Future<AuthResponse> signUpWithEmail(
     String email,
     String password,
@@ -95,7 +96,7 @@ class AuthService {
     }
   }
 
-  /// Iniciar sesión con Email y Contraseña existentes
+  @override
   Future<AuthResponse> signInWithEmail(
     String email,
     String password,
@@ -117,11 +118,11 @@ class AuthService {
   // 3. Flujo de Recuperación y Actualización de Contraseña
   // ===========================================================================
 
-  /// Envía el correo de recuperación de contraseña con Deep Link condicional
+  @override
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       final redirectUrl =
-          _resolveRedirectUrl(mobileCallbackPath: 'reset-callback');
+          _resolveRedirectUrl(mobileCallbackPath: AppConstants.resetCallbackPath);
 
       await _client.auth.resetPasswordForEmail(
         email.trim(),
@@ -134,7 +135,7 @@ class AuthService {
     }
   }
 
-  /// Actualiza la contraseña del usuario tras capturar la sesión de recuperación
+  @override
   Future<UserResponse> updatePassword(String newPassword) async {
     try {
       final response = await _client.auth.updateUser(
@@ -148,7 +149,7 @@ class AuthService {
     }
   }
 
-  /// Cerrar sesión
+  @override
   Future<void> signOut() async {
     try {
       await _client.auth.signOut();

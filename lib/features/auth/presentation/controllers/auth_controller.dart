@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/auth_service.dart';
+import '../../domain/repositories/auth_repository.dart';
 
-/// Controlador de estado reactivo para autenticación híbrida y recuperación de clave
+/// Controlador de estado reactivo para autenticación híbrida y recuperación de clave.
+/// Implementa inversión de dependencias recibiendo [IAuthRepository].
 class AuthController extends ChangeNotifier {
-  final AuthService _authService;
+  final IAuthRepository _authRepository;
 
   bool _isEmailLoading = false;
   OAuthProvider? _loadingProvider;
@@ -15,11 +17,11 @@ class AuthController extends ChangeNotifier {
   String? _successMessage;
   User? _user;
 
-  AuthController({AuthService? authService})
-      : _authService = authService ?? AuthService() {
-    _user = _authService.currentUser;
+  AuthController({IAuthRepository? authRepository, IAuthRepository? authService})
+      : _authRepository = authRepository ?? authService ?? AuthService() {
+    _user = _authRepository.currentUser;
 
-    _authService.authStateChanges.listen((data) {
+    _authRepository.authStateChanges.listen((data) {
       _user = data.session?.user;
       notifyListeners();
     });
@@ -53,10 +55,10 @@ class AuthController extends ChangeNotifier {
   // ===========================================================================
 
   Future<bool> signInWithGoogle() =>
-      _handleOAuth(OAuthProvider.google, _authService.signInWithGoogle);
+      _handleOAuth(OAuthProvider.google, _authRepository.signInWithGoogle);
 
   Future<bool> signInWithGithub() =>
-      _handleOAuth(OAuthProvider.github, _authService.signInWithGithub);
+      _handleOAuth(OAuthProvider.github, _authRepository.signInWithGithub);
 
   Future<bool> _handleOAuth(
     OAuthProvider provider,
@@ -96,7 +98,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _authService.signInWithEmail(email, password);
+      final response = await _authRepository.signInWithEmail(email, password);
       _user = response.user;
       return true;
     } catch (e) {
@@ -118,7 +120,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _authService.signUpWithEmail(email, password);
+      final response = await _authRepository.signUpWithEmail(email, password);
       _user = response.user;
       return true;
     } catch (e) {
@@ -141,7 +143,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authService.sendPasswordResetEmail(email);
+      await _authRepository.sendPasswordResetEmail(email);
       _successMessage =
           'Enlace de recuperación enviado. Revisa tu bandeja de entrada.';
       return true;
@@ -161,7 +163,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authService.updatePassword(newPassword);
+      await _authRepository.updatePassword(newPassword);
       _successMessage = 'Tu contraseña ha sido actualizada con éxito.';
       return true;
     } catch (e) {
@@ -173,13 +175,13 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> signOut() async {
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
 
     try {
-      await _authService.signOut();
+      await _authRepository.signOut();
       _user = null;
     } catch (e) {
       _errorMessage = e.toString();
@@ -187,4 +189,7 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Alias retrocompatible de [signOut]
+  Future<void> logout() => signOut();
 }

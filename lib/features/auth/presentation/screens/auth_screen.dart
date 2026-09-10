@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/liquid_background.dart';
+import '../../../../core/widgets/liquid_banner.dart';
 import '../../../../core/widgets/liquid_button.dart';
 import '../controllers/auth_controller.dart';
+import '../widgets/auth_mode_selector.dart';
 import '../widgets/reset_password_dialog.dart';
 import '../widgets/social_auth_button.dart';
 
-enum AuthMode { login, register }
-
-/// Pantalla híbrida de autenticación para MarthApp:
-/// Credenciales directas (Email + Contraseña) y OAuth Social (Google, Microsoft, GitHub)
+/// Pantalla modular de autenticación híbrida (Email/Password + OAuth Social)
 class AuthScreen extends StatefulWidget {
   final AuthController? controller;
 
@@ -87,172 +87,45 @@ class _AuthScreenState extends State<AuthScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Logotipo / Icono Liquid
-                      Center(
-                        child: Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LiquidTheme.liquidPrimaryGradient,
-                            boxShadow: [
-                              BoxShadow(
-                                color: LiquidTheme.primaryCyan.withValues(alpha: 0.4),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.bubble_chart_rounded,
-                            size: 38,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
+                      // Logotipo Liquid
+                      _buildLogo(),
                       const SizedBox(height: 18),
 
-                      // Título
-                      ShaderMask(
-                        shaderCallback: (bounds) =>
-                            LiquidTheme.liquidPrimaryGradient.createShader(bounds),
-                        child: const Text(
-                          'MarthApp',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
+                      // Título con degradado
+                      _buildTitle(),
                       const SizedBox(height: 18),
 
-                      // Selector de Modo: Iniciar Sesión / Registrarme
-                      _buildModeSelector(),
+                      // Selector de Modo (Login / Registro)
+                      AuthModeSelector(
+                        currentMode: _mode,
+                        onModeChanged: (mode) {
+                          setState(() {
+                            _mode = mode;
+                            _authController.clearMessages();
+                          });
+                        },
+                      ),
                       const SizedBox(height: 24),
 
-                      // Mensaje de Error
+                      // Banner reactivo de error
                       if (_authController.errorMessage != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: LiquidTheme.accentCoral.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: LiquidTheme.accentCoral.withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: LiquidTheme.accentCoral,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  _authController.errorMessage!,
-                                  style: const TextStyle(
-                                    color: LiquidTheme.accentCoral,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        LiquidBanner(
+                          message: _authController.errorMessage!,
+                          type: BannerType.error,
                         ),
                         const SizedBox(height: 18),
                       ],
 
-                      // Campo Email
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        style: const TextStyle(color: LiquidTheme.textPrimary),
-                        decoration: const InputDecoration(
-                          labelText: 'Correo Electrónico',
-                          prefixIcon: Icon(Icons.mail_outline_rounded,
-                              color: LiquidTheme.primaryCyan),
-                          hintText: 'ejemplo@marthapp.com',
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Introduce tu correo';
-                          }
-                          if (!value.contains('@') || !value.contains('.')) {
-                            return 'Introduce un correo válido';
-                          }
-                          return null;
-                        },
-                      ),
+                      // Formulario de credenciales
+                      _buildEmailField(),
                       const SizedBox(height: 16),
+                      _buildPasswordField(),
 
-                      // Campo Contraseña
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        style: const TextStyle(color: LiquidTheme.textPrimary),
-                        decoration: InputDecoration(
-                          labelText: 'Contraseña',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded,
-                              color: LiquidTheme.primaryCyan),
-                          hintText: 'Mínimo 6 caracteres',
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              color: LiquidTheme.textSecondary,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Introduce tu contraseña';
-                          }
-                          if (value.length < 6) {
-                            return 'La contraseña debe tener al menos 6 caracteres';
-                          }
-                          return null;
-                        },
-                      ),
+                      // Enlace "¿Has olvidado tu contraseña?"
+                      if (_mode == AuthMode.login) _buildForgotPasswordLink(),
+                      if (_mode == AuthMode.register) const SizedBox(height: 24),
 
-                      // Enlace "¿Has olvidado tu contraseña?" (Solo en Login)
-                      if (_mode == AuthMode.login) ...[
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              ResetPasswordDialog.show(
-                                context,
-                                authController: _authController,
-                              );
-                            },
-                            child: const Text(
-                              '¿Has olvidado tu contraseña?',
-                              style: TextStyle(
-                                color: LiquidTheme.primaryCyan,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ] else ...[
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Botón Principal (Email + Password)
+                      // Botón Principal CTA
                       LiquidButton(
                         text: _mode == AuthMode.login
                             ? 'Iniciar Sesión'
@@ -266,25 +139,10 @@ class _AuthScreenState extends State<AuthScreen> {
                       const SizedBox(height: 24),
 
                       // Divisor "o continúa con"
-                      Row(
-                        children: [
-                          const Expanded(child: Divider(color: Colors.white12)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Text(
-                              'o continúa con',
-                              style: TextStyle(
-                                color: LiquidTheme.textSecondary.withValues(alpha: 0.7),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          const Expanded(child: Divider(color: Colors.white12)),
-                        ],
-                      ),
+                      _buildDivider(),
                       const SizedBox(height: 20),
 
-                      // Botón Social 1: Google
+                      // Proveedor Social: Google
                       SocialAuthButton(
                         provider: OAuthProvider.google,
                         isLoading: _authController
@@ -296,7 +154,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Botón Social 2: GitHub
+                      // Proveedor Social: GitHub
                       SocialAuthButton(
                         provider: OAuthProvider.github,
                         isLoading: _authController
@@ -317,81 +175,151 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  /// Selector de Modo estilo Liquid UI (Iniciar Sesión vs Crear Cuenta)
-  Widget _buildModeSelector() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+  Widget _buildLogo() {
+    return Center(
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LiquidTheme.liquidPrimaryGradient,
+          boxShadow: [
+            BoxShadow(
+              color: LiquidTheme.primaryCyan.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.bubble_chart_rounded,
+          size: 38,
+          color: Colors.white,
+        ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _mode = AuthMode.login;
-                  _authController.clearMessages();
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: _mode == AuthMode.login
-                      ? LiquidTheme.liquidPrimaryGradient
-                      : null,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Iniciar Sesión',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _mode == AuthMode.login
-                        ? Colors.white
-                        : LiquidTheme.textSecondary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return ShaderMask(
+      shaderCallback: (bounds) =>
+          LiquidTheme.liquidPrimaryGradient.createShader(bounds),
+      child: const Text(
+        AppConstants.appName,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+          letterSpacing: -0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmailField() {
+    return TextFormField(
+      controller: _emailController,
+      keyboardType: TextInputType.emailAddress,
+      style: const TextStyle(color: LiquidTheme.textPrimary),
+      decoration: const InputDecoration(
+        labelText: 'Correo Electrónico',
+        prefixIcon: Icon(Icons.mail_outline_rounded,
+            color: LiquidTheme.primaryCyan),
+        hintText: 'ejemplo@marthapp.com',
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Introduce tu correo';
+        }
+        if (!value.contains('@') || !value.contains('.')) {
+          return 'Introduce un correo válido';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: _obscurePassword,
+      style: const TextStyle(color: LiquidTheme.textPrimary),
+      decoration: InputDecoration(
+        labelText: 'Contraseña',
+        prefixIcon: const Icon(Icons.lock_outline_rounded,
+            color: LiquidTheme.primaryCyan),
+        hintText: 'Mínimo 6 caracteres',
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscurePassword
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            color: LiquidTheme.textSecondary,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Introduce tu contraseña';
+        }
+        if (value.length < 6) {
+          return 'La contraseña debe tener al menos 6 caracteres';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildForgotPasswordLink() {
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {
+              ResetPasswordDialog.show(
+                context,
+                authController: _authController,
+              );
+            },
+            child: const Text(
+              '¿Has olvidado tu contraseña?',
+              style: TextStyle(
+                color: LiquidTheme.primaryCyan,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _mode = AuthMode.register;
-                  _authController.clearMessages();
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: _mode == AuthMode.register
-                      ? LiquidTheme.liquidPrimaryGradient
-                      : null,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Crear Cuenta',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _mode == AuthMode.register
-                        ? Colors.white
-                        : LiquidTheme.textSecondary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildDivider() {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: Colors.white12)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text(
+            'o continúa con',
+            style: TextStyle(
+              color: LiquidTheme.textSecondary.withValues(alpha: 0.7),
+              fontSize: 12,
             ),
           ),
-        ],
-      ),
+        ),
+        const Expanded(child: Divider(color: Colors.white12)),
+      ],
     );
   }
 }

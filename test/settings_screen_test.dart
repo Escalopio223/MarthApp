@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:marth_app/features/auth/data/auth_service.dart';
+import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:marth_app/features/settings/domain/friend_code_manager.dart';
 import 'package:marth_app/features/settings/presentation/screens/settings_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class FakeSettingsAuthService implements AuthService {
+class FakeSettingsAuthService implements IAuthRepository {
   @override
   User? get currentUser => null;
 

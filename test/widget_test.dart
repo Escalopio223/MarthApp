@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:marth_app/features/auth/data/auth_service.dart';
+import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:marth_app/features/auth/presentation/screens/update_password_screen.dart';
 import 'package:marth_app/features/auth/presentation/widgets/social_auth_button.dart';
 import 'package:marth_app/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class MockWidgetAuthService implements AuthService {
+class MockWidgetAuthService implements IAuthRepository {
   @override
   User? get currentUser => null;
 

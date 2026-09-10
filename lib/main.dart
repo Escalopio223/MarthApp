@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
+import 'core/constants/app_constants.dart';
 import 'core/theme/liquid_theme.dart';
 import 'features/auth/presentation/controllers/auth_controller.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
@@ -45,7 +46,7 @@ class MarthApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MarthApp',
+      title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: LiquidTheme.themeData,
       home: AuthGate(authController: authController),

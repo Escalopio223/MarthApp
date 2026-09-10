@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:marth_app/features/auth/data/auth_service.dart';
+import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Mock AuthService que simula las 7 operaciones sin red
-class MockFullAuthService implements AuthService {
+// Mock que implementa IAuthRepository simulando operaciones sin conexión a red
+class MockFullAuthService implements IAuthRepository {
   bool shouldFail = false;
   String? failMessage;
   String? lastAction;
