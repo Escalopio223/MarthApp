@@ -21,9 +21,6 @@ class MockWidgetAuthService implements AuthService {
   Future<bool> signInWithGoogle() async => true;
 
   @override
-  Future<bool> signInWithMicrosoft() async => true;
-
-  @override
   Future<bool> signInWithGithub() async => true;
 
   @override
@@ -53,7 +50,7 @@ class MockWidgetAuthService implements AuthService {
 }
 
 void main() {
-  testWidgets('AuthScreen renders Email/Password inputs, recover link and 3 OAuth buttons',
+  testWidgets('AuthScreen renders Email/Password inputs, recover link and 2 OAuth buttons',
       (WidgetTester tester) async {
     final controller = AuthController(authService: MockWidgetAuthService());
 
@@ -74,11 +71,10 @@ void main() {
     // Verificar Enlace de Recuperación
     expect(find.text('¿Has olvidado tu contraseña?'), findsOneWidget);
 
-    // Verificar 3 Proveedores OAuth
+    // Verificar 2 Proveedores OAuth (Google y GitHub)
     expect(find.text('Continuar con Google'), findsOneWidget);
-    expect(find.text('Continuar con Azure (Microsoft)'), findsOneWidget);
     expect(find.text('Continuar con GitHub'), findsOneWidget);
-    expect(find.byType(SocialAuthButton), findsNWidgets(3));
+    expect(find.byType(SocialAuthButton), findsNWidgets(2));
   });
 
   testWidgets('UpdatePasswordScreen renders password fields and submit button',

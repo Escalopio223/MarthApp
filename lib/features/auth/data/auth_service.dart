@@ -40,14 +40,6 @@ class AuthService {
     );
   }
 
-  /// Iniciar sesión con Microsoft (Azure)
-  Future<bool> signInWithMicrosoft() async {
-    return _signInWithOAuth(
-      provider: OAuthProvider.azure,
-      mobileCallback: 'login-callback',
-    );
-  }
-
   /// Iniciar sesión con GitHub
   Future<bool> signInWithGithub() async {
     return _signInWithOAuth(

@@ -20,9 +20,6 @@ class FakeSettingsAuthService implements AuthService {
   Future<bool> signInWithGoogle() async => true;
 
   @override
-  Future<bool> signInWithMicrosoft() async => true;
-
-  @override
   Future<bool> signInWithGithub() async => true;
 
   @override

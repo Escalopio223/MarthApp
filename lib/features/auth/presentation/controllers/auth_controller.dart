@@ -55,9 +55,6 @@ class AuthController extends ChangeNotifier {
   Future<bool> signInWithGoogle() =>
       _handleOAuth(OAuthProvider.google, _authService.signInWithGoogle);
 
-  Future<bool> signInWithMicrosoft() =>
-      _handleOAuth(OAuthProvider.azure, _authService.signInWithMicrosoft);
-
   Future<bool> signInWithGithub() =>
       _handleOAuth(OAuthProvider.github, _authService.signInWithGithub);
 

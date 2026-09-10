@@ -26,13 +26,6 @@ class MockFullAuthService implements AuthService {
   }
 
   @override
-  Future<bool> signInWithMicrosoft() async {
-    lastAction = 'signInWithMicrosoft';
-    if (shouldFail) throw Exception(failMessage ?? 'Microsoft error');
-    return true;
-  }
-
-  @override
   Future<bool> signInWithGithub() async {
     lastAction = 'signInWithGithub';
     if (shouldFail) throw Exception(failMessage ?? 'Github error');
@@ -103,13 +96,6 @@ void main() {
       final success = await controller.signInWithGoogle();
       expect(success, isTrue);
       expect(mockAuthService.lastAction, equals('signInWithGoogle'));
-      expect(controller.errorMessage, isNull);
-    });
-
-    test('signInWithMicrosoft executes successfully', () async {
-      final success = await controller.signInWithMicrosoft();
-      expect(success, isTrue);
-      expect(mockAuthService.lastAction, equals('signInWithMicrosoft'));
       expect(controller.errorMessage, isNull);
     });
 

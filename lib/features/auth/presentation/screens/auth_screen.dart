@@ -296,19 +296,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Botón Social 2: Microsoft (Azure)
-                      SocialAuthButton(
-                        provider: OAuthProvider.azure,
-                        isLoading: _authController
-                            .isProviderLoading(OAuthProvider.azure),
-                        isDisabled: isAnyLoading &&
-                            !_authController
-                                .isProviderLoading(OAuthProvider.azure),
-                        onPressed: () => _authController.signInWithMicrosoft(),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Botón Social 3: GitHub
+                      // Botón Social 2: GitHub
                       SocialAuthButton(
                         provider: OAuthProvider.github,
                         isLoading: _authController
