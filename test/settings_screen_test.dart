@@ -49,47 +49,29 @@ class FakeSettingsAuthService implements IAuthRepository {
 }
 
 void main() {
-  testWidgets('SettingsScreen starts without auto-generated code and generates manually on tap',
+  testWidgets('SettingsScreen displays clean layout with UserProfile, Friends Nav, and Theme selector',
       (WidgetTester tester) async {
     final authController =
         AuthController(authService: FakeSettingsAuthService());
-    final friendCodeManager = FriendCodeManager();
 
     await tester.pumpWidget(
       MaterialApp(
         home: SettingsScreen(
           authController: authController,
-          friendCodeManager: friendCodeManager,
         ),
       ),
     );
 
-    // Verify title and friend code section
+    // Verify title and clean layout
     expect(find.text('Ajustes'), findsOneWidget);
-    expect(find.text('Mi Código de Amigo'), findsOneWidget);
-    expect(find.text('Añadir Amigo con Código'), findsOneWidget);
+    expect(find.text('Cuenta Activa'), findsOneWidget);
+    expect(find.text('Amigos y Solicitudes'), findsOneWidget);
+    expect(find.text('Apariencia y Temas'), findsOneWidget);
+    expect(find.text('Cerrar Sesión'), findsOneWidget);
 
-    // Verify code does NOT auto-generate upon entry
-    expect(friendCodeManager.hasActiveCode, isFalse);
-    expect(
-      find.text('No tienes ningún código activo. Pulsa el botón para generar uno válido durante 1 minuto.'),
-      findsOneWidget,
-    );
-    expect(find.text('Generar Código (1 min)'), findsOneWidget);
-
-    // User manually taps 'Generar Código (1 min)'
-    final generateBtnFinder = find.text('Generar Código (1 min)');
-    await tester.ensureVisible(generateBtnFinder);
-    await tester.pumpAndSettle();
-    await tester.tap(generateBtnFinder);
-    await tester.pump();
-
-    // Verify generated code appears and timer starts
-    expect(friendCodeManager.hasActiveCode, isTrue);
-    expect(find.text(friendCodeManager.currentCode!), findsOneWidget);
-    expect(find.textContaining('Expira en'), findsOneWidget);
-
-    friendCodeManager.dispose();
+    // Verify friend code sections were cleanly moved out of SettingsScreen
+    expect(find.text('Mi Código de Amigo'), findsNothing);
+    expect(find.text('Añadir Amigo con Código'), findsNothing);
   });
 
   testWidgets('SettingsScreen displays ThemeSelectorCard and shows theme options',

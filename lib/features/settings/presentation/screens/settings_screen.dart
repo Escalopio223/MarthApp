@@ -8,8 +8,6 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
 import '../../domain/friend_code_manager.dart';
-import '../widgets/add_friend_card.dart';
-import '../widgets/friend_code_card.dart';
 import '../widgets/theme_selector_card.dart';
 import '../widgets/user_profile_card.dart';
 
@@ -33,11 +31,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late final FriendCodeManager _friendCodeManager;
   late final FriendsController _friendsController;
-  final _friendCodeInputController = TextEditingController();
-  String? _friendActionMessage;
-  bool _isSuccessMessage = false;
 
   @override
   void initState() {
@@ -47,76 +41,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _friendsController = widget.friendsController ?? FriendsController();
     _friendsController.addListener(_onFriendsControllerUpdate);
 
-    _friendCodeManager = widget.friendCodeManager ??
-        FriendCodeManager(
-          friendsService: _friendsController.friendsService,
-          userId: user?.id,
-        );
-    _friendCodeManager.setUserId(user?.id);
-    _friendCodeManager.addListener(_onCodeManagerUpdate);
-
     if (user != null && widget.friendsController == null) {
       _friendsController.initialize(user.id, defaultEmail: user.email);
     }
   }
 
-  void _onCodeManagerUpdate() {
-    if (mounted) setState(() {});
-  }
-
   void _onFriendsControllerUpdate() {
-    if (mounted) {
-      if (_friendsController.friends.isNotEmpty) {
-        _friendCodeManager.syncFriends(
-          _friendsController.friends.map((f) => f.username).toList(),
-        );
-      }
-      setState(() {});
-    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _friendCodeManager.removeListener(_onCodeManagerUpdate);
-    if (widget.friendCodeManager == null) {
-      _friendCodeManager.dispose();
-    }
     _friendsController.removeListener(_onFriendsControllerUpdate);
     if (widget.friendsController == null) {
       _friendsController.dispose();
     }
-    _friendCodeInputController.dispose();
     super.dispose();
-  }
-
-  Future<void> _addFriend() async {
-    final code = _friendCodeInputController.text.trim();
-    if (code.isEmpty) return;
-
-    try {
-      final user = widget.authController.user;
-      await _friendCodeManager.addFriend(
-        code,
-        currentUserId: user?.id,
-        service: _friendsController.friendsService,
-      );
-      _friendCodeInputController.clear();
-      final lastAdded = _friendCodeManager.addedFriends.isNotEmpty
-          ? _friendCodeManager.addedFriends.last
-          : code;
-      setState(() {
-        _isSuccessMessage = true;
-        _friendActionMessage = '¡Invitación enviada con éxito a @$lastAdded!';
-      });
-      if (user != null) {
-        _friendsController.refresh();
-      }
-    } catch (e) {
-      setState(() {
-        _isSuccessMessage = false;
-        _friendActionMessage = e.toString().replaceAll('Exception: ', '');
-      });
-    }
   }
 
   void _openRealtimeFriends() {
@@ -184,32 +124,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     themeController: widget.themeController ??
                         LiquidThemeScope.of(context),
                   ),
-                  const SizedBox(height: 24),
-
-                  // 4. Tarjeta del código de amigo temporal (1 min)
-                  FriendCodeCard(
-                    friendCodeManager: _friendCodeManager,
-                    onGenerateCode: () {
-                      final u = widget.authController.user;
-                      _friendCodeManager.generateNewCode(
-                        userId: u?.id,
-                        service: _friendsController.friendsService,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // 5. Tarjeta para añadir amigo con código temporal
-                  AddFriendCard(
-                    inputController: _friendCodeInputController,
-                    onAddFriend: _addFriend,
-                    addedFriends: _friendCodeManager.addedFriends,
-                    feedbackMessage: _friendActionMessage,
-                    isSuccessMessage: _isSuccessMessage,
-                  ),
                   const SizedBox(height: 28),
 
-                  // 6. Botón de cierre de sesión
+                  // 4. Botón de cierre de sesión
                   _buildLogoutButton(),
                 ],
               ),

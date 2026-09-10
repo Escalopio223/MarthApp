@@ -5,6 +5,8 @@ import '../../../../core/widgets/liquid_background.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../../core/widgets/liquid_button.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
+import '../../../settings/domain/friend_code_manager.dart';
+import '../../../settings/presentation/widgets/friend_code_card.dart';
 import '../../domain/models/friend_request_model.dart';
 import '../../domain/models/profile_model.dart';
 import '../controllers/friends_controller.dart';
@@ -24,11 +26,20 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   final _searchUsernameController = TextEditingController();
+  late final FriendCodeManager _friendCodeManager;
 
   @override
   void initState() {
     super.initState();
+    _friendCodeManager = FriendCodeManager(
+      friendsService: widget.friendsController.friendsService,
+      userId: widget.friendsController.currentUserId,
+    );
+    _friendCodeManager.addListener(_onControllerChange);
     widget.friendsController.addListener(_onControllerChange);
+
+    // Cargar datos en vivo al abrir la vista
+    widget.friendsController.refresh();
   }
 
   void _onControllerChange() {
@@ -38,6 +49,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   void dispose() {
     widget.friendsController.removeListener(_onControllerChange);
+    _friendCodeManager.removeListener(_onControllerChange);
+    _friendCodeManager.dispose();
     _searchUsernameController.dispose();
     super.dispose();
   }
@@ -70,54 +83,80 @@ class _FriendsScreenState extends State<FriendsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Amigos y Conexiones',
+          'Amigos y Solicitudes',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: LiquidTheme.textPrimary,
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh_rounded, color: LiquidTheme.textPrimary),
+            tooltip: 'Actualizar en vivo',
+            onPressed: () => controller.refresh(),
+          ),
+        ],
       ),
       body: LiquidBackground(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 100, 20, 40),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 580),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Mensajes de éxito y error
-                  if (controller.errorMessage != null) ...[
-                    LiquidBanner(
-                      message: controller.errorMessage!,
-                      type: BannerType.error,
-                      onClose: () => controller.clearMessages(),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (controller.successMessage != null) ...[
-                    LiquidBanner(
-                      message: controller.successMessage!,
-                      type: BannerType.success,
-                      onClose: () => controller.clearMessages(),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+        child: RefreshIndicator(
+          color: LiquidTheme.primaryLiquid,
+          backgroundColor: LiquidTheme.surfaceDark,
+          onRefresh: () => controller.refresh(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 100, 20, 40),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 580),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1. Mensajes de éxito y error
+                    if (controller.errorMessage != null) ...[
+                      LiquidBanner(
+                        message: controller.errorMessage!,
+                        type: BannerType.error,
+                        onClose: () => controller.clearMessages(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    if (controller.successMessage != null) ...[
+                      LiquidBanner(
+                        message: controller.successMessage!,
+                        type: BannerType.success,
+                        onClose: () => controller.clearMessages(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
-                  // 2. Tarjeta: Enviar Solicitud por Username
-                  _buildSendRequestCard(controller),
-                  const SizedBox(height: 24),
-
-                  // 3. Tarjeta: Bandeja de Solicitudes Recibidas (En tiempo real)
-                  if (incomingRequests.isNotEmpty) ...[
-                    _buildIncomingRequestsCard(incomingRequests, controller),
+                    // 2. Mi Código de Amigo temporal (1 min)
+                    FriendCodeCard(
+                      friendCodeManager: _friendCodeManager,
+                      onGenerateCode: () {
+                        final u = controller.currentUserId;
+                        _friendCodeManager.generateNewCode(
+                          userId: u,
+                          service: controller.friendsService,
+                        );
+                      },
+                    ),
                     const SizedBox(height: 24),
-                  ],
 
-                  // 4. Tarjeta: Lista de Amigos en Tiempo Real
-                  _buildFriendsListCard(friends, controller),
-                ],
+                    // 3. Tarjeta: Enviar Solicitud o Canjear Código
+                    _buildSendRequestCard(controller),
+                    const SizedBox(height: 24),
+
+                    // 4. Tarjeta: Bandeja de Solicitudes Recibidas (En tiempo real)
+                    if (incomingRequests.isNotEmpty) ...[
+                      _buildIncomingRequestsCard(incomingRequests, controller),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // 5. Tarjeta: Lista de Amigos en Tiempo Real
+                    _buildFriendsListCard(friends, controller),
+                  ],
+                ),
               ),
             ),
           ),

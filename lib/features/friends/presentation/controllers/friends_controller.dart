@@ -76,11 +76,12 @@ class FriendsController extends ChangeNotifier {
     _friendRequestsChannel = _friendsService.subscribeToFriendRequests(
       userId: userId,
       onEvent: (record, eventType) async {
+        final event = eventType.toUpperCase();
         final senderId = record['sender_id'] as String?;
         final receiverId = record['receiver_id'] as String?;
         final status = record['status'] as String?;
 
-        if (eventType == 'INSERT') {
+        if (event == 'INSERT') {
           // Si somos el receptor de una nueva solicitud entrante
           if (receiverId == userId && status == 'pending') {
             final id = record['id'] as String?;
@@ -95,20 +96,25 @@ class FriendsController extends ChangeNotifier {
               );
               notifyListeners();
             }
+          } else if (status == 'accepted' && (receiverId == userId || senderId == userId)) {
+            _friends = await _friendsService.fetchFriends(userId);
+            notifyListeners();
           }
-        } else if (eventType == 'UPDATE') {
+        } else if (event == 'UPDATE') {
           // Si una solicitud cambió a 'accepted'
           if (status == 'accepted') {
             // Remover de pendientes si estaba ahí
             _incomingRequests.removeWhere((r) => r.id == record['id']);
             // Recargar lista de amigos para mostrar inmediatamente al nuevo amigo
-            _friends = await _friendsService.fetchFriends(userId);
+            if (receiverId == userId || senderId == userId) {
+              _friends = await _friendsService.fetchFriends(userId);
+            }
             notifyListeners();
           } else if (status == 'rejected') {
             _incomingRequests.removeWhere((r) => r.id == record['id']);
             notifyListeners();
           }
-        } else if (eventType == 'DELETE') {
+        } else if (event == 'DELETE') {
           _incomingRequests.removeWhere((r) => r.id == record['id']);
           _friends = await _friendsService.fetchFriends(userId);
           notifyListeners();

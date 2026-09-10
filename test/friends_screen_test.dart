@@ -68,7 +68,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verificar títulos
-      expect(find.text('Amigos y Conexiones'), findsOneWidget);
+      expect(find.text('Amigos y Solicitudes'), findsOneWidget);
+      expect(find.text('Mi Código de Amigo'), findsOneWidget);
       expect(find.text('Enviar Solicitud de Amistad'), findsOneWidget);
       expect(find.text('Solicitudes Recibidas (1)'), findsOneWidget);
       expect(find.text('Mis Amigos (1)'), findsOneWidget);
@@ -98,8 +99,11 @@ void main() {
       expect(controller.incomingRequests.length, equals(1));
       expect(controller.friends.length, equals(1));
 
-      // Pulsar botón Aceptar
-      await tester.tap(find.byTooltip('Aceptar'));
+      // Scroll hasta que el botón Aceptar sea visible y pulsar
+      final aceptarBtn = find.byTooltip('Aceptar');
+      await tester.ensureVisible(aceptarBtn);
+      await tester.pumpAndSettle();
+      await tester.tap(aceptarBtn);
       await tester.pumpAndSettle();
 
       // Ya no hay solicitudes pendientes y ahora hay 2 amigos

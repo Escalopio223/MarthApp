@@ -496,11 +496,14 @@ class FriendsService implements IFriendsService {
             final record = payload.newRecord.isNotEmpty
                 ? payload.newRecord
                 : payload.oldRecord;
-            final eventType = payload.eventType.name; // 'insert', 'update', 'delete'
+            final eventType = payload.eventType.name.toUpperCase();
+            debugPrint('[Realtime] Evento en friend_requests: $eventType -> $record');
             onEvent(record, eventType);
           },
         )
-        .subscribe();
+        .subscribe((status, error) {
+          debugPrint('[Realtime] Canal friend_requests: $status (error: $error)');
+        });
 
     return channel;
   }
@@ -525,11 +528,14 @@ class FriendsService implements IFriendsService {
           callback: (payload) {
             if (payload.newRecord.isNotEmpty) {
               final updated = ProfileModel.fromJson(payload.newRecord);
+              debugPrint('[Realtime] Perfil actualizado: ${updated.username}');
               onProfileUpdated(updated);
             }
           },
         )
-        .subscribe();
+        .subscribe((status, error) {
+          debugPrint('[Realtime] Canal profiles: $status (error: $error)');
+        });
 
     return channel;
   }
