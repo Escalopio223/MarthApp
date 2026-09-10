@@ -298,6 +298,21 @@ class FriendsController extends ChangeNotifier {
     }
   }
 
+  /// Limpia todo el estado en memoria y desuscribe canales Realtime (ej. al cerrar sesión)
+  void reset() {
+    _currentUserId = null;
+    _currentProfile = null;
+    _incomingRequests = [];
+    _friends = [];
+    _errorMessage = null;
+    _successMessage = null;
+    _friendsService.unsubscribe(_friendRequestsChannel);
+    _friendsService.unsubscribe(_profilesChannel);
+    _friendRequestsChannel = null;
+    _profilesChannel = null;
+    notifyListeners();
+  }
+
   bool _isDisposed = false;
 
   @override
