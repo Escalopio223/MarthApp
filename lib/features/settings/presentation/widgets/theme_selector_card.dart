@@ -6,13 +6,15 @@ import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
 
 /// Tarjeta interactiva de configuración visual para seleccionar entre los 10 temas
-/// dinámicos híbridos (5 oscuros y 5 claros).
+/// dinámicos híbridos (5 oscuros y 5 claros), en formato acordeón para optimizar espacio.
 class ThemeSelectorCard extends StatefulWidget {
   final ThemeController themeController;
+  final bool initiallyExpanded;
 
   const ThemeSelectorCard({
     super.key,
     required this.themeController,
+    this.initiallyExpanded = false,
   });
 
   @override
@@ -20,12 +22,14 @@ class ThemeSelectorCard extends StatefulWidget {
 }
 
 class _ThemeSelectorCardState extends State<ThemeSelectorCard> {
+  late bool _isExpanded;
   // 0 = Temas Oscuros, 1 = Temas Claros
   late int _selectedTab;
 
   @override
   void initState() {
     super.initState();
+    _isExpanded = widget.initiallyExpanded;
     // Abrir la pestaña correspondiente al tema actual
     _selectedTab = widget.themeController.isDark ? 0 : 1;
   }
@@ -39,94 +43,151 @@ class _ThemeSelectorCardState extends State<ThemeSelectorCard> {
     return GlassCard(
       blur: 20.0,
       borderRadius: 24.0,
-      padding: const EdgeInsets.all(22.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Cabecera de la sección
+          // Cabecera interactiva del acordeón
           _buildHeader(activeTheme),
-          const SizedBox(height: 14),
 
-          Text(
-            'Elige la estética visual de MarthApp. Cada tema adapta dinámicamente las superficies de cristal, relieves neumórficos y gradientes fluidos.',
-            style: TextStyle(
-              color: LiquidTheme.textSecondary,
-              fontSize: 13,
-              height: 1.4,
+          // Contenido desplegable con animación suave
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 14),
+                Divider(color: LiquidTheme.glassBorderColor, height: 1),
+                const SizedBox(height: 14),
+
+                Text(
+                  'Elige la estética visual de MarthApp. Cada tema adapta dinámicamente las superficies de cristal, relieves neumórficos y gradientes fluidos.',
+                  style: TextStyle(
+                    color: LiquidTheme.textSecondary,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Selector de pestaña (Oscuros / Claros)
+                _buildCategoryTabs(),
+                const SizedBox(height: 16),
+
+                // Lista interactiva de los 5 temas de la categoría
+                ...themesToShow
+                    .map((theme) => _buildThemeOption(theme, activeTheme)),
+              ],
             ),
+            crossFadeState: _isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 280),
+            firstCurve: Curves.easeInOutCubic,
+            secondCurve: Curves.easeInOutCubic,
+            sizeCurve: Curves.easeInOutCubic,
           ),
-          const SizedBox(height: 18),
-
-          // Selector de pestaña (Oscuros / Claros)
-          _buildCategoryTabs(),
-          const SizedBox(height: 16),
-
-          // Lista interactiva de los 5 temas de la categoría
-          ...themesToShow.map((theme) => _buildThemeOption(theme, activeTheme)),
         ],
       ),
     );
   }
 
   Widget _buildHeader(AppThemeConfig activeTheme) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: LiquidTheme.primaryLiquid.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.palette_rounded,
-            color: LiquidTheme.primaryLiquid,
-            size: 22,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Apariencia y Temas',
-                style: TextStyle(
-                  color: LiquidTheme.textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => setState(() => _isExpanded = !_isExpanded),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: LiquidTheme.primaryLiquid.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 2),
-              Text(
-                'Activo: ${activeTheme.name}',
-                style: TextStyle(
-                  color: LiquidTheme.primaryLiquid,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Icon(
+                Icons.palette_rounded,
+                color: LiquidTheme.primaryLiquid,
+                size: 22,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Apariencia y Temas',
+                    style: TextStyle(
+                      color: LiquidTheme.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        activeTheme.name,
+                        style: TextStyle(
+                          color: LiquidTheme.primaryLiquid,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        ' • ${activeTheme.isDark ? 'Oscuro' : 'Claro'}',
+                        style: TextStyle(
+                          color: LiquidTheme.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            _buildMiniPreviewCircle(activeTheme),
+            const SizedBox(width: 8),
+            AnimatedRotation(
+              turns: _isExpanded ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOutCubic,
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: LiquidTheme.textSecondary,
+                size: 24,
+              ),
+            ),
+          ],
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      ),
+    );
+  }
+
+  Widget _buildMiniPreviewCircle(AppThemeConfig theme) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: theme.bgCanvas,
+        border: Border.all(
+          color: theme.shadowLight.withValues(alpha: 0.6),
+          width: 1.2,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: 16,
+          height: 16,
           decoration: BoxDecoration(
-            color: LiquidTheme.surfaceDark,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: LiquidTheme.glassBorderColor,
-            ),
-          ),
-          child: Text(
-            activeTheme.isDark ? 'Modo Oscuro' : 'Modo Claro',
-            style: TextStyle(
-              color: LiquidTheme.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
+            shape: BoxShape.circle,
+            gradient: theme.liquidPrimaryGradient,
           ),
         ),
-      ],
+      ),
     );
   }
 

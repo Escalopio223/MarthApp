@@ -108,9 +108,14 @@ void main() {
     );
 
     expect(find.text('Apariencia y Temas'), findsOneWidget);
+
+    // Expand accordion
+    await tester.tap(find.text('Apariencia y Temas'));
+    await tester.pumpAndSettle();
+
     expect(find.text('Oscuros (5)'), findsOneWidget);
     expect(find.text('Claros (5)'), findsOneWidget);
-    expect(find.text('Midnight Blue'), findsOneWidget);
+    expect(find.text('Midnight Blue'), findsAtLeastNWidgets(1));
 
     // Switch to light themes tab
     await tester.tap(find.text('Claros (5)'));

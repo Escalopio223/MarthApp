@@ -32,28 +32,28 @@ void main() {
       expect(theme.isDark, isTrue);
     });
 
-    test('Cyber Emerald has exact specification tokens', () {
+    test('Cyber Emerald has refined non-strident tokens', () {
       final theme = AppThemes.cyberEmerald;
-      expect(theme.bgCanvas, equals(const Color(0xFF0A1412)));
-      expect(theme.bgSurface, equals(const Color(0xFF12221E)));
-      expect(theme.shadowDark, equals(const Color(0xFF050B0A)));
-      expect(theme.shadowLight, equals(const Color(0xFF1B322D)));
-      expect(theme.accentPrimary, equals(const Color(0xFF00F5A0)));
-      expect(theme.accentSecondary, equals(const Color(0xFF00D9F5)));
-      expect(theme.textPrimary, equals(const Color(0xFFE8F8F5)));
-      expect(theme.textSecondary, equals(const Color(0xFF7EA89F)));
+      expect(theme.bgCanvas, equals(const Color(0xFF0C1715)));
+      expect(theme.bgSurface, equals(const Color(0xFF142421)));
+      expect(theme.shadowDark, equals(const Color(0xFF060D0B)));
+      expect(theme.shadowLight, equals(const Color(0xFF1E3530)));
+      expect(theme.accentPrimary, equals(const Color(0xFF10B981)));
+      expect(theme.accentSecondary, equals(const Color(0xFF06B6D4)));
+      expect(theme.textPrimary, equals(const Color(0xFFECFDF5)));
+      expect(theme.textSecondary, equals(const Color(0xFF80A79E)));
     });
 
-    test('Obsidian Crimson has exact specification tokens', () {
+    test('Obsidian Crimson has refined non-strident tokens', () {
       final theme = AppThemes.obsidianCrimson;
-      expect(theme.bgCanvas, equals(const Color(0xFF140D0E)));
-      expect(theme.bgSurface, equals(const Color(0xFF221618)));
-      expect(theme.shadowDark, equals(const Color(0xFF0B0708)));
-      expect(theme.shadowLight, equals(const Color(0xFF312023)));
-      expect(theme.accentPrimary, equals(const Color(0xFFFF4D6D)));
-      expect(theme.accentSecondary, equals(const Color(0xFFC9184A)));
-      expect(theme.textPrimary, equals(const Color(0xFFFCEEF0)));
-      expect(theme.textSecondary, equals(const Color(0xFFA8868C)));
+      expect(theme.bgCanvas, equals(const Color(0xFF130C0E)));
+      expect(theme.bgSurface, equals(const Color(0xFF1F1317)));
+      expect(theme.shadowDark, equals(const Color(0xFF0A0607)));
+      expect(theme.shadowLight, equals(const Color(0xFF2C1C21)));
+      expect(theme.accentPrimary, equals(const Color(0xFFE11D48)));
+      expect(theme.accentSecondary, equals(const Color(0xFF9F1239)));
+      expect(theme.textPrimary, equals(const Color(0xFFFDF2F4)));
+      expect(theme.textSecondary, equals(const Color(0xFFA68087)));
     });
 
     test('Deep Amethyst has exact specification tokens', () {

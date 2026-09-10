@@ -240,39 +240,39 @@ class AppThemes {
     ctaTextColor: Color(0xFF0D1219),
   );
 
-  /// 2. Cyber Emerald (Tecnológico / Neón orgánico)
+  /// 2. Cyber Emerald (Esmeralda y Jade tecnológico)
   static const AppThemeConfig cyberEmerald = AppThemeConfig(
     id: ThemeId.cyberEmerald,
     name: 'Cyber Emerald',
-    tag: 'Tecnológico / Neón orgánico',
+    tag: 'Esmeralda / Jade tecnológico',
     isDark: true,
-    bgCanvas: Color(0xFF0A1412),
-    bgSurface: Color(0xFF12221E),
-    shadowDark: Color(0xFF050B0A),
-    shadowLight: Color(0xFF1B322D),
-    accentPrimary: Color(0xFF00F5A0),
-    accentSecondary: Color(0xFF00D9F5),
-    liquidGradientColors: [Color(0xFF00F5A0), Color(0xFF00D9F5)],
-    textPrimary: Color(0xFFE8F8F5),
-    textSecondary: Color(0xFF7EA89F),
-    ctaTextColor: Color(0xFF05120E),
+    bgCanvas: Color(0xFF0C1715),
+    bgSurface: Color(0xFF142421),
+    shadowDark: Color(0xFF060D0B),
+    shadowLight: Color(0xFF1E3530),
+    accentPrimary: Color(0xFF10B981),
+    accentSecondary: Color(0xFF06B6D4),
+    liquidGradientColors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+    textPrimary: Color(0xFFECFDF5),
+    textSecondary: Color(0xFF80A79E),
+    ctaTextColor: Color(0xFF041410),
   );
 
-  /// 3. Obsidian Crimson (Profundo / Sofisticado)
+  /// 3. Obsidian Crimson (Garnet / Borgoña sofisticado)
   static const AppThemeConfig obsidianCrimson = AppThemeConfig(
     id: ThemeId.obsidianCrimson,
     name: 'Obsidian Crimson',
-    tag: 'Profundo / Sofisticado',
+    tag: 'Garnet / Borgoña sofisticado',
     isDark: true,
-    bgCanvas: Color(0xFF140D0E),
-    bgSurface: Color(0xFF221618),
-    shadowDark: Color(0xFF0B0708),
-    shadowLight: Color(0xFF312023),
-    accentPrimary: Color(0xFFFF4D6D),
-    accentSecondary: Color(0xFFC9184A),
-    liquidGradientColors: [Color(0xFFFF4D6D), Color(0xFFC9184A)],
-    textPrimary: Color(0xFFFCEEF0),
-    textSecondary: Color(0xFFA8868C),
+    bgCanvas: Color(0xFF130C0E),
+    bgSurface: Color(0xFF1F1317),
+    shadowDark: Color(0xFF0A0607),
+    shadowLight: Color(0xFF2C1C21),
+    accentPrimary: Color(0xFFE11D48),
+    accentSecondary: Color(0xFF9F1239),
+    liquidGradientColors: [Color(0xFFE11D48), Color(0xFF9F1239)],
+    textPrimary: Color(0xFFFDF2F4),
+    textSecondary: Color(0xFFA68087),
     ctaTextColor: Colors.white,
   );
 
