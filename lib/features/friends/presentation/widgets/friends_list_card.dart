@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
+import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/profile_model.dart';
 
 /// Tarjeta que muestra la lista de amigos aceptados con opción de eliminación
@@ -159,18 +160,11 @@ class FriendsListCard extends StatelessWidget {
                   baseColor: LiquidTheme.surfaceDark,
                   child: Row(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LiquidTheme.liquidPrimaryGradient,
-                        ),
-                        child: const Icon(
-                          Icons.person_rounded,
-                          color: Color(0xFF0D1219),
-                          size: 22,
-                        ),
+                      UserAvatar.fromProfile(
+                        profile: friend,
+                        size: 40,
+                        showGlow: false,
+                        showBorder: true,
                       ),
                       const SizedBox(width: 12),
                       Expanded(

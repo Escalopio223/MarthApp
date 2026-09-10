@@ -8,15 +8,17 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
 import '../../domain/friend_code_manager.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../widgets/theme_selector_card.dart';
 import '../widgets/user_profile_card.dart';
 
-/// Pantalla de Ajustes: perfil con username en tiempo real, selector de temas, amigos y sesión
+/// Pantalla de Ajustes: perfil con avatar en tiempo real, selector de temas, amigos y sesión
 class SettingsScreen extends StatefulWidget {
   final AuthController authController;
   final FriendCodeManager? friendCodeManager;
   final ThemeController? themeController;
   final FriendsController? friendsController;
+  final ProfileController? profileController;
 
   const SettingsScreen({
     super.key,
@@ -24,6 +26,7 @@ class SettingsScreen extends StatefulWidget {
     this.friendCodeManager,
     this.themeController,
     this.friendsController,
+    this.profileController,
   });
 
   @override
@@ -32,6 +35,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final FriendsController _friendsController;
+  late final ProfileController _profileController;
 
   @override
   void initState() {
@@ -39,22 +43,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final user = widget.authController.user;
 
     _friendsController = widget.friendsController ?? FriendsController();
-    _friendsController.addListener(_onFriendsControllerUpdate);
+    _friendsController.addListener(_onControllerUpdate);
 
-    if (user != null && widget.friendsController == null) {
-      _friendsController.initialize(user.id, defaultEmail: user.email);
+    _profileController = widget.profileController ?? ProfileController();
+    _profileController.addListener(_onControllerUpdate);
+
+    if (user != null) {
+      if (widget.friendsController == null) {
+        _friendsController.initialize(user.id, defaultEmail: user.email);
+      }
+      if (widget.profileController == null) {
+        _profileController.initialize(user.id, defaultEmail: user.email);
+      }
     }
   }
 
-  void _onFriendsControllerUpdate() {
+  void _onControllerUpdate() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _friendsController.removeListener(_onFriendsControllerUpdate);
+    _friendsController.removeListener(_onControllerUpdate);
+    _profileController.removeListener(_onControllerUpdate);
     if (widget.friendsController == null) {
       _friendsController.dispose();
+    }
+    if (widget.profileController == null) {
+      _profileController.dispose();
     }
     super.dispose();
   }
@@ -69,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout() async {
+    _profileController.reset();
     _friendsController.reset();
     await widget.authController.signOut();
     if (mounted) {
@@ -109,9 +126,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Tarjeta de perfil con edición de username y detección de colisiones
+                  // 1. Tarjeta de perfil con edición de username, avatar y contraseña
                   UserProfileCard(
                     email: email,
+                    profileController: _profileController,
+                    authController: widget.authController,
                     friendsController: _friendsController,
                   ),
                   const SizedBox(height: 24),

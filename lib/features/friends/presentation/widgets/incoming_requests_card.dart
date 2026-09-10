@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/glass_card.dart';
+import '../../../profile/domain/models/avatar_data.dart';
+import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/friend_request_model.dart';
 
 /// Tarjeta que muestra la bandeja de solicitudes de amistad entrantes
@@ -73,19 +75,21 @@ class IncomingRequestsCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LiquidTheme.liquidPrimaryGradient,
+                    if (req.senderProfile != null)
+                      UserAvatar.fromProfile(
+                        profile: req.senderProfile!,
+                        size: 38,
+                        showGlow: false,
+                        showBorder: true,
+                      )
+                    else
+                      UserAvatar(
+                        avatarData: const AvatarData.initials(),
+                        username: senderName,
+                        size: 38,
+                        showGlow: false,
+                        showBorder: true,
                       ),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Color(0xFF0D1219),
-                        size: 20,
-                      ),
-                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

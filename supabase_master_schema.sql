@@ -26,7 +26,31 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text unique not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  avatar_type text not null default 'initials' check (avatar_type in ('initials', 'icon', 'image')),
+  avatar_url text,
+  avatar_icon text,
+  avatar_bg_color text,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  constraint chk_avatar_state check (
+    (avatar_type = 'initials') or
+    (avatar_type = 'icon' and avatar_icon is not null and avatar_bg_color is not null and avatar_url is null) or
+    (avatar_type = 'image' and avatar_url is not null and avatar_icon is null and avatar_bg_color is null)
+  )
+);
+
+-- Asegurar columnas si la tabla ya existía previamente
+alter table public.profiles
+  add column if not exists avatar_type text not null default 'initials'
+    check (avatar_type in ('initials', 'icon', 'image')),
+  add column if not exists avatar_url text,
+  add column if not exists avatar_icon text,
+  add column if not exists avatar_bg_color text;
+
+alter table public.profiles drop constraint if exists chk_avatar_state;
+alter table public.profiles add constraint chk_avatar_state check (
+  (avatar_type = 'initials') or
+  (avatar_type = 'icon' and avatar_icon is not null and avatar_bg_color is not null and avatar_url is null) or
+  (avatar_type = 'image' and avatar_url is not null and avatar_icon is null and avatar_bg_color is null)
 );
 
 -- Habilitar Row Level Security (RLS)
@@ -354,3 +378,50 @@ begin
   end if;
 end;
 $$;
+
+-- ------------------------------------------------------------------------------
+-- 7. CONFIGURACIÓN SUPABASE STORAGE (Bucket de Avatares)
+-- ------------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do update set public = true;
+
+alter table storage.objects enable row level security;
+
+drop policy if exists "Los avatares son de lectura pública" on storage.objects;
+create policy "Los avatares son de lectura pública"
+  on storage.objects for select
+  to public
+  using (bucket_id = 'avatars');
+
+drop policy if exists "Los usuarios autenticados pueden subir su propio avatar" on storage.objects;
+create policy "Los usuarios autenticados pueden subir su propio avatar"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'avatars' and
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "Los usuarios autenticados pueden actualizar su propio avatar" on storage.objects;
+create policy "Los usuarios autenticados pueden actualizar su propio avatar"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'avatars' and
+    auth.uid()::text = (storage.foldername(name))[1]
+  )
+  with check (
+    bucket_id = 'avatars' and
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+drop policy if exists "Los usuarios autenticados pueden eliminar su propio avatar" on storage.objects;
+create policy "Los usuarios autenticados pueden eliminar su propio avatar"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'avatars' and
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
