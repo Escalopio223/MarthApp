@@ -308,25 +308,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ),
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: LiquidTheme.accentCoral.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: LiquidTheme.accentCoral.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Text(
-                  'En tiempo real',
-                  style: TextStyle(
-                    color: LiquidTheme.accentCoral,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 16),

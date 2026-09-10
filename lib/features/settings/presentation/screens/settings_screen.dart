@@ -179,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     pendingCount > 0
                         ? '$pendingCount solicitud(es) pendiente(s)'
-                        : '$friendsCount amigo(s) en tiempo real',
+                        : '$friendsCount ${friendsCount == 1 ? 'amigo' : 'amigos'}',
                     style: TextStyle(
                       color: pendingCount > 0
                           ? LiquidTheme.accentCoral
