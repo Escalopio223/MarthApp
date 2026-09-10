@@ -339,6 +339,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ResetPasswordDialog.show(
                 context,
                 authController: _authController,
+                initialEmail: _emailController.text.trim(),
               );
             },
             child: Text(

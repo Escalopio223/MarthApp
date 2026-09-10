@@ -35,8 +35,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
   bool _isEditing = false;
   late final TextEditingController _usernameController;
   String? _localValidationError;
-  String? _passwordResetFeedback;
-  bool _isSendingResetEmail = false;
+  String? _passwordUpdateFeedback;
 
   @override
   void initState() {
@@ -120,172 +119,25 @@ class _UserProfileCardState extends State<UserProfileCard> {
     }
   }
 
-  void _showChangePasswordDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: LiquidTheme.surfaceDark,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: BorderSide(color: LiquidTheme.glassBorderColor),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: LiquidTheme.primaryLiquid.withValues(alpha: 0.2),
-              ),
-              child: Icon(Icons.lock_reset_rounded, color: LiquidTheme.primaryLiquid, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Cambiar Contraseña',
-              style: TextStyle(
-                color: LiquidTheme.textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Puedes actualizar tu contraseña directamente ahora mismo, o recibir un enlace seguro en tu correo registrado (${widget.email}).',
-              style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () {
-                Navigator.pop(ctx);
-                _openDirectPasswordModal();
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: LiquidTheme.primaryLiquid.withValues(alpha: 0.12),
-                  border: Border.all(color: LiquidTheme.primaryCyan.withValues(alpha: 0.35)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.edit_note_rounded, color: LiquidTheme.primaryCyan, size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Cambiar directamente aquí',
-                            style: TextStyle(color: LiquidTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          Text(
-                            'Introduce y confirma tu nueva clave al instante',
-                            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.arrow_forward_ios_rounded, color: LiquidTheme.primaryCyan, size: 14),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () async {
-                Navigator.pop(ctx);
-                await _sendPasswordReset();
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: LiquidTheme.surfaceDark,
-                  border: Border.all(color: LiquidTheme.glassBorderColor),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.mark_email_read_rounded, color: LiquidTheme.primaryLiquid, size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Enviar enlace al correo',
-                            style: TextStyle(color: LiquidTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          Text(
-                            'Vía servicio Brevo / Supabase a ${widget.email}',
-                            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.send_rounded, color: LiquidTheme.primaryLiquid, size: 14),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancelar', style: TextStyle(color: LiquidTheme.textSecondary)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openDirectPasswordModal() {
+  void _openChangePasswordModal() {
     final authCtrl = widget.authController;
-    if (authCtrl == null) return;
+    if (authCtrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Servicio de autenticación no disponible')),
+      );
+      return;
+    }
 
     UpdatePasswordModal.show(
       context,
       authController: authCtrl,
+      isDismissible: true,
       onPasswordUpdated: () {
         setState(() {
-          _passwordResetFeedback = '¡Contraseña actualizada con éxito!';
+          _passwordUpdateFeedback = '¡Contraseña actualizada con éxito!';
         });
       },
     );
-  }
-
-  Future<void> _sendPasswordReset() async {
-    final authCtrl = widget.authController;
-    if (authCtrl == null) {
-      setState(() => _passwordResetFeedback = 'Servicio de autenticación no disponible');
-      return;
-    }
-
-    setState(() {
-      _isSendingResetEmail = true;
-      _passwordResetFeedback = null;
-    });
-
-    final ok = await authCtrl.sendPasswordResetEmail(widget.email);
-
-    if (mounted) {
-      setState(() {
-        _isSendingResetEmail = false;
-        if (ok) {
-          _passwordResetFeedback =
-              'Correo enviado con éxito a ${widget.email}. Revisa tu bandeja de entrada y pulsa el enlace.';
-        } else {
-          _passwordResetFeedback = authCtrl.errorMessage ?? 'Error al enviar el correo';
-        }
-      });
-    }
   }
 
   @override
@@ -461,7 +313,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
             baseColor: LiquidTheme.surfaceDark.withValues(alpha: 0.6),
             child: InkWell(
               borderRadius: BorderRadius.circular(14),
-              onTap: _isSendingResetEmail ? null : _showChangePasswordDialog,
+              onTap: _openChangePasswordModal,
               child: Row(
                 children: [
                   Icon(
@@ -480,18 +332,11 @@ class _UserProfileCardState extends State<UserProfileCard> {
                       ),
                     ),
                   ),
-                  if (_isSendingResetEmail)
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: LiquidTheme.textSecondary,
-                      size: 14,
-                    ),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: LiquidTheme.textSecondary,
+                    size: 14,
+                  ),
                 ],
               ),
             ),
@@ -522,14 +367,14 @@ class _UserProfileCardState extends State<UserProfileCard> {
             ),
           ],
 
-          if (_passwordResetFeedback != null) ...[
+          if (_passwordUpdateFeedback != null) ...[
             const SizedBox(height: 12),
             LiquidBanner(
-              message: _passwordResetFeedback!,
-              type: _passwordResetFeedback!.contains('éxito')
+              message: _passwordUpdateFeedback!,
+              type: _passwordUpdateFeedback!.contains('éxito')
                   ? BannerType.success
                   : BannerType.error,
-              onClose: () => setState(() => _passwordResetFeedback = null),
+              onClose: () => setState(() => _passwordUpdateFeedback = null),
             ),
           ],
         ],

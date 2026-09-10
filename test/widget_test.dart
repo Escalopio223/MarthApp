@@ -5,6 +5,7 @@ import 'package:marth_app/core/widgets/marth_app_logo.dart';
 import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:marth_app/features/auth/presentation/screens/update_password_screen.dart';
+import 'package:marth_app/features/auth/presentation/widgets/reset_password_dialog.dart';
 import 'package:marth_app/features/auth/presentation/widgets/social_auth_button.dart';
 import 'package:marth_app/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -177,4 +178,36 @@ void main() {
     expect(find.byType(MarthAppLogo), findsWidgets);
     expect(find.byType(CustomPaint), findsWidgets);
   });
+
+  testWidgets('AuthScreen tapping ¿Has olvidado tu contraseña? opens ResetPasswordDialog with prefilled email',
+      (WidgetTester tester) async {
+    final controller = AuthController(authService: MockWidgetAuthService());
+
+    await tester.pumpWidget(MarthApp(authController: controller));
+
+    // Type email into login field
+    final emailField = find.byType(TextFormField).first;
+    await tester.enterText(emailField, 'testuser@marthapp.com');
+
+    // Tap forgot password link
+    await tester.tap(find.text('¿Has olvidado tu contraseña?'));
+    await tester.pumpAndSettle();
+
+    // Verify dialog appears with prefilled email
+    expect(find.text('Recuperar Contraseña'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(ResetPasswordDialog),
+        matching: find.text('testuser@marthapp.com'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Enviar Enlace'), findsOneWidget);
+
+    // Can close the dialog
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+    expect(find.text('Recuperar Contraseña'), findsNothing);
+  });
 }
+

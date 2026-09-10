@@ -9,24 +9,28 @@ import '../controllers/auth_controller.dart';
 class UpdatePasswordModal extends StatefulWidget {
   final AuthController authController;
   final VoidCallback onPasswordUpdated;
+  final bool isDismissible;
 
   const UpdatePasswordModal({
     super.key,
     required this.authController,
     required this.onPasswordUpdated,
+    this.isDismissible = true,
   });
 
   static Future<void> show(
     BuildContext context, {
     required AuthController authController,
     required VoidCallback onPasswordUpdated,
+    bool isDismissible = true,
   }) {
     return showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: isDismissible,
       builder: (_) => UpdatePasswordModal(
         authController: authController,
         onPasswordUpdated: onPasswordUpdated,
+        isDismissible: isDismissible,
       ),
     );
   }
@@ -79,7 +83,7 @@ class _UpdatePasswordModalState extends State<UpdatePasswordModal> {
     final isLoading = widget.authController.isLoading;
 
     return PopScope(
-      canPop: false,
+      canPop: widget.isDismissible,
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -136,6 +140,17 @@ class _UpdatePasswordModalState extends State<UpdatePasswordModal> {
             fontSize: 14,
           ),
         ),
+        if (widget.isDismissible) ...[
+          const SizedBox(height: 20),
+          LiquidButton(
+            text: 'Continuar',
+            gradient: LiquidTheme.liquidEmeraldGradient,
+            onPressed: () {
+              Navigator.of(context, rootNavigator: true).pop();
+              widget.onPasswordUpdated();
+            },
+          ),
+        ],
       ],
     );
   }
@@ -185,6 +200,17 @@ class _UpdatePasswordModalState extends State<UpdatePasswordModal> {
                   ],
                 ),
               ),
+              if (widget.isDismissible)
+                IconButton(
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: LiquidTheme.textSecondary,
+                    size: 22,
+                  ),
+                  tooltip: 'Cerrar',
+                  onPressed: () =>
+                      Navigator.of(context, rootNavigator: true).pop(),
+                ),
             ],
           ),
           const SizedBox(height: 22),
@@ -204,7 +230,7 @@ class _UpdatePasswordModalState extends State<UpdatePasswordModal> {
             obscureText: _obscurePassword,
             style: TextStyle(color: LiquidTheme.textPrimary),
             decoration: InputDecoration(
-              hintText: 'Mínimo 8 caracteres',
+              hintText: 'Mínimo 6 caracteres',
               prefixIcon: Icon(Icons.lock_outline_rounded, color: LiquidTheme.textSecondary),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -219,8 +245,8 @@ class _UpdatePasswordModalState extends State<UpdatePasswordModal> {
               if (value == null || value.isEmpty) {
                 return 'Introduce la nueva contraseña';
               }
-              if (value.length < 8) {
-                return 'La contraseña debe tener al menos 8 caracteres';
+              if (value.length < 6) {
+                return 'La contraseña debe tener al menos 6 caracteres';
               }
               return null;
             },

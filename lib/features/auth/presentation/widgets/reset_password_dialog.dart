@@ -7,20 +7,26 @@ import '../controllers/auth_controller.dart';
 /// Modal interactivo para solicitar el correo y enviar el enlace de recuperación de contraseña
 class ResetPasswordDialog extends StatefulWidget {
   final AuthController authController;
+  final String? initialEmail;
 
   const ResetPasswordDialog({
     super.key,
     required this.authController,
+    this.initialEmail,
   });
 
   static Future<void> show(
     BuildContext context, {
     required AuthController authController,
+    String? initialEmail,
   }) {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => ResetPasswordDialog(authController: authController),
+      builder: (_) => ResetPasswordDialog(
+        authController: authController,
+        initialEmail: initialEmail,
+      ),
     );
   }
 
@@ -30,8 +36,14 @@ class ResetPasswordDialog extends StatefulWidget {
 
 class _ResetPasswordDialogState extends State<ResetPasswordDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  late final TextEditingController _emailController;
   bool _sent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail ?? '');
+  }
 
   @override
   void dispose() {

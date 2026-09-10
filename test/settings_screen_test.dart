@@ -110,4 +110,40 @@ void main() {
 
     friendCodeManager.dispose();
   });
+
+  testWidgets('SettingsScreen clicking Cambiar Contraseña opens UpdatePasswordModal directly without email',
+      (WidgetTester tester) async {
+    final authController =
+        AuthController(authService: FakeSettingsAuthService());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          authController: authController,
+        ),
+      ),
+    );
+
+    // Verify button exists
+    expect(find.text('Cambiar Contraseña'), findsOneWidget);
+
+    // Tap Cambiar Contraseña
+    await tester.tap(find.text('Cambiar Contraseña'));
+    await tester.pumpAndSettle();
+
+    // Verify modal is displayed directly with new password fields
+    expect(find.text('Actualizar Contraseña'), findsOneWidget);
+    expect(find.text('Nueva Contraseña'), findsOneWidget);
+    expect(find.text('Confirmar Nueva Contraseña'), findsOneWidget);
+    expect(find.text('Confirmar y Guardar'), findsOneWidget);
+
+    // Close button exists and works
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+
+    // Modal is dismissed
+    expect(find.text('Actualizar Contraseña'), findsNothing);
+  });
 }
+
