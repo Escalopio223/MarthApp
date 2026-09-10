@@ -56,10 +56,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Future<void> _handleSendRequest() async {
-    final target = _searchUsernameController.text.trim();
-    if (target.isEmpty) return;
+    var raw = _searchUsernameController.text.trim().toUpperCase();
+    if (raw.isEmpty) return;
 
-    final success = await widget.friendsController.sendFriendRequest(target);
+    // Normalizar: si el usuario pegó el código completo MARTH-XXXX o solo XXXX, asegurar MARTH-XXXX
+    final cleanSuffix = raw.startsWith('MARTH-') ? raw.substring(6) : raw;
+    final fullCode = 'MARTH-$cleanSuffix';
+
+    final success = await widget.friendsController.sendFriendRequest(fullCode);
     if (success && mounted) {
       _searchUsernameController.clear();
       FocusScope.of(context).unfocus();
@@ -202,7 +206,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Busca a otro usuario por su nombre de usuario o código temporal (MARTH-XXXX)',
+                      'Introduce el código de invitación temporal de tu amigo (60s)',
                       style: TextStyle(
                         fontSize: 12,
                         color: LiquidTheme.textSecondary,
@@ -216,15 +220,43 @@ class _FriendsScreenState extends State<FriendsScreen> {
           const SizedBox(height: 18),
           TextField(
             controller: _searchUsernameController,
-            style: TextStyle(color: LiquidTheme.textPrimary),
+            style: TextStyle(
+              color: LiquidTheme.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              fontFamily: 'monospace',
+              letterSpacing: 1.5,
+            ),
+            textCapitalization: TextCapitalization.characters,
             textInputAction: TextInputAction.send,
             onSubmitted: (_) => _handleSendRequest(),
             decoration: InputDecoration(
-              hintText: 'Ej. arturo_dev o MARTH-8K2A',
-              prefixIcon: Icon(
-                Icons.alternate_email_rounded,
-                color: LiquidTheme.primaryLiquid,
+              hintText: '8K2A',
+              hintStyle: TextStyle(
+                color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                fontFamily: 'monospace',
+                fontSize: 15,
+                letterSpacing: 1.5,
               ),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 16, right: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'MARTH-',
+                      style: TextStyle(
+                        color: LiquidTheme.primaryLiquid,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        fontFamily: 'monospace',
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
             ),
           ),
           const SizedBox(height: 16),

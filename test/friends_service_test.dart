@@ -117,8 +117,10 @@ class FakeFriendsService implements IFriendsService {
   }
 
   @override
-  Future<void> removeFriend(String friendshipId) async {
-    requests.removeWhere((r) => r.id == friendshipId);
+  Future<void> removeFriend(String userId, String friendId) async {
+    requests.removeWhere((r) =>
+        (r.senderId == userId && r.receiverId == friendId) ||
+        (r.senderId == friendId && r.receiverId == userId));
   }
 
   @override
@@ -341,6 +343,13 @@ void main() {
 
       expect(friendsOfUser2.length, equals(1));
       expect(friendsOfUser2.first.username, equals('arturo_dev'));
+
+      // Eliminar amistad bidireccional
+      await service.removeFriend('user-1', 'user-2');
+      final friendsAfterRemove1 = await service.fetchFriends('user-1');
+      final friendsAfterRemove2 = await service.fetchFriends('user-2');
+      expect(friendsAfterRemove1, isEmpty);
+      expect(friendsAfterRemove2, isEmpty);
     });
   });
 }

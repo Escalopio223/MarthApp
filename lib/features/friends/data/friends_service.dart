@@ -11,7 +11,7 @@ abstract class IFriendsService {
   Future<FriendRequestModel> sendFriendRequest(String senderId, String targetUsername);
   Future<void> acceptFriendRequest(String requestId);
   Future<void> rejectFriendRequest(String requestId);
-  Future<void> removeFriend(String friendshipId);
+  Future<void> removeFriend(String userId, String friendId);
   Future<List<FriendRequestModel>> fetchPendingIncomingRequests(String userId);
   Future<List<ProfileModel>> fetchFriends(String userId);
   Future<ProfileModel> redeemFriendCode(String currentUserId, String code);
@@ -375,8 +375,40 @@ class FriendsService implements IFriendsService {
   }
 
   @override
-  Future<void> removeFriend(String friendshipId) async {
-    await _client.from('friend_requests').delete().eq('id', friendshipId);
+  Future<void> removeFriend(String userId, String friendId) async {
+    final client = _supabase;
+    if (client == null) return;
+
+    try {
+      // 1. Intentar primero por función RPC para mayor robustez
+      await client.rpc('remove_friend', params: {'p_friend_id': friendId});
+    } catch (_) {
+      try {
+        // 2. Fallback a borrado directo por condición OR
+        await client
+            .from('friend_requests')
+            .delete()
+            .or('and(sender_id.eq.$userId,receiver_id.eq.$friendId),and(sender_id.eq.$friendId,receiver_id.eq.$userId)');
+      } catch (_) {
+        // 3. Fallback de contingencia: buscar el id exacto y borrarlo
+        try {
+          final rows = await client
+              .from('friend_requests')
+              .select('id, sender_id, receiver_id')
+              .or('sender_id.eq.$userId,receiver_id.eq.$userId');
+          for (final row in (rows as List)) {
+            final s = row['sender_id'] as String;
+            final r = row['receiver_id'] as String;
+            if ((s == userId && r == friendId) || (s == friendId && r == userId)) {
+              await client.from('friend_requests').delete().eq('id', row['id'] as String);
+            }
+          }
+        } catch (e) {
+          debugPrint('[FriendsService] Error al eliminar amigo: $e');
+          rethrow;
+        }
+      }
+    }
   }
 
   @override

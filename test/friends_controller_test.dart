@@ -75,8 +75,10 @@ class ControllerTestFriendsService implements IFriendsService {
   }
 
   @override
-  Future<void> removeFriend(String friendshipId) async {
-    requests.removeWhere((r) => r.id == friendshipId);
+  Future<void> removeFriend(String userId, String friendId) async {
+    requests.removeWhere((r) =>
+        (r.senderId == userId && r.receiverId == friendId) ||
+        (r.senderId == friendId && r.receiverId == userId));
   }
 
   @override
@@ -321,8 +323,27 @@ void main() {
 
       final success = await controller.redeemFriendCode('MARTH-8K2A');
       expect(success, isTrue);
-      expect(controller.successMessage, contains('@amigo_juan'));
+      expect(controller.successMessage, contains('amigo_juan'));
       expect(service.requests.any((r) => r.senderId == 'user-me' && r.receiverId == 'user-friend'), isTrue);
+    });
+
+    test('removeFriend deletes friendship and updates friend list', () async {
+      service.requests.add(FriendRequestModel(
+        id: 'req-friend',
+        senderId: 'user-me',
+        receiverId: 'user-friend',
+        status: 'accepted',
+        createdAt: DateTime.now(),
+      ));
+
+      await controller.initialize('user-me');
+      expect(controller.friends.any((f) => f.id == 'user-friend'), isTrue);
+
+      final removed = await controller.removeFriend('user-friend');
+      expect(removed, isTrue);
+      expect(controller.friends.any((f) => f.id == 'user-friend'), isFalse);
+      expect(service.requests.any((r) => r.receiverId == 'user-friend'), isFalse);
+      expect(controller.successMessage, contains('Amigo eliminado'));
     });
 
     test('dispose cleans up channels to avoid memory leaks', () {

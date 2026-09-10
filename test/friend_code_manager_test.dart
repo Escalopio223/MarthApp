@@ -123,7 +123,7 @@ class _MockFriendService implements IFriendsService {
   @override
   Future<void> rejectFriendRequest(String requestId) async {}
   @override
-  Future<void> removeFriend(String friendshipId) async {}
+  Future<void> removeFriend(String userId, String friendId) async {}
   @override
   Future<List<FriendRequestModel>> fetchPendingIncomingRequests(String userId) async => [];
   @override

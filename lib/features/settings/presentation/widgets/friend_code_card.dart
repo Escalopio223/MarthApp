@@ -18,11 +18,13 @@ class FriendCodeCard extends StatelessWidget {
   });
 
   void _copyToClipboard(BuildContext context, String code) {
-    Clipboard.setData(ClipboardData(text: code));
+    // Si el código empieza por MARTH-, copiar únicamente el sufijo (ej: "TVU7" en lugar de "MARTH-TVU7")
+    final suffix = code.startsWith('MARTH-') ? code.substring(6) : code;
+    Clipboard.setData(ClipboardData(text: suffix));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Código copiado al portapapeles'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text('Código "$suffix" copiado al portapapeles'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }

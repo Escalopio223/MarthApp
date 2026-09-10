@@ -317,6 +317,25 @@ begin
 end;
 $$ language plpgsql security definer;
 
+-- Función: Eliminar amistad bidireccional entre el usuario actual y un amigo
+create or replace function public.remove_friend(p_friend_id uuid)
+returns boolean as $$
+declare
+  v_user_id uuid;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  delete from public.friend_requests
+  where (sender_id = v_user_id and receiver_id = p_friend_id)
+     or (sender_id = p_friend_id and receiver_id = v_user_id);
+
+  return true;
+end;
+$$ language plpgsql security definer;
+
 -- ------------------------------------------------------------------------------
 -- 6. CONFIGURACIÓN SUPABASE REALTIME (WebSockets)
 -- ------------------------------------------------------------------------------

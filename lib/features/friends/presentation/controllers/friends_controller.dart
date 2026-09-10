@@ -190,7 +190,7 @@ class FriendsController extends ChangeNotifier {
     try {
       final req = await _friendsService.sendFriendRequest(_currentUserId!, targetUsernameOrCode);
       final recipientName = req.receiverProfile?.username ?? targetUsernameOrCode;
-      _successMessage = '¡Invitación enviada con éxito a @$recipientName!';
+      _successMessage = '¡Invitación enviada con éxito a $recipientName!';
       _isSendingRequest = false;
       notifyListeners();
       return true;
@@ -213,7 +213,7 @@ class FriendsController extends ChangeNotifier {
 
     try {
       final friendProfile = await _friendsService.redeemFriendCode(_currentUserId!, code);
-      _successMessage = '¡Invitación enviada a @${friendProfile.username}!';
+      _successMessage = '¡Invitación enviada a ${friendProfile.username}!';
       if (_currentUserId != null) {
         _friends = await _friendsService.fetchFriends(_currentUserId!);
       }
@@ -257,17 +257,29 @@ class FriendsController extends ChangeNotifier {
   }
 
   /// Elimina una amistad existente
-  Future<void> removeFriend(String friendId) async {
-    if (_currentUserId == null) return;
+  Future<bool> removeFriend(String friendId) async {
+    if (_currentUserId == null) return false;
     try {
-      // Remover optimista
+      // 1. Remover optimista de la lista local
       _friends.removeWhere((f) => f.id == friendId);
       notifyListeners();
+
+      // 2. Eliminar en Supabase
+      await _friendsService.removeFriend(_currentUserId!, friendId);
+
+      // 3. Confirmar lista actualizada
       _friends = await _friendsService.fetchFriends(_currentUserId!);
+      _successMessage = 'Amigo eliminado correctamente';
       notifyListeners();
+      return true;
     } catch (e) {
       _errorMessage = 'Error al eliminar amigo: $e';
+      // Restaurar estado
+      if (_currentUserId != null) {
+        _friends = await _friendsService.fetchFriends(_currentUserId!);
+      }
       notifyListeners();
+      return false;
     }
   }
 
