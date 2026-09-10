@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/liquid_background.dart';
+import '../../../../core/widgets/marth_app_logo.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
@@ -188,21 +189,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildAppBarTitle() {
     return Row(
       children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LiquidTheme.liquidPrimaryGradient,
-            boxShadow: [
-              BoxShadow(
-                color: LiquidTheme.primaryLiquid.withValues(alpha: 0.35),
-                blurRadius: 10,
-              ),
-            ],
-          ),
-          child: const Icon(Icons.bubble_chart_rounded,
-              color: Color(0xFF0D1219), size: 22),
+        MarthAppLogo.badge(
+          badgeSize: 38,
+          logoSize: 22,
+          withGlow: true,
         ),
         const SizedBox(width: 10),
         Text(

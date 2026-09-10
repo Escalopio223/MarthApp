@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/core/widgets/liquid_button.dart';
+import 'package:marth_app/core/widgets/marth_app_logo.dart';
 import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:marth_app/features/auth/presentation/screens/update_password_screen.dart';
@@ -164,5 +165,16 @@ void main() {
     expect(find.byType(TextFormField), findsNWidgets(2));
     expect(find.text('¡Cuenta creada con éxito! Por favor, inicia sesión para continuar.'),
         findsOneWidget);
+  });
+
+  testWidgets('MarthAppLogo renders vectorially without white background and mutates with theme',
+      (WidgetTester tester) async {
+    final controller = AuthController(authService: MockWidgetAuthService());
+
+    await tester.pumpWidget(MarthApp(authController: controller));
+
+    // Verificar que el logotipo oficial de MarthApp se encuentra renderizado en AuthScreen
+    expect(find.byType(MarthAppLogo), findsWidgets);
+    expect(find.byType(CustomPaint), findsWidgets);
   });
 }

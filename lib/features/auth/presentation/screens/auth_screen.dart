@@ -6,6 +6,7 @@ import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/liquid_background.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../../core/widgets/liquid_button.dart';
+import '../../../../core/widgets/marth_app_logo.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/auth_mode_selector.dart';
 import '../widgets/reset_password_dialog.dart';
@@ -205,25 +206,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildLogo() {
     return Center(
-      child: Container(
-        width: 68,
-        height: 68,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LiquidTheme.liquidPrimaryGradient,
-          boxShadow: [
-            BoxShadow(
-              color: LiquidTheme.primaryCyan.withValues(alpha: 0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.bubble_chart_rounded,
-          size: 38,
-          color: Colors.white,
-        ),
+      child: MarthAppLogo.badge(
+        badgeSize: 74,
+        logoSize: 42,
+        withGlow: true,
       ),
     );
   }
