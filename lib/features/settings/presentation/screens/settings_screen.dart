@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/theme/theme_controller.dart';
+import '../../../../core/widgets/glass_card.dart';
 import '../../../../core/widgets/liquid_background.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../friends/presentation/controllers/friends_controller.dart';
+import '../../../friends/presentation/screens/friends_screen.dart';
 import '../../domain/friend_code_manager.dart';
 import '../widgets/add_friend_card.dart';
 import '../widgets/friend_code_card.dart';
 import '../widgets/theme_selector_card.dart';
 import '../widgets/user_profile_card.dart';
 
-/// Pantalla de Ajustes modularizada: perfil, selector de temas, códigos de amigo y sesión
+/// Pantalla de Ajustes: perfil con username en tiempo real, selector de temas, amigos y sesión
 class SettingsScreen extends StatefulWidget {
   final AuthController authController;
   final FriendCodeManager? friendCodeManager;
   final ThemeController? themeController;
+  final FriendsController? friendsController;
 
   const SettingsScreen({
     super.key,
     required this.authController,
     this.friendCodeManager,
     this.themeController,
+    this.friendsController,
   });
 
   @override
@@ -29,6 +34,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final FriendCodeManager _friendCodeManager;
+  late final FriendsController _friendsController;
   final _friendCodeInputController = TextEditingController();
   String? _friendActionMessage;
   bool _isSuccessMessage = false;
@@ -38,9 +44,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _friendCodeManager = widget.friendCodeManager ?? FriendCodeManager();
     _friendCodeManager.addListener(_onCodeManagerUpdate);
+
+    _friendsController = widget.friendsController ?? FriendsController();
+    _friendsController.addListener(_onFriendsControllerUpdate);
+
+    final user = widget.authController.user;
+    if (user != null && widget.friendsController == null) {
+      _friendsController.initialize(user.id, defaultEmail: user.email);
+    }
   }
 
   void _onCodeManagerUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  void _onFriendsControllerUpdate() {
     if (mounted) setState(() {});
   }
 
@@ -49,6 +67,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _friendCodeManager.removeListener(_onCodeManagerUpdate);
     if (widget.friendCodeManager == null) {
       _friendCodeManager.dispose();
+    }
+    _friendsController.removeListener(_onFriendsControllerUpdate);
+    if (widget.friendsController == null) {
+      _friendsController.dispose();
     }
     _friendCodeInputController.dispose();
     super.dispose();
@@ -73,10 +95,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _openRealtimeFriends() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FriendsScreen(friendsController: _friendsController),
+      ),
+    );
+  }
+
   Future<void> _logout() async {
     await widget.authController.signOut();
     if (mounted) {
-      // Regresa a la ruta raíz donde AuthGate gestiona declarativamente la pantalla de Auth
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
@@ -114,25 +144,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Tarjeta de perfil
-                  UserProfileCard(email: email),
+                  // 1. Tarjeta de perfil con edición de username y detección de colisiones
+                  UserProfileCard(
+                    email: email,
+                    friendsController: _friendsController,
+                  ),
                   const SizedBox(height: 24),
 
-                  // 2. Selector dinámico de temas (10 temas híbridos)
+                  // 2. Acceso directo a Amigos y Conexiones en Tiempo Real
+                  _buildRealtimeFriendsNavCard(),
+                  const SizedBox(height: 24),
+
+                  // 3. Selector dinámico de temas (10 temas en acordeón)
                   ThemeSelectorCard(
                     themeController: widget.themeController ??
                         LiquidThemeScope.of(context),
                   ),
                   const SizedBox(height: 24),
 
-                  // 3. Tarjeta del código de amigo (1 min)
+                  // 4. Tarjeta del código de amigo temporal (1 min)
                   FriendCodeCard(
                     friendCodeManager: _friendCodeManager,
                     onGenerateCode: () => _friendCodeManager.generateNewCode(),
                   ),
                   const SizedBox(height: 24),
 
-                  // 3. Tarjeta para añadir amigo con código
+                  // 5. Tarjeta para añadir amigo con código temporal
                   AddFriendCard(
                     inputController: _friendCodeInputController,
                     onAddFriend: _addFriend,
@@ -142,12 +179,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // 4. Botón de cierre de sesión
+                  // 6. Botón de cierre de sesión
                   _buildLogoutButton(),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRealtimeFriendsNavCard() {
+    final pendingCount = _friendsController.pendingCount;
+    final friendsCount = _friendsController.friends.length;
+
+    return GlassCard(
+      blur: 16.0,
+      borderRadius: 22.0,
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: _openRealtimeFriends,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: LiquidTheme.primaryLiquid.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.people_alt_rounded,
+                color: LiquidTheme.primaryLiquid,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Amigos y Solicitudes',
+                    style: TextStyle(
+                      color: LiquidTheme.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    pendingCount > 0
+                        ? '$pendingCount solicitud(es) pendiente(s)'
+                        : '$friendsCount amigo(s) en tiempo real',
+                    style: TextStyle(
+                      color: pendingCount > 0
+                          ? LiquidTheme.accentCoral
+                          : LiquidTheme.textSecondary,
+                      fontSize: 12,
+                      fontWeight: pendingCount > 0
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: LiquidTheme.textSecondary,
+              size: 16,
+            ),
+          ],
         ),
       ),
     );

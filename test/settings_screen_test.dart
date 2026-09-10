@@ -118,9 +118,11 @@ void main() {
     expect(find.text('Midnight Blue'), findsAtLeastNWidgets(1));
 
     // Switch to light themes tab
+    await tester.ensureVisible(find.text('Claros (5)'));
     await tester.tap(find.text('Claros (5)'));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Frosted Glacier'));
     expect(find.text('Frosted Glacier'), findsOneWidget);
     expect(find.text('Rose Quartz'), findsOneWidget);
 
