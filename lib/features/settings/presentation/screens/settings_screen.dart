@@ -42,13 +42,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _friendCodeManager = widget.friendCodeManager ?? FriendCodeManager();
-    _friendCodeManager.addListener(_onCodeManagerUpdate);
+    final user = widget.authController.user;
 
     _friendsController = widget.friendsController ?? FriendsController();
     _friendsController.addListener(_onFriendsControllerUpdate);
 
-    final user = widget.authController.user;
+    _friendCodeManager = widget.friendCodeManager ??
+        FriendCodeManager(
+          friendsService: _friendsController.friendsService,
+          userId: user?.id,
+        );
+    _friendCodeManager.setUserId(user?.id);
+    _friendCodeManager.addListener(_onCodeManagerUpdate);
+
     if (user != null && widget.friendsController == null) {
       _friendsController.initialize(user.id, defaultEmail: user.email);
     }
@@ -59,7 +65,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _onFriendsControllerUpdate() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      if (_friendsController.friends.isNotEmpty) {
+        _friendCodeManager.syncFriends(
+          _friendsController.friends.map((f) => f.username).toList(),
+        );
+      }
+      setState(() {});
+    }
   }
 
   @override
@@ -81,12 +94,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (code.isEmpty) return;
 
     try {
-      await _friendCodeManager.addFriend(code);
+      final user = widget.authController.user;
+      await _friendCodeManager.addFriend(
+        code,
+        currentUserId: user?.id,
+        service: _friendsController.friendsService,
+      );
       _friendCodeInputController.clear();
+      final lastAdded = _friendCodeManager.addedFriends.isNotEmpty
+          ? _friendCodeManager.addedFriends.last
+          : code;
       setState(() {
         _isSuccessMessage = true;
-        _friendActionMessage = '¡Amigo ($code) añadido con éxito!';
+        _friendActionMessage = '¡Invitación enviada con éxito a @$lastAdded!';
       });
+      if (user != null) {
+        _friendsController.refresh();
+      }
     } catch (e) {
       setState(() {
         _isSuccessMessage = false;
@@ -165,7 +189,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // 4. Tarjeta del código de amigo temporal (1 min)
                   FriendCodeCard(
                     friendCodeManager: _friendCodeManager,
-                    onGenerateCode: () => _friendCodeManager.generateNewCode(),
+                    onGenerateCode: () {
+                      final u = widget.authController.user;
+                      _friendCodeManager.generateNewCode(
+                        userId: u?.id,
+                        service: _friendsController.friendsService,
+                      );
+                    },
                   ),
                   const SizedBox(height: 24),
 

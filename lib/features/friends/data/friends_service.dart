@@ -14,6 +14,8 @@ abstract class IFriendsService {
   Future<void> removeFriend(String friendshipId);
   Future<List<FriendRequestModel>> fetchPendingIncomingRequests(String userId);
   Future<List<ProfileModel>> fetchFriends(String userId);
+  Future<ProfileModel> redeemFriendCode(String currentUserId, String code);
+  Future<void> saveFriendCode(String userId, String code, {int durationSeconds = 60});
   RealtimeChannel subscribeToFriendRequests({
     required String userId,
     required void Function(Map<String, dynamic> record, String eventType) onEvent,
@@ -152,16 +154,165 @@ class FriendsService implements IFriendsService {
   }
 
   @override
-  Future<FriendRequestModel> sendFriendRequest(
-      String senderId, String targetUsername) async {
-    final cleanUsername = targetUsername.trim();
-    if (cleanUsername.isEmpty) {
-      throw Exception('Introduce un nombre de usuario');
+  Future<void> saveFriendCode(String userId, String code, {int durationSeconds = 60}) async {
+    final client = _supabase;
+    if (client == null) return;
+
+    final cleanCode = code.trim().toUpperCase();
+    final expiresAt = DateTime.now().toUtc().add(Duration(seconds: durationSeconds));
+
+    try {
+      // Intentar primero por RPC
+      await client.rpc('create_or_update_friend_code', params: {
+        'p_code': cleanCode,
+        'p_duration_seconds': durationSeconds,
+      });
+    } catch (_) {
+      // Fallback a upsert directo en tabla friend_codes
+      try {
+        await client.from('friend_codes').upsert({
+          'user_id': userId,
+          'code': cleanCode,
+          'expires_at': expiresAt.toIso8601String(),
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        }, onConflict: 'user_id');
+      } catch (e) {
+        debugPrint('[FriendsService] Error al guardar código de amigo: $e');
+      }
+    }
+  }
+
+  @override
+  Future<ProfileModel> redeemFriendCode(String currentUserId, String code) async {
+    final cleanCode = code.trim().toUpperCase();
+    if (cleanCode.isEmpty) {
+      throw Exception('Introduce un código de amigo válido');
     }
 
-    final targetProfile = await searchProfileByUsername(cleanUsername);
+    final client = _supabase;
+    if (client == null) {
+      // Modo mock para tests
+      return ProfileModel(
+        id: 'mock_${cleanCode.toLowerCase().replaceAll('-', '_')}',
+        username: 'amigo_${cleanCode.toLowerCase().replaceAll('-', '_')}',
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    // 1. Intentar con función RPC atómica
+    try {
+      final rpcRes = await client.rpc('redeem_friend_code', params: {
+        'p_code': cleanCode,
+      });
+
+      if (rpcRes is Map) {
+        final friendId = rpcRes['friend_id'] as String;
+        final friendUsername = rpcRes['friend_username'] as String;
+        return ProfileModel(
+          id: friendId,
+          username: friendUsername,
+          updatedAt: DateTime.now(),
+        );
+      }
+    } on PostgrestException catch (pe) {
+      throw Exception(pe.message);
+    } catch (e) {
+      final str = e.toString();
+      if (str.contains('ha expirado') ||
+          str.contains('no existe') ||
+          str.contains('No puedes canjear tu propio') ||
+          str.contains('Ya eres amigo')) {
+        throw Exception(str.replaceAll('Exception: ', ''));
+      }
+    }
+
+    // 2. Fallback: consulta directa a friend_codes
+    try {
+      final codeRecord = await client
+          .from('friend_codes')
+          .select('user_id, expires_at')
+          .eq('code', cleanCode)
+          .maybeSingle();
+
+      if (codeRecord == null) {
+        throw Exception('El código "$cleanCode" no existe.');
+      }
+
+      final expiresAt = DateTime.parse(codeRecord['expires_at'] as String);
+      if (DateTime.now().toUtc().isAfter(expiresAt)) {
+        throw Exception('El código ha expirado (validez: 60 segundos). Solicita uno nuevo a tu amigo.');
+      }
+
+      final targetUserId = codeRecord['user_id'] as String;
+      if (targetUserId == currentUserId) {
+        throw Exception('No puedes canjear tu propio código de amigo.');
+      }
+
+      final profileData = await client
+          .from('profiles')
+          .select()
+          .eq('id', targetUserId)
+          .maybeSingle();
+
+      if (profileData == null) {
+        throw Exception('No se encontró el perfil asociado al código.');
+      }
+
+      final friendProfile = ProfileModel.fromJson(profileData);
+
+      // Crear solicitud de amistad
+      await client.from('friend_requests').upsert({
+        'sender_id': currentUserId,
+        'receiver_id': targetUserId,
+        'status': 'pending',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      }, onConflict: 'sender_id,receiver_id');
+
+      return friendProfile;
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error al canjear código: $e');
+    }
+  }
+
+  @override
+  Future<FriendRequestModel> sendFriendRequest(
+      String senderId, String targetUsername) async {
+    final cleanInput = targetUsername.trim();
+    if (cleanInput.isEmpty) {
+      throw Exception('Introduce un nombre de usuario o código');
+    }
+
+    // Si tiene formato de código de amigo MARTH-XXXX, canjearlo directamente
+    final isCodeFormat = RegExp(r'^MARTH-[A-Z0-9]{4,}$', caseSensitive: false).hasMatch(cleanInput);
+    if (isCodeFormat) {
+      final friendProfile = await redeemFriendCode(senderId, cleanInput);
+      return FriendRequestModel(
+        id: 'code_${DateTime.now().millisecondsSinceEpoch}',
+        senderId: senderId,
+        receiverId: friendProfile.id,
+        status: 'pending',
+        createdAt: DateTime.now(),
+        receiverProfile: friendProfile,
+      );
+    }
+
+    var targetProfile = await searchProfileByUsername(cleanInput);
     if (targetProfile == null) {
-      throw Exception('No se encontró ningún usuario con el nombre "$cleanUsername"');
+      // Intentar canjear por si se ingresó un código sin el prefijo exacto
+      try {
+        final friendProfile = await redeemFriendCode(senderId, cleanInput);
+        return FriendRequestModel(
+          id: 'code_${DateTime.now().millisecondsSinceEpoch}',
+          senderId: senderId,
+          receiverId: friendProfile.id,
+          status: 'pending',
+          createdAt: DateTime.now(),
+          receiverProfile: friendProfile,
+        );
+      } catch (_) {
+        throw Exception('No se encontró ningún usuario con el nombre o código "$cleanInput"');
+      }
     }
 
     if (targetProfile.id == senderId) {

@@ -33,6 +33,7 @@ class AddedFriendsList extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: friends.map((f) {
+            final displayName = f.startsWith('@') ? f : '@$f';
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -49,10 +50,11 @@ class AddedFriendsList extends StatelessWidget {
                       size: 14, color: LiquidTheme.primaryLiquid),
                   const SizedBox(width: 6),
                   Text(
-                    f,
+                    displayName,
                     style: TextStyle(
                       color: LiquidTheme.textPrimary,
                       fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

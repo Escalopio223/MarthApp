@@ -115,6 +115,42 @@ class ControllerTestFriendsService implements IFriendsService {
     return _FakeRealtimeChannel();
   }
 
+  final Map<String, String> activeCodes = {};
+
+  @override
+  Future<void> saveFriendCode(String userId, String code, {int durationSeconds = 60}) async {
+    activeCodes[code.toUpperCase()] = userId;
+  }
+
+  @override
+  Future<ProfileModel> redeemFriendCode(String currentUserId, String code) async {
+    final clean = code.trim().toUpperCase();
+    final ownerId = activeCodes[clean];
+    if (ownerId == null) {
+      if (clean == 'MARTH-EXPIRED') {
+        throw Exception('El código ha expirado (validez: 60 segundos).');
+      }
+      throw Exception('El código "$clean" no existe.');
+    }
+    if (ownerId == currentUserId) {
+      throw Exception('No puedes canjear tu propio código de amigo.');
+    }
+    final ownerProfile = profiles[ownerId];
+    if (ownerProfile == null) throw Exception('Perfil no encontrado.');
+
+    final req = FriendRequestModel(
+      id: 'req-${requests.length + 1}',
+      senderId: currentUserId,
+      receiverId: ownerId,
+      status: 'pending',
+      createdAt: DateTime.now(),
+      senderProfile: profiles[currentUserId],
+      receiverProfile: ownerProfile,
+    );
+    requests.add(req);
+    return ownerProfile;
+  }
+
   @override
   Future<void> unsubscribe(RealtimeChannel? channel) async {
     wasUnsubscribed = true;
@@ -275,6 +311,18 @@ void main() {
 
       // 4. Se debe haber actualizado al instante en nuestra lista de amigos sin parpadeo
       expect(controller.friends.first.username, equals('juan_el_pro'));
+    });
+
+    test('redeemFriendCode sends friend request to code owner and resolves username', () async {
+      await controller.initialize('user-me');
+
+      // Configurar código para el usuario 'user-friend' (amigo_juan)
+      await service.saveFriendCode('user-friend', 'MARTH-8K2A');
+
+      final success = await controller.redeemFriendCode('MARTH-8K2A');
+      expect(success, isTrue);
+      expect(controller.successMessage, contains('@amigo_juan'));
+      expect(service.requests.any((r) => r.senderId == 'user-me' && r.receiverId == 'user-friend'), isTrue);
     });
 
     test('dispose cleans up channels to avoid memory leaks', () {

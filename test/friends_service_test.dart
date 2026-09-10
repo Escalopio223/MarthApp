@@ -157,6 +157,42 @@ class FakeFriendsService implements IFriendsService {
     return _MockRealtimeChannel('profiles_all');
   }
 
+  final Map<String, String> activeCodes = {};
+
+  @override
+  Future<void> saveFriendCode(String userId, String code, {int durationSeconds = 60}) async {
+    activeCodes[code.toUpperCase()] = userId;
+  }
+
+  @override
+  Future<ProfileModel> redeemFriendCode(String currentUserId, String code) async {
+    final clean = code.trim().toUpperCase();
+    final ownerId = activeCodes[clean];
+    if (ownerId == null) {
+      if (clean == 'MARTH-EXPIRED') {
+        throw Exception('El código ha expirado (validez: 60 segundos).');
+      }
+      throw Exception('El código "$clean" no existe.');
+    }
+    if (ownerId == currentUserId) {
+      throw Exception('No puedes canjear tu propio código de amigo.');
+    }
+    final ownerProfile = profiles[ownerId];
+    if (ownerProfile == null) throw Exception('Perfil no encontrado.');
+
+    final req = FriendRequestModel(
+      id: 'req-${requests.length + 1}',
+      senderId: currentUserId,
+      receiverId: ownerId,
+      status: 'pending',
+      createdAt: DateTime.now(),
+      senderProfile: profiles[currentUserId],
+      receiverProfile: ownerProfile,
+    );
+    requests.add(req);
+    return ownerProfile;
+  }
+
   bool wasUnsubscribed = false;
 
   @override

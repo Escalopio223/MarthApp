@@ -169,8 +169,11 @@ class FriendsController extends ChangeNotifier {
     }
   }
 
-  /// Envía una solicitud de amistad por username exacto
-  Future<bool> sendFriendRequest(String targetUsername) async {
+  IFriendsService get friendsService => _friendsService;
+  String? get currentUserId => _currentUserId;
+
+  /// Envía una solicitud de amistad por username o canjea un código de amigo MARTH-XXXX
+  Future<bool> sendFriendRequest(String targetUsernameOrCode) async {
     if (_currentUserId == null) return false;
 
     _isSendingRequest = true;
@@ -179,8 +182,35 @@ class FriendsController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _friendsService.sendFriendRequest(_currentUserId!, targetUsername);
-      _successMessage = '¡Solicitud de amistad enviada a $targetUsername!';
+      final req = await _friendsService.sendFriendRequest(_currentUserId!, targetUsernameOrCode);
+      final recipientName = req.receiverProfile?.username ?? targetUsernameOrCode;
+      _successMessage = '¡Invitación enviada con éxito a @$recipientName!';
+      _isSendingRequest = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isSendingRequest = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Canjea un código de amigo temporal (60s), crea la invitación y resuelve el perfil real
+  Future<bool> redeemFriendCode(String code) async {
+    if (_currentUserId == null) return false;
+
+    _isSendingRequest = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    try {
+      final friendProfile = await _friendsService.redeemFriendCode(_currentUserId!, code);
+      _successMessage = '¡Invitación enviada a @${friendProfile.username}!';
+      if (_currentUserId != null) {
+        _friends = await _friendsService.fetchFriends(_currentUserId!);
+      }
       _isSendingRequest = false;
       notifyListeners();
       return true;

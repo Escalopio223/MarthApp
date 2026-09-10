@@ -163,7 +163,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Busca a otro usuario por su nombre de usuario exacto',
+                      'Busca a otro usuario por su nombre de usuario o código temporal (MARTH-XXXX)',
                       style: TextStyle(
                         fontSize: 12,
                         color: LiquidTheme.textSecondary,
@@ -181,7 +181,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             textInputAction: TextInputAction.send,
             onSubmitted: (_) => _handleSendRequest(),
             decoration: InputDecoration(
-              hintText: 'Ej. arturo_dev',
+              hintText: 'Ej. arturo_dev o MARTH-8K2A',
               prefixIcon: Icon(
                 Icons.alternate_email_rounded,
                 color: LiquidTheme.primaryLiquid,
