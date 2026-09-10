@@ -72,6 +72,7 @@ class _AuthGateState extends State<AuthGate> {
   void initState() {
     super.initState();
     _authController = widget.authController ?? AuthController();
+    _authController.addListener(_onAuthControllerChanged);
 
     // Escucha activa de eventos del ciclo de autenticación de Supabase
     try {
@@ -98,12 +99,22 @@ class _AuthGateState extends State<AuthGate> {
             });
           }
         } else {
-          if (mounted) setState(() {});
+          if (mounted && !_authController.isRegistering) setState(() {});
         }
       });
     } catch (e) {
       debugPrint('[AuthGate] Listener onAuthStateChange no disponible: $e');
     }
+  }
+
+  void _onAuthControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _authController.removeListener(_onAuthControllerChanged);
+    super.dispose();
   }
 
   @override
@@ -128,7 +139,8 @@ class _AuthGateState extends State<AuthGate> {
 
     // 2. Sesión activa -> Pantalla Principal
     final session = supabaseClient?.auth.currentSession;
-    if (session != null || _authController.isAuthenticated) {
+    if (!_authController.isRegistering &&
+        (session != null || _authController.isAuthenticated)) {
       return HomeScreen(authController: _authController);
     }
 

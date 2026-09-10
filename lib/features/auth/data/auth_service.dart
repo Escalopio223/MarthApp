@@ -88,6 +88,11 @@ class AuthService implements IAuthRepository {
         email: email.trim(),
         password: password,
       );
+      // Si Supabase inicia sesión de inmediato (ej. confirmación de email desactivada),
+      // cerramos la sesión para evitar login automático y redirigir al login manual.
+      if (response.session != null || _client.auth.currentSession != null) {
+        await _client.auth.signOut();
+      }
       return response;
     } on AuthException catch (e) {
       throw AppAuthException.fromSupabase(e);

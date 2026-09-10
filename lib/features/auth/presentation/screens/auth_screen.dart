@@ -26,7 +26,9 @@ class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   AuthMode _mode = AuthMode.login;
 
   @override
@@ -45,6 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _authController.removeListener(_onAuthChanged);
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -58,11 +61,17 @@ class _AuthScreenState extends State<AuthScreen> {
         password: _passwordController.text,
       );
     } else {
-      // Regla estricta: Registro directo sin confirmación previa de correo
-      await _authController.signUpWithEmail(
+      final success = await _authController.signUpWithEmail(
         email: _emailController.text,
         password: _passwordController.text,
       );
+      if (success && mounted) {
+        setState(() {
+          _mode = AuthMode.login;
+          _passwordController.clear();
+          _confirmPasswordController.clear();
+        });
+      }
     }
   }
 
@@ -101,17 +110,30 @@ class _AuthScreenState extends State<AuthScreen> {
                         onModeChanged: (mode) {
                           setState(() {
                             _mode = mode;
+                            _passwordController.clear();
+                            _confirmPasswordController.clear();
                             _authController.clearMessages();
                           });
                         },
                       ),
                       const SizedBox(height: 24),
 
+                      // Banner reactivo de éxito
+                      if (_authController.successMessage != null) ...[
+                        LiquidBanner(
+                          message: _authController.successMessage!,
+                          type: BannerType.success,
+                          onClose: () => _authController.clearMessages(),
+                        ),
+                        const SizedBox(height: 18),
+                      ],
+
                       // Banner reactivo de error
                       if (_authController.errorMessage != null) ...[
                         LiquidBanner(
                           message: _authController.errorMessage!,
                           type: BannerType.error,
+                          onClose: () => _authController.clearMessages(),
                         ),
                         const SizedBox(height: 18),
                       ],
@@ -120,6 +142,12 @@ class _AuthScreenState extends State<AuthScreen> {
                       _buildEmailField(),
                       const SizedBox(height: 16),
                       _buildPasswordField(),
+
+                      // Campo Confirmar Contraseña (solo en registro)
+                      if (_mode == AuthMode.register) ...[
+                        const SizedBox(height: 16),
+                        _buildConfirmPasswordField(),
+                      ],
 
                       // Enlace "¿Has olvidado tu contraseña?"
                       if (_mode == AuthMode.login) _buildForgotPasswordLink(),
@@ -270,6 +298,44 @@ class _AuthScreenState extends State<AuthScreen> {
         }
         if (value.length < 6) {
           return 'La contraseña debe tener al menos 6 caracteres';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildConfirmPasswordField() {
+    return TextFormField(
+      controller: _confirmPasswordController,
+      obscureText: _obscureConfirmPassword,
+      style: const TextStyle(color: LiquidTheme.textPrimary),
+      decoration: InputDecoration(
+        labelText: 'Confirmar Contraseña',
+        prefixIcon: const Icon(
+          Icons.lock_reset_rounded,
+          color: LiquidTheme.primaryCyan,
+        ),
+        hintText: 'Repite tu contraseña',
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscureConfirmPassword
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            color: LiquidTheme.textSecondary,
+          ),
+          onPressed: () {
+            setState(() {
+              _obscureConfirmPassword = !_obscureConfirmPassword;
+            });
+          },
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Confirma tu contraseña';
+        }
+        if (value != _passwordController.text) {
+          return 'Las contraseñas no coinciden';
         }
         return null;
       },

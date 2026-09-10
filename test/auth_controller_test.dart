@@ -116,7 +116,7 @@ void main() {
       expect(controller.errorMessage, isNull);
     });
 
-    test('signUpWithEmail executes directly without email confirmation', () async {
+    test('signUpWithEmail registers user without auto-login and sets success message', () async {
       final success = await controller.signUpWithEmail(
         email: 'newuser@marthapp.com',
         password: 'password123',
@@ -124,6 +124,8 @@ void main() {
       expect(success, isTrue);
       expect(mockAuthService.lastAction, equals('signUpWithEmail'));
       expect(controller.errorMessage, isNull);
+      expect(controller.isAuthenticated, isFalse);
+      expect(controller.successMessage, isNotNull);
     });
 
     test('sendPasswordResetEmail sets successMessage and triggers service', () async {

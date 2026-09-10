@@ -26,6 +26,11 @@ class AppAuthException implements Exception {
     if (msg.contains('rate limit')) {
       return AppAuthException('Demasiados intentos. Por favor, espera unos momentos.');
     }
+    if (msg.contains('error sending confirmation email') ||
+        msg.contains('unexpected_failure')) {
+      return AppAuthException(
+          'Error del servidor de correo. Desactiva "Confirm email" en Supabase o revisa la configuración.');
+    }
 
     return AppAuthException(e.message);
   }

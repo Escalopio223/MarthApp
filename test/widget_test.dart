@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:marth_app/core/widgets/liquid_button.dart';
 import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:marth_app/features/auth/presentation/screens/update_password_screen.dart';
@@ -94,5 +95,74 @@ void main() {
     expect(find.text('Nueva Contraseña'), findsOneWidget);
     expect(find.text('Confirmar Nueva Contraseña'), findsOneWidget);
     expect(find.text('Guardar Nueva Contraseña'), findsOneWidget);
+  });
+
+  testWidgets('AuthScreen switching to register shows Confirmar Contraseña field',
+      (WidgetTester tester) async {
+    final controller = AuthController(authService: MockWidgetAuthService());
+
+    await tester.pumpWidget(MarthApp(authController: controller));
+
+    // Cambiar al modo Crear Cuenta
+    await tester.tap(find.text('Crear Cuenta'));
+    await tester.pumpAndSettle();
+
+    // Ahora deben haber 3 TextFormField (Email, Password, ConfirmPassword)
+    expect(find.byType(TextFormField), findsNWidgets(3));
+    expect(find.text('Correo Electrónico'), findsOneWidget);
+    expect(find.text('Contraseña'), findsOneWidget);
+    expect(find.text('Confirmar Contraseña'), findsOneWidget);
+    expect(find.text('Repite tu contraseña'), findsOneWidget);
+
+    // No debe mostrar "¿Has olvidado tu contraseña?" en modo registro
+    expect(find.text('¿Has olvidado tu contraseña?'), findsNothing);
+  });
+
+  testWidgets('AuthScreen register validates password confirmation match',
+      (WidgetTester tester) async {
+    final controller = AuthController(authService: MockWidgetAuthService());
+
+    await tester.pumpWidget(MarthApp(authController: controller));
+
+    // Cambiar a Crear Cuenta
+    await tester.tap(find.text('Crear Cuenta'));
+    await tester.pumpAndSettle();
+
+    final textFields = find.byType(TextFormField);
+    // Escribir email, pass y confirm pass diferente
+    await tester.enterText(textFields.at(0), 'nuevo@marthapp.com');
+    await tester.enterText(textFields.at(1), '123456');
+    await tester.enterText(textFields.at(2), '654321');
+
+    // Pulsar botón Crear Cuenta
+    await tester.tap(find.widgetWithText(LiquidButton, 'Crear Cuenta'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Las contraseñas no coinciden'), findsOneWidget);
+  });
+
+  testWidgets('AuthScreen successful registration redirects to login mode',
+      (WidgetTester tester) async {
+    final controller = AuthController(authService: MockWidgetAuthService());
+
+    await tester.pumpWidget(MarthApp(authController: controller));
+
+    // Cambiar a Crear Cuenta
+    await tester.tap(find.text('Crear Cuenta'));
+    await tester.pumpAndSettle();
+
+    final textFields = find.byType(TextFormField);
+    await tester.enterText(textFields.at(0), 'nuevo@marthapp.com');
+    await tester.enterText(textFields.at(1), '123456');
+    await tester.enterText(textFields.at(2), '123456');
+
+    // Pulsar botón Crear Cuenta
+    await tester.tap(find.widgetWithText(LiquidButton, 'Crear Cuenta'));
+    await tester.pumpAndSettle();
+
+    // Debe haber vuelto al modo Iniciar Sesión (2 campos) y mostrar banner de éxito
+    expect(find.byType(TextFormField), findsNWidgets(2));
+    expect(find.text('¡Cuenta creada con éxito! Por favor, inicia sesión para continuar.'),
+        findsOneWidget);
   });
 }

@@ -12,6 +12,7 @@ class AuthController extends ChangeNotifier {
   OAuthProvider? _loadingProvider;
   bool _isResetLoading = false;
   bool _isUpdateLoading = false;
+  bool _isRegistering = false;
 
   String? _errorMessage;
   String? _successMessage;
@@ -22,12 +23,15 @@ class AuthController extends ChangeNotifier {
     _user = _authRepository.currentUser;
 
     _authRepository.authStateChanges.listen((data) {
-      _user = data.session?.user;
-      notifyListeners();
+      if (!_isRegistering) {
+        _user = data.session?.user;
+        notifyListeners();
+      }
     });
   }
 
   bool get isEmailLoading => _isEmailLoading;
+  bool get isRegistering => _isRegistering;
   OAuthProvider? get loadingProvider => _loadingProvider;
   bool isProviderLoading(OAuthProvider provider) =>
       _loadingProvider == provider;
@@ -115,19 +119,24 @@ class AuthController extends ChangeNotifier {
     required String password,
   }) async {
     _isEmailLoading = true;
+    _isRegistering = true;
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
 
     try {
-      final response = await _authRepository.signUpWithEmail(email, password);
-      _user = response.user;
+      await _authRepository.signUpWithEmail(email, password);
+      // No autenticamos automáticamente: el usuario debe iniciar sesión manualmente
+      _user = null;
+      _successMessage =
+          '¡Cuenta creada con éxito! Por favor, inicia sesión para continuar.';
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
       _isEmailLoading = false;
+      _isRegistering = false;
       notifyListeners();
     }
   }
