@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
+import 'core/theme/liquid_theme.dart';
+import 'features/auth/presentation/controllers/auth_controller.dart';
+import 'features/auth/presentation/screens/auth_screen.dart';
+import 'features/auth/presentation/screens/update_password_screen.dart';
+import 'features/home/presentation/screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Si la clave ya está configurada, inicializamos Supabase al arrancar
+  // Inicialización del SDK oficial de Supabase
   if (SupabaseConfig.isConfigured) {
     try {
       await Supabase.initialize(
@@ -20,7 +25,7 @@ Future<void> main() async {
   runApp(const MarthApp());
 }
 
-/// Instancia global del cliente de Supabase recomendada por la documentación oficial
+/// Instancia global del cliente de Supabase
 SupabaseClient get supabase => Supabase.instance.client;
 
 /// Getter seguro para verificar si el cliente ya está inicializado
@@ -33,267 +38,100 @@ SupabaseClient? get supabaseClient {
 }
 
 class MarthApp extends StatelessWidget {
-  const MarthApp({super.key});
+  final AuthController? authController;
+
+  const MarthApp({super.key, this.authController});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'MarthApp',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3ECF8E), // Verde insignia de Supabase
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3ECF8E),
-          brightness: Brightness.dark,
-        ),
-      ),
-      themeMode: ThemeMode.system,
-      home: const SupabaseStatusScreen(),
+      theme: LiquidTheme.themeData,
+      home: AuthGate(authController: authController),
     );
   }
 }
 
-class SupabaseStatusScreen extends StatefulWidget {
-  const SupabaseStatusScreen({super.key});
+/// Enrutador raíz con precedencia estricta de eventos de autenticación
+class AuthGate extends StatefulWidget {
+  final AuthController? authController;
+
+  const AuthGate({super.key, this.authController});
 
   @override
-  State<SupabaseStatusScreen> createState() => _SupabaseStatusScreenState();
+  State<AuthGate> createState() => _AuthGateState();
 }
 
-class _SupabaseStatusScreenState extends State<SupabaseStatusScreen> {
-  final TextEditingController _keyController = TextEditingController();
-  bool _isConnecting = false;
-  String? _statusMessage;
-  bool _isConnected = false;
+class _AuthGateState extends State<AuthGate> {
+  late final AuthController _authController;
+  bool _isPasswordRecovery = false;
 
   @override
   void initState() {
     super.initState();
-    if (SupabaseConfig.isConfigured && supabaseClient != null) {
-      _testConnection();
-    }
-  }
+    _authController = widget.authController ?? AuthController();
 
-  @override
-  void dispose() {
-    _keyController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _testConnection() async {
-    setState(() {
-      _isConnecting = true;
-      _statusMessage = null;
-    });
-
+    // Escucha activa de eventos del ciclo de autenticación de Supabase
     try {
-      // Verificamos conexión consultando el estado de la sesión
-      final client = supabaseClient;
-      if (client == null) {
-        throw Exception('El cliente de Supabase no está inicializado.');
-      }
+      supabaseClient?.auth.onAuthStateChange.listen((data) {
+        final event = data.event;
+        debugPrint('[AuthGate] Evento recibido de Supabase: $event');
 
-      // Hacemos una comprobación de conectividad al endpoint de Supabase
-      final session = client.auth.currentSession;
-      setState(() {
-        _isConnected = true;
-        _statusMessage = 'Conectado exitosamente con Supabase.\n'
-            'Sesión activa: ${session != null ? "Sí" : "Sin sesión (anónimo)"}';
+        if (event == AuthChangeEvent.passwordRecovery) {
+          if (mounted) {
+            setState(() {
+              _isPasswordRecovery = true;
+            });
+          }
+        } else if (event == AuthChangeEvent.signedOut) {
+          if (mounted) {
+            setState(() {
+              _isPasswordRecovery = false;
+            });
+          }
+        } else if (event == AuthChangeEvent.userUpdated) {
+          if (mounted) {
+            setState(() {
+              _isPasswordRecovery = false;
+            });
+          }
+        } else {
+          if (mounted) setState(() {});
+        }
       });
     } catch (e) {
-      setState(() {
-        _isConnected = false;
-        _statusMessage = 'Error al verificar conexión: $e';
-      });
-    } finally {
-      setState(() {
-        _isConnecting = false;
-      });
-    }
-  }
-
-  Future<void> _manualConnect() async {
-    final inputKey = _keyController.text.trim();
-    if (inputKey.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa tu anon key')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isConnecting = true;
-      _statusMessage = null;
-    });
-
-    try {
-      await Supabase.initialize(
-        url: SupabaseConfig.url,
-        publishableKey: inputKey,
-      );
-      await _testConnection();
-    } catch (e) {
-      setState(() {
-        _isConnected = false;
-        _statusMessage = 'Fallo en la conexión: $e';
-        _isConnecting = false;
-      });
+      debugPrint('[AuthGate] Listener onAuthStateChange no disponible: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isConfigured = SupabaseConfig.isConfigured || supabaseClient != null;
+    // =========================================================================
+    // 1. REGLA ESTRICTA: PRECEDENCIA DE passwordRecovery SOBRE session != null
+    // =========================================================================
+    // Al pulsar el enlace de recuperación del correo, Supabase establece una
+    // sesión temporal. Si evaluáramos 'session != null' antes, el usuario
+    // entraría por error a HomeScreen. Por tanto, passwordRecovery tiene
+    // máxima prioridad para forzar la actualización de contraseña.
+    if (_isPasswordRecovery) {
+      return UpdatePasswordScreen(
+        controller: _authController,
+        onPasswordUpdated: () {
+          setState(() {
+            _isPasswordRecovery = false;
+          });
+        },
+      );
+    }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'MarthApp',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _isConnected
-                          ? Icons.cloud_done_rounded
-                          : (isConfigured
-                              ? Icons.cloud_queue_rounded
-                              : Icons.warning_amber_rounded),
-                      size: 64,
-                      color: _isConnected
-                          ? const Color(0xFF3ECF8E)
-                          : (isConfigured
-                              ? theme.colorScheme.primary
-                              : Colors.amber),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Estado de Supabase',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      SupabaseConfig.url,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.outline,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const Divider(height: 32),
-                    if (_isConnecting) ...[
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 16),
-                      const Text('Verificando conexión con Supabase...'),
-                    ] else if (_isConnected) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3ECF8E).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: const Color(0xFF3ECF8E),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          _statusMessage ?? 'Conexión exitosa',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: _testConnection,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Comprobar de nuevo'),
-                      ),
-                    ] else ...[
-                      Text(
-                        isConfigured
-                            ? 'Listo para conectar'
-                            : 'Falta configurar la anonKey',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        isConfigured
-                            ? 'El cliente está inicializado. Pulsa el botón para probar la conexión.'
-                            : 'Para conectarse a Supabase necesitas la "anon key" pública de tu proyecto.\n'
-                                'La encuentras en tu Dashboard de Supabase > Project Settings > API.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      if (!isConfigured) ...[
-                        TextField(
-                          controller: _keyController,
-                          decoration: const InputDecoration(
-                            labelText: 'Supabase anonKey',
-                            hintText: 'eyJhbGciOiJIUzI1NiIsInR5cCI6...',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.key),
-                          ),
-                          obscureText: true,
-                        ),
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: _manualConnect,
-                          icon: const Icon(Icons.link),
-                          label: const Text('Conectar ahora'),
-                        ),
-                      ] else ...[
-                        FilledButton.icon(
-                          onPressed: _testConnection,
-                          icon: const Icon(Icons.cloud_sync),
-                          label: const Text('Probar conexión'),
-                        ),
-                      ],
-                      if (_statusMessage != null) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          _statusMessage!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: theme.colorScheme.error,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    // 2. Sesión activa -> Pantalla Principal
+    final session = supabaseClient?.auth.currentSession;
+    if (session != null || _authController.isAuthenticated) {
+      return HomeScreen(authController: _authController);
+    }
+
+    // 3. Sin sesión -> Pantalla de Autenticación Híbrida (Email + OAuth)
+    return AuthScreen(controller: _authController);
   }
 }
