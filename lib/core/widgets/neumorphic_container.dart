@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../theme/liquid_theme.dart';
 
-/// Contenedor Neumórfico táctil con sombras duales
+/// Contenedor táctil Neumórfico ('Soft UI'):
+/// - Superficie base #1A1F26
+/// - Doble sombra suave con exterior oscura (#0D1014) y realce claro (#222932)
+/// - Borde ultra sutil integrado y transición elástica cubic-bezier
 class NeumorphicContainer extends StatelessWidget {
   final Widget child;
   final double borderRadius;
@@ -13,17 +16,18 @@ class NeumorphicContainer extends StatelessWidget {
   const NeumorphicContainer({
     super.key,
     required this.child,
-    this.borderRadius = 16.0,
+    this.borderRadius = 18.0,
     this.padding = const EdgeInsets.all(16.0),
     this.isInset = false,
-    this.baseColor = LiquidTheme.surfaceDark,
+    this.baseColor = LiquidTheme.surfaceDark, // #1A1F26
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final container = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       padding: padding,
       decoration: BoxDecoration(
         color: baseColor,
@@ -32,7 +36,7 @@ class NeumorphicContainer extends StatelessWidget {
             ? LiquidTheme.neumorphicInsetShadows()
             : LiquidTheme.neumorphicRaisedShadows(baseColor: baseColor),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: LiquidTheme.glassBorderColor,
           width: 0.8,
         ),
       ),

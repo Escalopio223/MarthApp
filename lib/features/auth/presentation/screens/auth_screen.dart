@@ -358,9 +358,9 @@ class _AuthScreenState extends State<AuthScreen> {
             child: const Text(
               '¿Has olvidado tu contraseña?',
               style: TextStyle(
-                color: LiquidTheme.primaryCyan,
+                color: LiquidTheme.primaryLiquid,
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -373,18 +373,19 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildDivider() {
     return Row(
       children: [
-        const Expanded(child: Divider(color: Colors.white12)),
+        Expanded(child: Divider(color: LiquidTheme.glassBorderColor)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
             'o continúa con',
             style: TextStyle(
-              color: LiquidTheme.textSecondary.withValues(alpha: 0.7),
+              color: LiquidTheme.textSecondary.withValues(alpha: 0.8),
               fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        const Expanded(child: Divider(color: Colors.white12)),
+        Expanded(child: Divider(color: LiquidTheme.glassBorderColor)),
       ],
     );
   }

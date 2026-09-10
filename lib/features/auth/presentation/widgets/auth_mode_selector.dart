@@ -3,7 +3,11 @@ import '../../../../core/theme/liquid_theme.dart';
 
 enum AuthMode { login, register }
 
-/// Selector segmentado de modo de autenticación estilo Liquid UI
+/// Selector segmentado de modo de autenticación:
+/// - Base Neumórfica 'Soft UI' sobre #1A1F26 con sombras suaves
+/// - Pestaña activa con gradiente interactivo Liquid UI #7BB6FF -> #BD93F9
+/// - Curvas de aceleración elásticas Curves.easeOutCubic
+/// - Alto contraste WCAG AA
 class AuthModeSelector extends StatelessWidget {
   final AuthMode currentMode;
   final ValueChanged<AuthMode> onModeChanged;
@@ -17,11 +21,28 @@ class AuthModeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        color: LiquidTheme.surfaceDark, // #1A1F26
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: LiquidTheme.glassBorderColor,
+          width: 0.8,
+        ),
+        boxShadow: [
+          // Sombra oscura inferior
+          BoxShadow(
+            color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.8),
+            offset: const Offset(2, 2),
+            blurRadius: 6,
+          ),
+          // Realce claro superior
+          BoxShadow(
+            color: LiquidTheme.neumorphicLightHighlight.withValues(alpha: 0.5),
+            offset: const Offset(-2, -2),
+            blurRadius: 6,
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -52,16 +73,17 @@ class AuthModeSelector extends StatelessWidget {
     return GestureDetector(
       onTap: () => onModeChanged(mode),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
           gradient: isSelected ? LiquidTheme.liquidPrimaryGradient : null,
           color: isSelected ? null : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: LiquidTheme.primaryCyan.withValues(alpha: 0.3),
+                    color: LiquidTheme.primaryLiquid.withValues(alpha: 0.35),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -73,8 +95,10 @@ class AuthModeSelector extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 14,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? Colors.white : LiquidTheme.textSecondary,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected
+                  ? const Color(0xFF0D1219) // WCAG AA sobre gradiente cian-lila
+                  : LiquidTheme.textSecondary,
             ),
           ),
         ),

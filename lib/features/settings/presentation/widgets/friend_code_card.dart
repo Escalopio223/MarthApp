@@ -141,11 +141,11 @@ class FriendCodeCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: friendCodeManager.progress,
               minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: LiquidTheme.surfaceDark,
               valueColor: AlwaysStoppedAnimation<Color>(
                 friendCodeManager.remainingSeconds <= 15
                     ? LiquidTheme.accentCoral
-                    : LiquidTheme.accentEmerald,
+                    : LiquidTheme.primaryLiquid,
               ),
             ),
           ),

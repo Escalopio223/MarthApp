@@ -34,7 +34,7 @@ class AddFriendCard extends StatelessWidget {
           const Row(
             children: [
               Icon(Icons.person_add_rounded,
-                  color: LiquidTheme.accentEmerald, size: 22),
+                  color: LiquidTheme.primaryLiquid, size: 22),
               SizedBox(width: 10),
               Text(
                 'Añadir Amigo con Código',
@@ -57,7 +57,7 @@ class AddFriendCard extends StatelessWidget {
             decoration: const InputDecoration(
               hintText: 'Ej. MARTH-8K2A',
               prefixIcon: Icon(Icons.key_rounded,
-                  color: LiquidTheme.accentEmerald),
+                  color: LiquidTheme.primaryLiquid),
             ),
           ),
           const SizedBox(height: 14),
@@ -65,7 +65,7 @@ class AddFriendCard extends StatelessWidget {
             text: 'Añadir Amigo',
             icon: Icons.check_rounded,
             height: 48,
-            gradient: LiquidTheme.liquidEmeraldGradient,
+            gradient: LiquidTheme.liquidPrimaryGradient,
             onPressed: onAddFriend,
           ),
           if (feedbackMessage != null) ...[

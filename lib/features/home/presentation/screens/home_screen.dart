@@ -62,7 +62,7 @@ class HomeScreen extends StatelessWidget {
                       Expanded(
                         child: HomeQuickActionCard(
                           icon: Icons.group_add_rounded,
-                          iconColor: LiquidTheme.primaryCyan,
+                          iconColor: LiquidTheme.primaryLiquid,
                           title: 'Añadir Amigo',
                           subtitle: 'Código con expiración de 1 min',
                           onTap: () => _openSettings(context),
@@ -72,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                       Expanded(
                         child: HomeQuickActionCard(
                           icon: Icons.settings_suggest_rounded,
-                          iconColor: LiquidTheme.accentEmerald,
+                          iconColor: LiquidTheme.secondaryLilac,
                           title: 'Ajustes',
                           subtitle: 'Gestiona tu cuenta y perfil',
                           onTap: () => _openSettings(context),
@@ -104,13 +104,13 @@ class HomeScreen extends StatelessWidget {
             gradient: LiquidTheme.liquidPrimaryGradient,
             boxShadow: [
               BoxShadow(
-                color: LiquidTheme.primaryCyan.withValues(alpha: 0.4),
+                color: LiquidTheme.primaryLiquid.withValues(alpha: 0.35),
                 blurRadius: 10,
               ),
             ],
           ),
           child: const Icon(Icons.bubble_chart_rounded,
-              color: Colors.white, size: 22),
+              color: Color(0xFF0D1219), size: 22),
         ),
         const SizedBox(width: 10),
         const Text(
@@ -131,7 +131,7 @@ class HomeScreen extends StatelessWidget {
       child: NeumorphicContainer(
         borderRadius: 24,
         padding: const EdgeInsets.all(4),
-        baseColor: LiquidTheme.surfaceDark.withValues(alpha: 0.8),
+        baseColor: LiquidTheme.surfaceDark,
         onTap: () => _openSettings(context),
         child: Container(
           width: 38,
@@ -142,7 +142,7 @@ class HomeScreen extends StatelessWidget {
           ),
           child: const Icon(
             Icons.person_rounded,
-            color: Colors.white,
+            color: Color(0xFF0D1219),
             size: 22,
           ),
         ),

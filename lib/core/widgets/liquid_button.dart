@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/liquid_theme.dart';
 
-/// Botón principal con degradado Liquid UI, brillo y estado de carga
+/// Botón de acción principal (CTA) con degradado interactivo Liquid UI:
+/// - Gradiente #7BB6FF -> #BD93F9 a 135°
+/// - Resplandor líquido reactivo
+/// - Transiciones suaves con curvas elásticas Curves.easeOutCubic
+/// - Alto contraste WCAG AA para máxima legibilidad
 class LiquidButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -10,6 +14,7 @@ class LiquidButton extends StatelessWidget {
   final Gradient gradient;
   final double height;
   final double borderRadius;
+  final Color? textColor;
 
   const LiquidButton({
     super.key,
@@ -20,29 +25,40 @@ class LiquidButton extends StatelessWidget {
     this.gradient = LiquidTheme.liquidPrimaryGradient,
     this.height = 54.0,
     this.borderRadius = 18.0,
+    this.textColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = onPressed != null && !isLoading;
+
+    // Asegurar ratio de contraste WCAG AA sobre el degradado claro cian-lila
+    final effectiveTextColor = textColor ??
+        (gradient == LiquidTheme.liquidPrimaryGradient ||
+                gradient == LiquidTheme.liquidEmeraldGradient
+            ? const Color(0xFF0D1219)
+            : LiquidTheme.textPrimary);
+
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       height: height,
       decoration: BoxDecoration(
-        gradient: onPressed == null || isLoading
+        gradient: !isEnabled
             ? LinearGradient(
                 colors: [
-                  Colors.grey.shade700,
-                  Colors.grey.shade800,
+                  LiquidTheme.surfaceDark,
+                  LiquidTheme.surfaceDark.withValues(alpha: 0.7),
                 ],
               )
             : gradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: onPressed == null || isLoading
+        boxShadow: !isEnabled
             ? []
             : [
                 BoxShadow(
-                  color: (gradient.colors.first).withValues(alpha: 0.4),
-                  blurRadius: 16,
+                  color: LiquidTheme.primaryLiquid.withValues(alpha: 0.35),
+                  blurRadius: 18,
                   offset: const Offset(0, 6),
                 ),
               ],
@@ -51,25 +67,29 @@ class LiquidButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
-          onTap: isLoading ? null : onPressed,
+          onTap: isEnabled ? onPressed : null,
+          splashColor: Colors.black.withValues(alpha: 0.15),
+          highlightColor: Colors.white.withValues(alpha: 0.15),
           child: Center(
             child: isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        effectiveTextColor,
+                      ),
                     ),
                   )
                 : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (icon != null) ...[
-                          Icon(icon, color: Colors.white, size: 20),
+                          Icon(icon, color: effectiveTextColor, size: 20),
                           const SizedBox(width: 8),
                         ],
                         Flexible(
@@ -77,11 +97,11 @@ class LiquidButton extends StatelessWidget {
                             text,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: effectiveTextColor,
                               fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ),

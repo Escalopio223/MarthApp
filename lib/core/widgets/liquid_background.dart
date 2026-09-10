@@ -2,7 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/liquid_theme.dart';
 
-/// Fondo dinámico estilo Liquid UI con esferas orgánicas difuminadas
+/// Fondo ambiental dinámico estilo 'Liquid UI':
+/// - Canvas principal #101419 (negro azulado profundo)
+/// - Esferas orgánicas fluidas difuminadas en tonos #7BB6FF (azul cian) y #BD93F9 (lila suave)
+/// - Capa de fusión con desenfoque de alto radio
 class LiquidBackground extends StatelessWidget {
   final Widget child;
 
@@ -17,26 +20,26 @@ class LiquidBackground extends StatelessWidget {
 
     return Stack(
       children: [
-        // Base oscura
+        // 1. Canvas base: #101419 (negro azulado profundo)
         Container(
           width: double.infinity,
           height: double.infinity,
           color: LiquidTheme.darkBackground,
         ),
 
-        // Esfera Líquida 1 (Cian / Azul superior izquierda)
+        // 2. Esfera líquida superior-izquierda (Acento primario: #7BB6FF)
         Positioned(
-          top: -size.width * 0.2,
-          left: -size.width * 0.15,
+          top: -size.width * 0.25,
+          left: -size.width * 0.2,
           child: Container(
-            width: size.width * 0.7,
-            height: size.width * 0.7,
+            width: size.width * 0.75,
+            height: size.width * 0.75,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  LiquidTheme.primaryCyan.withValues(alpha: 0.35),
-                  LiquidTheme.primaryIndigo.withValues(alpha: 0.15),
+                  LiquidTheme.primaryLiquid.withValues(alpha: 0.28),
+                  LiquidTheme.primaryLiquid.withValues(alpha: 0.10),
                   Colors.transparent,
                 ],
               ),
@@ -44,19 +47,19 @@ class LiquidBackground extends StatelessWidget {
           ),
         ),
 
-        // Esfera Líquida 2 (Púrpura / Rosa inferior derecha)
+        // 3. Esfera líquida inferior-derecha (Acento secundario: #BD93F9)
         Positioned(
-          bottom: -size.width * 0.25,
-          right: -size.width * 0.2,
+          bottom: -size.width * 0.28,
+          right: -size.width * 0.22,
           child: Container(
-            width: size.width * 0.8,
-            height: size.width * 0.8,
+            width: size.width * 0.85,
+            height: size.width * 0.85,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFF8A2387).withValues(alpha: 0.3),
-                  const Color(0xFFE94057).withValues(alpha: 0.15),
+                  LiquidTheme.secondaryLilac.withValues(alpha: 0.24),
+                  LiquidTheme.secondaryLilac.withValues(alpha: 0.08),
                   Colors.transparent,
                 ],
               ),
@@ -64,10 +67,10 @@ class LiquidBackground extends StatelessWidget {
           ),
         ),
 
-        // Esfera Líquida 3 (Esmeralda central)
+        // 4. Esfera ambiental intermedia para profundidad visual
         Positioned(
           top: size.height * 0.45,
-          left: size.width * 0.5,
+          left: size.width * 0.4,
           child: Container(
             width: size.width * 0.5,
             height: size.width * 0.5,
@@ -75,7 +78,7 @@ class LiquidBackground extends StatelessWidget {
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  LiquidTheme.accentEmerald.withValues(alpha: 0.2),
+                  LiquidTheme.primaryLiquid.withValues(alpha: 0.12),
                   Colors.transparent,
                 ],
               ),
@@ -83,13 +86,13 @@ class LiquidBackground extends StatelessWidget {
           ),
         ),
 
-        // Capa de desenfoque general para fusionar los líquidos
+        // 5. Capa difusora de alta dispersión para una estética suave
         BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+          filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
           child: const SizedBox.expand(),
         ),
 
-        // Contenido principal
+        // 6. Contenido interactivo seguro
         SafeArea(child: child),
       ],
     );

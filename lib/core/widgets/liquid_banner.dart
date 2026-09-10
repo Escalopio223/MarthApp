@@ -3,7 +3,9 @@ import '../theme/liquid_theme.dart';
 
 enum BannerType { error, success, info }
 
-/// Banner reutilizable con estilo Liquid UI y Glassmorfismo para alertas y estados
+/// Banner reutilizable con estilo Liquid UI y Glassmorfismo para alertas y estados:
+/// - Fondo translúcido con tinte armónico sobre superficie oscura #1A1F26
+/// - Borde sutil y texto de alto contraste #E6EDF3 cumpliendo WCAG AA
 class LiquidBanner extends StatelessWidget {
   final String message;
   final BannerType type;
@@ -18,14 +20,14 @@ class LiquidBanner extends StatelessWidget {
     this.onClose,
   });
 
-  Color get _baseColor {
+  Color get _accentColor {
     switch (type) {
       case BannerType.error:
         return LiquidTheme.accentCoral;
       case BannerType.success:
         return LiquidTheme.accentEmerald;
       case BannerType.info:
-        return LiquidTheme.primaryCyan;
+        return LiquidTheme.primaryLiquid;
     }
   }
 
@@ -42,30 +44,30 @@ class LiquidBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _baseColor;
+    final accent = _accentColor;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: accent.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: color.withValues(alpha: 0.35),
+          color: accent.withValues(alpha: 0.35),
           width: 1,
         ),
       ),
       child: Row(
         children: [
-          Icon(customIcon ?? _defaultIcon, color: color, size: 20),
+          Icon(customIcon ?? _defaultIcon, color: accent, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
-                color: color,
+              style: const TextStyle(
+                color: LiquidTheme.textPrimary, // #E6EDF3 para máximo contraste WCAG AA
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                height: 1.3,
+                height: 1.35,
               ),
             ),
           ),
@@ -73,7 +75,8 @@ class LiquidBanner extends StatelessWidget {
             const SizedBox(width: 6),
             GestureDetector(
               onTap: onClose,
-              child: Icon(Icons.close_rounded, color: color, size: 18),
+              child: Icon(Icons.close_rounded,
+                  color: LiquidTheme.textSecondary, size: 18),
             ),
           ],
         ],

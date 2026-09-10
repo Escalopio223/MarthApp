@@ -1,7 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../theme/liquid_theme.dart';
 
-/// Contenedor Glassmórfico de alta gama estilo Liquid UI
+/// Contenedor Glassmórfico flotante de alta fidelidad:
+/// - Fondo translúcido #1A1F26 con opacidad entre 65% y 75%
+/// - Desenfoque de fondo de 20px (ImageFilter.blur)
+/// - Borde estructural sutil de 1px con efecto de luz especular superior/izquierdo
+/// - Esquinas orgánicas amplias (18px - 24px)
 class GlassCard extends StatelessWidget {
   final Widget child;
   final double borderRadius;
@@ -14,8 +19,8 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.borderRadius = 24.0,
-    this.blur = 18.0,
+    this.borderRadius = 22.0,
+    this.blur = LiquidTheme.glassBlur, // 20.0
     this.padding = const EdgeInsets.all(24.0),
     this.margin,
     this.surfaceColor,
@@ -24,6 +29,8 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveSurface = surfaceColor ?? LiquidTheme.glassSurfaceColor;
+
     return Container(
       margin: margin,
       child: ClipRRect(
@@ -33,17 +40,24 @@ class GlassCard extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: surfaceColor ?? Colors.white.withValues(alpha: 0.07),
+              color: effectiveSurface,
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.18),
-                width: 1.2,
+                color: LiquidTheme.glassBorderColor, // 1px solid rgba(139, 155, 180, 0.2)
+                width: 1.0,
               ),
               boxShadow: [
+                // Realce especular superior/izquierdo
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  color: LiquidTheme.neumorphicLightHighlight.withValues(alpha: 0.45),
+                  offset: const Offset(-1, -1),
+                  blurRadius: 2,
+                ),
+                // Sombra profunda inferior/derecha
+                BoxShadow(
+                  color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.75),
+                  offset: const Offset(0, 12),
+                  blurRadius: 24,
                 ),
               ],
             ),

@@ -35,7 +35,7 @@ class UserProfileCard extends StatelessWidget {
             ),
             child: const Icon(
               Icons.person_rounded,
-              color: Colors.white,
+              color: Color(0xFF0D1219),
               size: 32,
             ),
           ),

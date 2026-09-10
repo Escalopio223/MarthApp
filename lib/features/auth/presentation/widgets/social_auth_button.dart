@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/theme/liquid_theme.dart';
 
 /// Configuración visual y de marca para proveedores OAuth activos
 class SocialProviderConfig {
@@ -27,28 +28,36 @@ class SocialProviderConfig {
           label: 'Continuar con Google',
           backgroundColor: const Color(0xFFFFFFFF),
           textColor: const Color(0xFF1F2937),
-          borderColor: const Color(0xFFE5E7EB),
+          borderColor: LiquidTheme.glassBorderColor,
           iconWidget: _buildGoogleIcon(),
         );
 
       case OAuthProvider.github:
-        return const SocialProviderConfig(
+        return SocialProviderConfig(
           name: 'GitHub',
           label: 'Continuar con GitHub',
-          backgroundColor: Color(0xFF1E2638),
-          textColor: Colors.white,
-          borderColor: Color(0xFF334155),
-          iconWidget: Icon(Icons.code_rounded, size: 22, color: Colors.white),
+          backgroundColor: LiquidTheme.surfaceDark, // #1A1F26
+          textColor: LiquidTheme.textPrimary, // #E6EDF3
+          borderColor: LiquidTheme.glassBorderColor, // rgba(139, 155, 180, 0.2)
+          iconWidget: const Icon(
+            Icons.code_rounded,
+            size: 22,
+            color: LiquidTheme.textPrimary,
+          ),
         );
 
       default:
         return SocialProviderConfig(
           name: provider.name,
           label: 'Continuar con ${provider.name}',
-          backgroundColor: const Color(0xFF1E2638),
-          textColor: Colors.white,
-          borderColor: const Color(0xFF334155),
-          iconWidget: const Icon(Icons.login_rounded, size: 20, color: Colors.white),
+          backgroundColor: LiquidTheme.surfaceDark,
+          textColor: LiquidTheme.textPrimary,
+          borderColor: LiquidTheme.glassBorderColor,
+          iconWidget: const Icon(
+            Icons.login_rounded,
+            size: 20,
+            color: LiquidTheme.textPrimary,
+          ),
         );
     }
   }
@@ -62,7 +71,7 @@ class SocialProviderConfig {
   }
 }
 
-/// Botón interactivo de autenticación social con retroalimentación visual
+/// Botón interactivo de autenticación social con estética Neumórfica 'Soft UI'
 class SocialAuthButton extends StatelessWidget {
   final OAuthProvider provider;
   final VoidCallback onPressed;
@@ -80,23 +89,40 @@ class SocialAuthButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = SocialProviderConfig.fromProvider(provider);
+    final isGoogle = provider == OAuthProvider.google;
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
       opacity: isDisabled ? 0.45 : 1.0,
       child: Container(
         height: 50,
         decoration: BoxDecoration(
           color: config.backgroundColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: config.borderColor, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: config.borderColor, width: 1.0),
+          boxShadow: isGoogle
+              ? [
+                  BoxShadow(
+                    color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.5),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  // Sombra neumórfica exterior oscura
+                  BoxShadow(
+                    color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.8),
+                    blurRadius: 8,
+                    offset: const Offset(3, 3),
+                  ),
+                  // Realce neumórfico claro superior
+                  BoxShadow(
+                    color: LiquidTheme.neumorphicLightHighlight.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    offset: const Offset(-2, -2),
+                  ),
+                ],
         ),
         child: Material(
           color: Colors.transparent,
