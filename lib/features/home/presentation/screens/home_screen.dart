@@ -11,6 +11,8 @@ import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../environments/presentation/controllers/environment_controller.dart';
+import '../../../environments/presentation/widgets/environment_selector_chip.dart';
 import '../widgets/backend_status_card.dart';
 import '../widgets/home_greeting_card.dart';
 import '../widgets/home_quick_action_card.dart';
@@ -20,12 +22,14 @@ class HomeScreen extends StatefulWidget {
   final AuthController authController;
   final FriendsController? friendsController;
   final ProfileController? profileController;
+  final EnvironmentController? environmentController;
 
   const HomeScreen({
     super.key,
     required this.authController,
     this.friendsController,
     this.profileController,
+    this.environmentController,
   });
 
   @override
@@ -35,6 +39,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final FriendsController _friendsController;
   late final ProfileController _profileController;
+  late final EnvironmentController _environmentController;
 
   @override
   void initState() {
@@ -45,6 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _profileController = widget.profileController ?? ProfileController();
     _profileController.addListener(_onControllerUpdate);
 
+    _environmentController =
+        widget.environmentController ?? EnvironmentController();
+    _environmentController.addListener(_onControllerUpdate);
+
     final user = widget.authController.user;
     if (user != null) {
       if (widget.friendsController == null) {
@@ -52,6 +61,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (widget.profileController == null) {
         _profileController.initialize(user.id, defaultEmail: user.email);
+      }
+      if (widget.environmentController == null) {
+        _environmentController.initialize(user.id);
       }
     }
   }
@@ -64,11 +76,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _friendsController.removeListener(_onControllerUpdate);
     _profileController.removeListener(_onControllerUpdate);
+    _environmentController.removeListener(_onControllerUpdate);
     if (widget.friendsController == null) {
       _friendsController.dispose();
     }
     if (widget.profileController == null) {
       _profileController.dispose();
+    }
+    if (widget.environmentController == null) {
+      _environmentController.dispose();
     }
     super.dispose();
   }
@@ -94,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => FriendsScreen(
           friendsController: _friendsController,
+          environmentController: _environmentController,
         ),
       ),
     );
@@ -107,7 +124,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _friendsController.currentProfile;
     final activeUsername =
         currentProfile?.username ?? email.split('@').first;
-    final pendingCount = _friendsController.pendingCount;
+    final pendingFriendsCount = _friendsController.pendingCount;
+    final pendingEnvCount = _environmentController.pendingInvitationsCount;
+    final totalPendingCount = pendingFriendsCount + pendingEnvCount;
     final friendsCount = _friendsController.friends.length;
 
     return Scaffold(
@@ -117,6 +136,13 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         title: _buildAppBarTitle(),
         actions: [
+          EnvironmentSelectorChip(
+            environmentController: _environmentController,
+            onEnvironmentChanged: () {
+              if (mounted) setState(() {});
+            },
+          ),
+          const SizedBox(width: 8),
           _buildSettingsIconButton(context),
         ],
       ),
@@ -144,14 +170,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: Icons.group_rounded,
                               iconColor: LiquidTheme.primaryLiquid,
                               title: 'Amigos',
-                              subtitle: pendingCount > 0
-                                  ? '$pendingCount solicitud(es) pendiente(s)'
+                              subtitle: totalPendingCount > 0
+                                  ? '$totalPendingCount solicitud(es)'
                                   : (friendsCount > 0
                                       ? '$friendsCount amigo(s) conectado(s)'
                                       : 'Conecta con otros usuarios'),
                               onTap: () => _openFriends(context),
                             ),
-                            if (pendingCount > 0)
+                            if (totalPendingCount > 0)
                               Positioned(
                                 top: -6,
                                 right: -6,
@@ -171,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ],
                                   ),
                                   child: Text(
-                                    '$pendingCount',
+                                    '$totalPendingCount',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 11,

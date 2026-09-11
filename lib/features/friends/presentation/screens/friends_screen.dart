@@ -3,6 +3,8 @@ import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/liquid_background.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../domain/friend_code_manager.dart';
+import '../../../environments/presentation/controllers/environment_controller.dart';
+import '../../../environments/presentation/widgets/environment_invitation_tile.dart';
 import '../controllers/friends_controller.dart';
 import '../widgets/friend_code_card.dart';
 import '../widgets/friends_list_card.dart';
@@ -12,10 +14,12 @@ import '../widgets/send_friend_request_card.dart';
 /// Pantalla principal modular de Amigos y Solicitudes
 class FriendsScreen extends StatefulWidget {
   final FriendsController friendsController;
+  final EnvironmentController? environmentController;
 
   const FriendsScreen({
     super.key,
     required this.friendsController,
+    this.environmentController,
   });
 
   @override
@@ -34,9 +38,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
     _friendCodeManager.addListener(_onControllerChange);
     widget.friendsController.addListener(_onControllerChange);
+    widget.environmentController?.addListener(_onControllerChange);
 
     // Cargar datos en vivo al abrir la vista
     widget.friendsController.refresh();
+    widget.environmentController?.refresh();
   }
 
   void _onControllerChange() {
@@ -46,6 +52,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   void dispose() {
     widget.friendsController.removeListener(_onControllerChange);
+    widget.environmentController?.removeListener(_onControllerChange);
     _friendCodeManager.removeListener(_onControllerChange);
     _friendCodeManager.dispose();
     super.dispose();
@@ -136,7 +143,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // 4. Tarjeta: Bandeja de Solicitudes Recibidas
+                    // 4. Sección: Invitaciones a Entornos de Trabajo (Workspaces)
+                    if (widget.environmentController != null &&
+                        widget.environmentController!.pendingInvitations.isNotEmpty) ...[
+                      _buildEnvironmentInvitationsSection(
+                          widget.environmentController!),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // 5. Tarjeta: Bandeja de Solicitudes Recibidas de Amistad
                     if (incomingRequests.isNotEmpty) ...[
                       IncomingRequestsCard(
                         requests: incomingRequests,
@@ -146,7 +161,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // 5. Tarjeta: Lista de Amigos Aceptados
+                    // 6. Tarjeta: Lista de Amigos Aceptados
                     FriendsListCard(
                       friends: friends,
                       onRemoveFriend: (friend) =>
@@ -159,6 +174,47 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEnvironmentInvitationsSection(EnvironmentController envController) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.mark_email_unread_rounded,
+                color: LiquidTheme.accentEmerald, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Invitaciones a Entornos (${envController.pendingInvitationsCount})',
+              style: TextStyle(
+                color: LiquidTheme.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: envController.pendingInvitations.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final inv = envController.pendingInvitations[index];
+            return EnvironmentInvitationTile(
+              invitation: inv,
+              isLoading: envController.isActionLoading,
+              onAccept: () =>
+                  envController.respondInvitation(invitationId: inv.id, accept: true),
+              onDecline: () =>
+                  envController.respondInvitation(invitationId: inv.id, accept: false),
+            );
+          },
+        ),
+      ],
     );
   }
 }

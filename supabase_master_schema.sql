@@ -76,11 +76,12 @@ create policy "Los usuarios pueden actualizar exclusivamente su propio perfil"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
--- Trigger para crear automáticamente el perfil al registrarse en auth.users
+-- Trigger para crear automáticamente el perfil y el entorno personal al registrarse en auth.users
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   raw_username text;
+  v_env_id uuid;
 begin
   raw_username := coalesce(
     new.raw_user_meta_data->>'username',
@@ -95,6 +96,15 @@ begin
   values (new.id, raw_username, now())
   on conflict (id) do update
   set updated_at = now();
+
+  -- Creación automática del entorno personal principal "Mi Espacio"
+  insert into public.environments (name, is_personal, created_by, created_at)
+  values ('Mi Espacio', true, new.id, now())
+  returning id into v_env_id;
+
+  insert into public.environment_members (environment_id, user_id, role, joined_at)
+  values (v_env_id, new.id, 'owner', now())
+  on conflict (environment_id, user_id) do nothing;
 
   return new;
 end;
@@ -424,4 +434,392 @@ create policy "Los usuarios autenticados pueden eliminar su propio avatar"
     bucket_id = 'avatars' and
     auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- ------------------------------------------------------------------------------
+-- 8. GESTIÓN DE ENTORNOS (Workspaces/Environments)
+-- ------------------------------------------------------------------------------
+
+-- Tabla environments
+create table if not exists public.environments (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  is_personal boolean not null default false,
+  created_by uuid references auth.users(id) on delete cascade not null,
+  created_at timestamp with time zone default now() not null
+);
+
+-- Tabla environment_members
+create table if not exists public.environment_members (
+  environment_id uuid references public.environments(id) on delete cascade not null,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  role text not null check (role in ('owner', 'member')),
+  joined_at timestamp with time zone default now() not null,
+  primary key (environment_id, user_id)
+);
+
+-- Tabla environment_invitations
+create table if not exists public.environment_invitations (
+  id uuid primary key default gen_random_uuid(),
+  environment_id uuid references public.environments(id) on delete cascade not null,
+  sender_id uuid references auth.users(id) on delete cascade not null,
+  receiver_id uuid references auth.users(id) on delete cascade not null,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined')),
+  created_at timestamp with time zone default now() not null
+);
+
+-- Índice único condicional: 1 invitación pendiente por entorno y receptor
+create unique index if not exists idx_unique_pending_invitation 
+  on public.environment_invitations (environment_id, receiver_id) 
+  where status = 'pending';
+
+create index if not exists idx_environments_created_by on public.environments (created_by);
+create index if not exists idx_environments_is_personal on public.environments (is_personal);
+create index if not exists idx_env_members_user on public.environment_members (user_id);
+create index if not exists idx_env_invitations_receiver on public.environment_invitations (receiver_id);
+create index if not exists idx_env_invitations_status on public.environment_invitations (status);
+
+-- RLS: Habilitación y Políticas no recursivas
+alter table public.environments enable row level security;
+alter table public.environment_members enable row level security;
+alter table public.environment_invitations enable row level security;
+
+-- environment_members (lectura directa y O(1) para evitar recursión RLS)
+drop policy if exists "Los miembros pueden consultar sus propias membresías" on public.environment_members;
+create policy "Los miembros pueden consultar sus propias membresías"
+  on public.environment_members for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+drop policy if exists "Los usuarios pueden insertar o unirse a membresías" on public.environment_members;
+create policy "Los usuarios pueden insertar o unirse a membresías"
+  on public.environment_members for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id or
+    exists (
+      select 1 from public.environments
+      where id = environment_members.environment_id and created_by = auth.uid()
+    )
+  );
+
+drop policy if exists "Los miembros pueden abandonar o el owner expulsar" on public.environment_members;
+create policy "Los miembros pueden abandonar o el owner expulsar"
+  on public.environment_members for delete
+  to authenticated
+  using (
+    auth.uid() = user_id or
+    exists (
+      select 1 from public.environments
+      where id = environment_members.environment_id and created_by = auth.uid()
+    )
+  );
+
+-- environments (valida membresía usando EXISTS sobre environment_members)
+drop policy if exists "Los usuarios pueden ver entornos donde son miembros" on public.environments;
+create policy "Los usuarios pueden ver entornos donde son miembros"
+  on public.environments for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.environment_members
+      where environment_members.environment_id = environments.id
+        and environment_members.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Los usuarios pueden crear entornos como creadores" on public.environments;
+create policy "Los usuarios pueden crear entornos como creadores"
+  on public.environments for insert
+  to authenticated
+  with check (auth.uid() = created_by);
+
+drop policy if exists "Los owners pueden actualizar sus entornos" on public.environments;
+create policy "Los owners pueden actualizar sus entornos"
+  on public.environments for update
+  to authenticated
+  using (auth.uid() = created_by)
+  with check (auth.uid() = created_by);
+
+drop policy if exists "Los owners pueden eliminar sus entornos" on public.environments;
+create policy "Los owners pueden eliminar sus entornos"
+  on public.environments for delete
+  to authenticated
+  using (auth.uid() = created_by);
+
+-- environment_invitations
+drop policy if exists "Ver invitaciones donde se sea emisor o receptor" on public.environment_invitations;
+create policy "Ver invitaciones donde se sea emisor o receptor"
+  on public.environment_invitations for select
+  to authenticated
+  using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+drop policy if exists "Enviar invitaciones a entornos donde se participe" on public.environment_invitations;
+create policy "Enviar invitaciones a entornos donde se participe"
+  on public.environment_invitations for insert
+  to authenticated
+  with check (
+    auth.uid() = sender_id and
+    exists (
+      select 1 from public.environment_members
+      where environment_id = environment_invitations.environment_id
+        and user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Actualizar estado de invitaciones correspondientes" on public.environment_invitations;
+create policy "Actualizar estado de invitaciones correspondientes"
+  on public.environment_invitations for update
+  to authenticated
+  using (auth.uid() = receiver_id or auth.uid() = sender_id)
+  with check (auth.uid() = receiver_id or auth.uid() = sender_id);
+
+drop policy if exists "Eliminar invitaciones propias" on public.environment_invitations;
+create policy "Eliminar invitaciones propias"
+  on public.environment_invitations for delete
+  to authenticated
+  using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+-- RPC 1: create_environment
+create or replace function public.create_environment(p_name text)
+returns jsonb as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_name_clean text;
+  v_new_env public.environments%rowtype;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  v_name_clean := trim(p_name);
+  if length(v_name_clean) < 3 then
+    raise exception 'El nombre del entorno debe tener al menos 3 caracteres';
+  end if;
+
+  insert into public.environments (name, is_personal, created_by, created_at)
+  values (v_name_clean, false, v_user_id, now())
+  returning * into v_new_env;
+
+  insert into public.environment_members (environment_id, user_id, role, joined_at)
+  values (v_new_env.id, v_user_id, 'owner', now());
+
+  return jsonb_build_object(
+    'id', v_new_env.id,
+    'name', v_new_env.name,
+    'is_personal', v_new_env.is_personal,
+    'created_by', v_new_env.created_by,
+    'created_at', v_new_env.created_at,
+    'role', 'owner'
+  );
+end;
+$$ language plpgsql security definer;
+
+-- RPC 2: delete_environment
+create or replace function public.delete_environment(p_environment_id uuid)
+returns jsonb as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_owner_id uuid;
+  v_member_count int;
+  v_is_personal boolean;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  select created_by, is_personal into v_owner_id, v_is_personal
+  from public.environments
+  where id = p_environment_id;
+
+  if v_owner_id is null then
+    raise exception 'Entorno no encontrado';
+  end if;
+
+  if v_owner_id != v_user_id then
+    raise exception 'Solo el propietario puede eliminar el entorno';
+  end if;
+
+  if v_is_personal then
+    raise exception 'No se puede eliminar el entorno personal principal';
+  end if;
+
+  select count(*) into v_member_count
+  from public.environment_members
+  where environment_id = p_environment_id;
+
+  if v_member_count > 1 then
+    raise exception 'No se puede eliminar el entorno porque aún tiene miembros asociados. Debes expulsar a todos los miembros primero.';
+  end if;
+
+  delete from public.environments where id = p_environment_id;
+
+  return jsonb_build_object('success', true, 'message', 'Entorno eliminado exitosamente');
+end;
+$$ language plpgsql security definer;
+
+-- RPC 3: accept_environment_invitation
+create or replace function public.accept_environment_invitation(p_invitation_id uuid)
+returns jsonb as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_inv record;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  select * into v_inv
+  from public.environment_invitations
+  where id = p_invitation_id;
+
+  if v_inv is null then
+    raise exception 'Invitación no encontrada';
+  end if;
+
+  if v_inv.receiver_id != v_user_id then
+    raise exception 'No tienes permiso para aceptar esta invitación';
+  end if;
+
+  if v_inv.status != 'pending' then
+    raise exception 'Esta invitación ya fue procesada';
+  end if;
+
+  update public.environment_invitations
+  set status = 'accepted'
+  where id = p_invitation_id;
+
+  insert into public.environment_members (environment_id, user_id, role, joined_at)
+  values (v_inv.environment_id, v_user_id, 'member', now())
+  on conflict (environment_id, user_id) do update set role = 'member';
+
+  return jsonb_build_object('success', true, 'environment_id', v_inv.environment_id);
+end;
+$$ language plpgsql security definer;
+
+-- RPC 4: get_environment_members
+create or replace function public.get_environment_members(p_environment_id uuid)
+returns jsonb as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_is_member boolean;
+  v_result jsonb;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  select exists (
+    select 1 from public.environment_members
+    where environment_id = p_environment_id and user_id = v_user_id
+  ) into v_is_member;
+
+  if not v_is_member then
+    raise exception 'No tienes acceso a los miembros de este entorno';
+  end if;
+
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'environment_id', em.environment_id,
+        'user_id', em.user_id,
+        'role', em.role,
+        'joined_at', em.joined_at,
+        'username', coalesce(p.username, 'Usuario'),
+        'avatar_type', coalesce(p.avatar_type, 'initials'),
+        'avatar_url', p.avatar_url,
+        'avatar_icon', p.avatar_icon,
+        'avatar_bg_color', p.avatar_bg_color
+      ) order by (em.role = 'owner') desc, em.joined_at asc
+    ),
+    '[]'::jsonb
+  ) into v_result
+  from public.environment_members em
+  left join public.profiles p on p.id = em.user_id
+  where em.environment_id = p_environment_id;
+
+  return v_result;
+end;
+$$ language plpgsql security definer;
+
+-- RPC 5: migrate_environment_content
+create or replace function public.migrate_environment_content(
+  source_environment_id uuid,
+  target_environment_id uuid
+)
+returns jsonb as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_is_source_member boolean;
+  v_is_target_member boolean;
+  v_tables text[] := array['lists', 'items', 'recipes', 'notes'];
+  t text;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  select exists (
+    select 1 from public.environment_members 
+    where environment_id = source_environment_id and user_id = v_user_id
+  ) into v_is_source_member;
+
+  select exists (
+    select 1 from public.environment_members 
+    where environment_id = target_environment_id and user_id = v_user_id
+  ) into v_is_target_member;
+
+  if not v_is_source_member then
+    raise exception 'No perteneces al entorno de origen';
+  end if;
+  if not v_is_target_member then
+    raise exception 'No perteneces al entorno de destino';
+  end if;
+
+  foreach t in array v_tables loop
+    if exists (
+      select 1 from information_schema.columns 
+      where table_schema = 'public' and table_name = t and column_name = 'environment_id'
+    ) then
+      if exists (
+        select 1 from information_schema.columns 
+        where table_schema = 'public' and table_name = t and column_name = 'created_by'
+      ) then
+        execute format(
+          'update public.%I set environment_id = $1 where environment_id = $2 and created_by = $3',
+          t
+        ) using target_environment_id, source_environment_id, v_user_id;
+      elsif exists (
+        select 1 from information_schema.columns 
+        where table_schema = 'public' and table_name = t and column_name = 'user_id'
+      ) then
+        execute format(
+          'update public.%I set environment_id = $1 where environment_id = $2 and user_id = $3',
+          t
+        ) using target_environment_id, source_environment_id, v_user_id;
+      end if;
+    end if;
+  end loop;
+
+  return jsonb_build_object(
+    'success', true, 
+    'message', 'Contenido propio migrado exitosamente hacia el entorno destino'
+  );
+end;
+$$ language plpgsql security definer;
+
+-- Realtime: Exclusivamente para environment_invitations
+alter table public.environment_invitations replica identity full;
+
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    begin
+      alter publication supabase_realtime add table public.environment_invitations;
+    exception
+      when duplicate_object then null;
+    end;
+  end if;
+end;
+$$;
+
 
