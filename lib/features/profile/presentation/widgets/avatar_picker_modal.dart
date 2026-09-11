@@ -5,6 +5,7 @@ import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../../core/widgets/liquid_button.dart';
 import '../../../../core/widgets/neumorphic_container.dart';
+import '../../domain/models/avatar_catalog.dart';
 import '../../domain/models/avatar_data.dart';
 import '../controllers/profile_controller.dart';
 import 'user_avatar.dart';

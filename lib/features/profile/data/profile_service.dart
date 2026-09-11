@@ -111,25 +111,21 @@ class ProfileService implements IProfileRepository {
     required String fileExtension,
   }) async {
     try {
-      final cleanExt = fileExtension.replaceAll('.', '').toLowerCase();
-      final path = '$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$cleanExt';
+      final path = '$userId/avatar.png';
 
-      final mimeType = cleanExt == 'png'
-          ? 'image/png'
-          : (cleanExt == 'webp' ? 'image/webp' : 'image/jpeg');
-
-      // 1. Subir a Supabase Storage con sobrescritura limpia
+      // 1. Subir a Supabase Storage con ruta fija y sobrescritura atómica (upsert: true)
       await _client.storage.from('avatars').uploadBinary(
             path,
             bytes,
-            fileOptions: FileOptions(
-              contentType: mimeType,
+            fileOptions: const FileOptions(
+              contentType: 'image/png',
               upsert: true,
             ),
           );
 
-      // 2. Resolver URL pública CDN
-      final publicUrl = _client.storage.from('avatars').getPublicUrl(path);
+      // 2. Resolver URL pública CDN con timestamp de versión
+      final basePublicUrl = _client.storage.from('avatars').getPublicUrl(path);
+      final publicUrl = '$basePublicUrl?v=${DateTime.now().millisecondsSinceEpoch}';
 
       // 3. Mutación atómica en profiles nulificando estado de icono
       await _client.from('profiles').update({
