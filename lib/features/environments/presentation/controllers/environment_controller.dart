@@ -195,6 +195,14 @@ class EnvironmentController extends ChangeNotifier {
   }) async {
     if (_currentUserId == null) return false;
 
+    // Validación de negocio: No se admiten invitaciones a espacios personales
+    final targetEnv = _environments.where((e) => e.id == environmentId).firstOrNull;
+    if (targetEnv != null && targetEnv.isPersonal) {
+      _errorMessage = 'El espacio personal es privado y no permite miembros';
+      notifyListeners();
+      return false;
+    }
+
     _isActionLoading = true;
     _errorMessage = null;
     _successMessage = null;
@@ -219,6 +227,11 @@ class EnvironmentController extends ChangeNotifier {
       _isActionLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Obtiene los IDs de usuarios con invitación pendiente para este entorno
+  Future<List<String>> getPendingInvitedUserIds(String environmentId) async {
+    return _environmentRepository.getPendingInvitedUserIds(environmentId);
   }
 
   /// Acepta o rechaza una invitación entrante a un entorno

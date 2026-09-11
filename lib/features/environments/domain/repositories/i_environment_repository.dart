@@ -8,6 +8,12 @@ abstract class IEnvironmentRepository {
   /// Obtiene todos los entornos a los que pertenece el usuario
   Future<List<EnvironmentModel>> getEnvironments(String userId);
 
+  /// Auto-healing atómico de 'Mi Espacio' (Personal) delegado 100% en RPC
+  Future<EnvironmentModel?> ensurePersonalEnvironment();
+
+  /// Obtiene los IDs de usuarios con invitación pendiente para un entorno específico
+  Future<List<String>> getPendingInvitedUserIds(String environmentId);
+
   /// Crea un nuevo entorno de forma atómica mediante RPC
   Future<EnvironmentModel?> createEnvironment({required String name});
 

@@ -138,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           EnvironmentSelectorChip(
             environmentController: _environmentController,
+            friendsController: _friendsController,
             onEnvironmentChanged: () {
               if (mounted) setState(() {});
             },

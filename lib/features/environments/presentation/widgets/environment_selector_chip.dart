@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/liquid_button.dart';
+import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../controllers/environment_controller.dart';
 import 'create_environment_modal.dart';
+import 'manage_environment_modal.dart';
 
 /// Chip selector interactivo para la TopBar / AppBar
 /// Permite conmutar fluidamente entre entornos y el modo global "Todos"
 class EnvironmentSelectorChip extends StatelessWidget {
   final EnvironmentController environmentController;
+  final FriendsController? friendsController;
   final VoidCallback? onEnvironmentChanged;
 
   const EnvironmentSelectorChip({
     super.key,
     required this.environmentController,
+    this.friendsController,
     this.onEnvironmentChanged,
   });
 
@@ -111,6 +115,7 @@ class EnvironmentSelectorChip extends StatelessWidget {
       isScrollControlled: true,
       builder: (_) => _EnvironmentPickerSheet(
         controller: environmentController,
+        friendsController: friendsController,
         onSelected: () {
           Navigator.pop(context);
           onEnvironmentChanged?.call();
@@ -122,10 +127,12 @@ class EnvironmentSelectorChip extends StatelessWidget {
 
 class _EnvironmentPickerSheet extends StatelessWidget {
   final EnvironmentController controller;
+  final FriendsController? friendsController;
   final VoidCallback onSelected;
 
   const _EnvironmentPickerSheet({
     required this.controller,
+    this.friendsController,
     required this.onSelected,
   });
 
@@ -241,6 +248,15 @@ class _EnvironmentPickerSheet extends StatelessWidget {
                         controller.selectEnvironment(env);
                         onSelected();
                       },
+                      onManage: () {
+                        Navigator.pop(context);
+                        ManageEnvironmentModal.show(
+                          context,
+                          environment: env,
+                          environmentController: controller,
+                          friendsController: friendsController,
+                        );
+                      },
                     );
                   },
                 ),
@@ -275,6 +291,7 @@ class _EnvironmentPickerSheet extends StatelessWidget {
     required bool isSelected,
     String? badgeText,
     required VoidCallback onTap,
+    VoidCallback? onManage,
   }) {
     return Material(
       color: Colors.transparent,
@@ -290,8 +307,8 @@ class _EnvironmentPickerSheet extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected
-                  ? iconColor.withValues(alpha: 0.8)
-                  : LiquidTheme.glassBorderColor.withValues(alpha: 0.4),
+                ? iconColor.withValues(alpha: 0.8)
+                : LiquidTheme.glassBorderColor.withValues(alpha: 0.4),
               width: isSelected ? 1.5 : 1.0,
             ),
           ),
@@ -365,6 +382,18 @@ class _EnvironmentPickerSheet extends StatelessWidget {
                   color: iconColor,
                   size: 20,
                 ),
+              if (onManage != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: Icon(
+                    Icons.tune_rounded,
+                    color: LiquidTheme.textSecondary.withValues(alpha: 0.8),
+                    size: 19,
+                  ),
+                  tooltip: 'Gestionar entorno',
+                  onPressed: onManage,
+                ),
+              ],
             ],
           ),
         ),

@@ -25,6 +25,30 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
   }
 
   @override
+  Future<EnvironmentModel?> ensurePersonalEnvironment() async {
+    final existing = environments.where((e) => e.isPersonal).firstOrNull;
+    if (existing != null) return existing;
+    final personal = EnvironmentModel(
+      id: 'env_personal',
+      name: 'Mi Espacio',
+      isPersonal: true,
+      createdBy: 'u1',
+      createdAt: DateTime.now(),
+      role: 'owner',
+    );
+    environments.insert(0, personal);
+    return personal;
+  }
+
+  @override
+  Future<List<String>> getPendingInvitedUserIds(String environmentId) async {
+    return invitations
+        .where((i) => i.environmentId == environmentId && i.status == 'pending')
+        .map((i) => i.receiverId)
+        .toList();
+  }
+
+  @override
   Future<EnvironmentModel?> createEnvironment({required String name}) async {
     createCalled = true;
     lastCreatedName = name;
@@ -274,6 +298,51 @@ void main() {
       expect(mockRepo.migrateCalled, isTrue);
       expect(mockRepo.lastSourceMigrate, equals('env_collab'));
       expect(mockRepo.lastTargetMigrate, equals('env_personal'));
+    });
+
+    test('inviteFriend strictly rejects inviting anyone to a personal environment',
+        () async {
+      await controller.initialize('u1');
+
+      final ok = await controller.inviteFriend(
+        environmentId: 'env_personal',
+        friendId: 'f99',
+      );
+
+      expect(ok, isFalse);
+      expect(controller.errorMessage, contains('espacio personal es privado'));
+    });
+
+    test('inviteFriend sends invitation successfully to collaborative environment',
+        () async {
+      await controller.initialize('u1');
+
+      final ok = await controller.inviteFriend(
+        environmentId: 'env_collab',
+        friendId: 'f99',
+      );
+
+      expect(ok, isTrue);
+      expect(controller.successMessage, contains('enviada con éxito'));
+    });
+
+    test('getPendingInvitedUserIds retrieves pending user ids for environment',
+        () async {
+      mockRepo.invitations.add(
+        EnvironmentInvitationModel(
+          id: 'inv_test_pending',
+          environmentId: 'env_collab',
+          environmentName: 'Entorno Colaborativo',
+          senderId: 'u1',
+          senderUsername: 'Usuario',
+          receiverId: 'friend_123',
+          status: 'pending',
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      final ids = await controller.getPendingInvitedUserIds('env_collab');
+      expect(ids, contains('friend_123'));
     });
   });
 }

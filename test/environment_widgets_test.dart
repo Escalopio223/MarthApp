@@ -6,8 +6,14 @@ import 'package:marth_app/features/environments/presentation/controllers/environ
 import 'package:marth_app/features/environments/presentation/widgets/create_environment_modal.dart';
 import 'package:marth_app/features/environments/presentation/widgets/environment_invitation_tile.dart';
 import 'package:marth_app/features/environments/presentation/widgets/environment_selector_chip.dart';
+import 'package:marth_app/features/environments/presentation/widgets/invite_friend_modal.dart';
+import 'package:marth_app/features/environments/presentation/widgets/manage_environment_modal.dart';
 import 'package:marth_app/features/environments/presentation/widgets/migrate_content_dialog.dart';
+import 'package:marth_app/features/friends/domain/models/friend_request_model.dart';
+import 'package:marth_app/features/friends/domain/models/profile_model.dart';
+import 'package:marth_app/features/friends/presentation/controllers/friends_controller.dart';
 import 'environment_controller_test.dart';
+import 'friends_controller_test.dart';
 
 void main() {
   group('Environment Widgets Tests', () {
@@ -210,6 +216,152 @@ void main() {
 
       expect(migrateCalled, isTrue);
       expect(proceedCalled, isFalse);
+    });
+
+    testWidgets(
+        'ManageEnvironmentModal shows protected info on personal environment and hides invite/delete',
+        (WidgetTester tester) async {
+      await controller.initialize('u1');
+
+      final personalEnv = controller.personalEnvironment!;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ManageEnvironmentModal(
+              environment: personalEnv,
+              environmentController: controller,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Espacio Personal Protegido'), findsOneWidget);
+      expect(find.text('Acceso exclusivo para tu usuario'), findsOneWidget);
+      expect(find.text('Invitar Amigo'), findsNothing);
+      expect(find.text('Eliminar Entorno'), findsNothing);
+      expect(find.text('Abandonar Entorno'), findsNothing);
+    });
+
+    testWidgets(
+        'ManageEnvironmentModal shows members and invite/delete on collaborative environment',
+        (WidgetTester tester) async {
+      await controller.initialize('u1');
+
+      final sharedEnv = controller.environments.firstWhere((e) => !e.isPersonal);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ManageEnvironmentModal(
+              environment: sharedEnv,
+              environmentController: controller,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Espacio Personal Protegido'), findsNothing);
+      expect(find.textContaining('Miembros'), findsOneWidget);
+      expect(find.text('Eliminar Entorno'), findsOneWidget);
+    });
+
+    testWidgets(
+        'InviteFriendModal models 3 states (alreadyMember, pending, notInvited) and handles invite action',
+        (WidgetTester tester) async {
+      await controller.initialize('u1');
+
+      final friendsService = ControllerTestFriendsService();
+      friendsService.profiles['f_member'] = ProfileModel(
+        id: 'f_member',
+        username: 'ana_miembro',
+        updatedAt: DateTime.now(),
+      );
+      friendsService.profiles['f_pending'] = ProfileModel(
+        id: 'f_pending',
+        username: 'borja_pendiente',
+        updatedAt: DateTime.now(),
+      );
+      friendsService.profiles['f_new'] = ProfileModel(
+        id: 'f_new',
+        username: 'carmen_nueva',
+        updatedAt: DateTime.now(),
+      );
+
+      // Amistades confirmadas
+      friendsService.requests.addAll([
+        FriendRequestModel(
+          id: 'req_1',
+          senderId: 'u1',
+          receiverId: 'f_member',
+          status: 'accepted',
+          createdAt: DateTime.now(),
+        ),
+        FriendRequestModel(
+          id: 'req_2',
+          senderId: 'u1',
+          receiverId: 'f_pending',
+          status: 'accepted',
+          createdAt: DateTime.now(),
+        ),
+        FriendRequestModel(
+          id: 'req_3',
+          senderId: 'u1',
+          receiverId: 'f_new',
+          status: 'accepted',
+          createdAt: DateTime.now(),
+        ),
+      ]);
+
+      final friendsController = FriendsController(friendsService: friendsService);
+      await friendsController.initialize('u1');
+
+      final sharedEnv = controller.environments.firstWhere((e) => !e.isPersonal);
+
+      // f_pending ya tiene invitación en mockRepo
+      mockRepo.invitations.add(
+        EnvironmentInvitationModel(
+          id: 'inv_pending_test',
+          environmentId: sharedEnv.id,
+          environmentName: sharedEnv.name,
+          senderId: 'u1',
+          senderUsername: 'Usuario',
+          receiverId: 'f_pending',
+          status: 'pending',
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InviteFriendModal(
+              environment: sharedEnv,
+              environmentController: controller,
+              friendsController: friendsController,
+              memberUserIds: const ['f_member'], // f_member ya es miembro
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verificar los 3 estados
+      expect(find.text('Miembro'), findsOneWidget); // Estado 1: f_member
+      expect(find.text('Pendiente'), findsOneWidget); // Estado 2: f_pending
+      expect(find.text('Invitar'), findsOneWidget); // Estado 3: f_new
+
+      // Pulsar "Invitar" en carmen_nueva
+      await tester.tap(find.text('Invitar'));
+      await tester.pumpAndSettle();
+
+      // Ahora deben haber 2 en Pendiente y 0 en Invitar
+      expect(find.text('Pendiente'), findsNWidgets(2));
+      expect(find.text('Invitar'), findsNothing);
+
+      friendsController.dispose();
     });
   });
 }

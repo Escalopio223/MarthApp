@@ -39,7 +39,7 @@ class EnvironmentService implements IEnvironmentRepository {
           .order('created_at', ascending: true);
 
       final List<dynamic> list = res as List<dynamic>;
-      return list.map((item) {
+      final envs = list.map((item) {
         final map = Map<String, dynamic>.from(item as Map);
         final members = map['environment_members'];
         String role = 'member';
@@ -50,8 +50,55 @@ class EnvironmentService implements IEnvironmentRepository {
         }
         return EnvironmentModel.fromJson(map, userRole: role);
       }).toList();
+
+      // Auto-healing: si el usuario no tiene "Mi Espacio" personal, delegar 100% en RPC atómica
+      if (!envs.any((e) => e.isPersonal)) {
+        final personalEnv = await ensurePersonalEnvironment();
+        if (personalEnv != null) {
+          envs.insert(0, personalEnv);
+        }
+      }
+
+      return envs;
     } catch (e) {
       debugPrint('[EnvironmentService] Error al obtener entornos ($userId): $e');
+      // Intento de auto-healing si falló la consulta o la tabla no tenía al usuario
+      try {
+        final personalEnv = await ensurePersonalEnvironment();
+        if (personalEnv != null) return [personalEnv];
+      } catch (_) {}
+      return [];
+    }
+  }
+
+  @override
+  Future<EnvironmentModel?> ensurePersonalEnvironment() async {
+    try {
+      final res = await _client.rpc('ensure_personal_environment');
+      if (res != null) {
+        final map = Map<String, dynamic>.from(res as Map);
+        return EnvironmentModel.fromJson(map, userRole: 'owner');
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[EnvironmentService] Error al auto-recuperar entorno personal: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<List<String>> getPendingInvitedUserIds(String environmentId) async {
+    try {
+      final res = await _client
+          .from('environment_invitations')
+          .select('receiver_id')
+          .eq('environment_id', environmentId)
+          .eq('status', 'pending');
+
+      final list = res as List<dynamic>;
+      return list.map((item) => (item as Map)['receiver_id'] as String).toList();
+    } catch (e) {
+      debugPrint('[EnvironmentService] Error al obtener invitaciones pendientes de $environmentId: $e');
       return [];
     }
   }

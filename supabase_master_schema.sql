@@ -472,6 +472,11 @@ create unique index if not exists idx_unique_pending_invitation
   on public.environment_invitations (environment_id, receiver_id) 
   where status = 'pending';
 
+-- Índice único condicional: garantiza como máximo 1 entorno personal por usuario (anti-race condition)
+create unique index if not exists idx_unique_personal_environment
+  on public.environments (created_by)
+  where is_personal = true;
+
 create index if not exists idx_environments_created_by on public.environments (created_by);
 create index if not exists idx_environments_is_personal on public.environments (is_personal);
 create index if not exists idx_env_members_user on public.environment_members (user_id);
@@ -559,6 +564,11 @@ create policy "Enviar invitaciones a entornos donde se participe"
   to authenticated
   with check (
     auth.uid() = sender_id and
+    exists (
+      select 1 from public.environments
+      where id = environment_invitations.environment_id
+        and is_personal = false
+    ) and
     exists (
       select 1 from public.environment_members
       where environment_id = environment_invitations.environment_id
@@ -803,6 +813,55 @@ begin
   return jsonb_build_object(
     'success', true, 
     'message', 'Contenido propio migrado exitosamente hacia el entorno destino'
+  );
+end;
+$$ language plpgsql security definer;
+
+-- RPC 6: Auto-Healing Atómico e Idempotente de Entorno Personal "Mi Espacio"
+create or replace function public.ensure_personal_environment()
+returns jsonb as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_env public.environments%rowtype;
+begin
+  if v_user_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  -- 1. Buscar si ya existe
+  select * into v_env
+  from public.environments
+  where created_by = v_user_id and is_personal = true
+  limit 1;
+
+  -- 2. Si no existe, insertar de forma atómica con ON CONFLICT DO NOTHING
+  if v_env.id is null then
+    insert into public.environments (name, is_personal, created_by, created_at)
+    values ('Mi Espacio', true, v_user_id, now())
+    on conflict do nothing
+    returning * into v_env;
+
+    -- Si hubo conflicto concurrente, recuperar el registro existente
+    if v_env.id is null then
+      select * into v_env
+      from public.environments
+      where created_by = v_user_id and is_personal = true
+      limit 1;
+    end if;
+  end if;
+
+  -- 3. Garantizar membresía owner de forma idempotente
+  insert into public.environment_members (environment_id, user_id, role, joined_at)
+  values (v_env.id, v_user_id, 'owner', now())
+  on conflict (environment_id, user_id) do nothing;
+
+  return jsonb_build_object(
+    'id', v_env.id,
+    'name', v_env.name,
+    'is_personal', v_env.is_personal,
+    'created_by', v_env.created_by,
+    'created_at', v_env.created_at,
+    'role', 'owner'
   );
 end;
 $$ language plpgsql security definer;

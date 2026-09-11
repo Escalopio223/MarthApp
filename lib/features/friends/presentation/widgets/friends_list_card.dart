@@ -9,11 +9,13 @@ import '../../domain/models/profile_model.dart';
 class FriendsListCard extends StatelessWidget {
   final List<ProfileModel> friends;
   final ValueChanged<ProfileModel> onRemoveFriend;
+  final ValueChanged<ProfileModel>? onInviteToEnvironment;
 
   const FriendsListCard({
     super.key,
     required this.friends,
     required this.onRemoveFriend,
+    this.onInviteToEnvironment,
   });
 
   void _showConfirmDeleteDialog(BuildContext context, ProfileModel friend) {
@@ -191,17 +193,27 @@ class FriendsListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.person_remove_rounded,
-                          size: 18,
-                          color:
-                              LiquidTheme.textSecondary.withValues(alpha: 0.6),
+                        if (onInviteToEnvironment != null)
+                          IconButton(
+                            icon: Icon(
+                              Icons.group_add_rounded,
+                              size: 19,
+                              color: LiquidTheme.accentEmerald,
+                            ),
+                            tooltip: 'Invitar a un entorno',
+                            onPressed: () => onInviteToEnvironment!(friend),
+                          ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.person_remove_rounded,
+                            size: 18,
+                            color:
+                                LiquidTheme.textSecondary.withValues(alpha: 0.6),
+                          ),
+                          tooltip: 'Eliminar amigo',
+                          onPressed: () =>
+                              _showConfirmDeleteDialog(context, friend),
                         ),
-                        tooltip: 'Eliminar amigo',
-                        onPressed: () =>
-                            _showConfirmDeleteDialog(context, friend),
-                      ),
                     ],
                   ),
                 );
