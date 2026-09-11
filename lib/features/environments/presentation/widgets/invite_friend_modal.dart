@@ -3,18 +3,13 @@ import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../friends/domain/models/profile_model.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
-import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/environment_model.dart';
 import '../controllers/environment_controller.dart';
+import 'friend_invite_tile.dart';
 
-/// Estado visual modelado explícitamente para cada amigo en el modal
-enum FriendInvitationStatus {
-  alreadyMember,
-  pending,
-  notInvited,
-}
+export 'friend_invite_tile.dart' show FriendInvitationStatus;
 
-/// Modal interactivo con diseño Liquid Theme para invitar amigos a un entorno colaborativo
+/// Modal orquestador con diseño Liquid Theme para invitar amigos a un entorno colaborativo
 class InviteFriendModal extends StatefulWidget {
   final EnvironmentModel environment;
   final EnvironmentController environmentController;
@@ -55,8 +50,8 @@ class InviteFriendModal extends StatefulWidget {
 
 class _InviteFriendModalState extends State<InviteFriendModal> {
   final Set<String> _pendingInvitedUserIds = {};
+  final Set<String> _loadingUserIds = {};
   bool _isLoadingPending = true;
-  String? _invitingFriendId;
   String? _localError;
   String? _localSuccess;
 
@@ -70,24 +65,22 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
     try {
       final ids = await widget.environmentController
           .getPendingInvitedUserIds(widget.environment.id);
-      if (mounted) {
-        setState(() {
-          _pendingInvitedUserIds.addAll(ids);
-          _isLoadingPending = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _pendingInvitedUserIds.addAll(ids);
+        _isLoadingPending = false;
+      });
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isLoadingPending = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isLoadingPending = false;
+      });
     }
   }
 
   Future<void> _handleInvite(ProfileModel friend) async {
     setState(() {
-      _invitingFriendId = friend.id;
+      _loadingUserIds.add(friend.id);
       _localError = null;
       _localSuccess = null;
     });
@@ -97,18 +90,18 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
       friendId: friend.id,
     );
 
-    if (mounted) {
-      setState(() {
-        _invitingFriendId = null;
-        if (success) {
-          _pendingInvitedUserIds.add(friend.id);
-          _localSuccess = 'Invitación enviada a ${friend.username}';
-        } else {
-          _localError = widget.environmentController.errorMessage ??
-              'Error al enviar la invitación';
-        }
-      });
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _loadingUserIds.remove(friend.id);
+      if (success) {
+        _pendingInvitedUserIds.add(friend.id);
+        _localSuccess = 'Invitación enviada a ${friend.username}';
+      } else {
+        _localError = widget.environmentController.errorMessage ??
+            'Error al enviar la invitación';
+      }
+    });
   }
 
   FriendInvitationStatus _getStatusForFriend(String friendId) {
@@ -232,7 +225,7 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
 
           const Divider(color: Color(0x1FFFFFFF), height: 16),
 
-          // Body: Friends list or empty state
+          // Body: Loading, Empty state or List of FriendInviteTile
           if (_isLoadingPending)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 36),
@@ -284,65 +277,13 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
                 itemBuilder: (context, index) {
                   final friend = friends[index];
                   final status = _getStatusForFriend(friend.id);
-                  final isInvitingThis = _invitingFriendId == friend.id;
+                  final isTileLoading = _loadingUserIds.contains(friend.id);
 
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: LiquidTheme.surfaceDark.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: LiquidTheme.glassBorderColor
-                            .withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        UserAvatar.fromProfile(
-                          profile: friend,
-                          size: 38,
-                          showBorder: true,
-                          showGlow: false,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                friend.username,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: LiquidTheme.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                status == FriendInvitationStatus.alreadyMember
-                                    ? 'Ya participa en el entorno'
-                                    : (status == FriendInvitationStatus.pending
-                                        ? 'Esperando respuesta del amigo'
-                                        : 'Disponible para invitar'),
-                                style: TextStyle(
-                                  color: LiquidTheme.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildStatusAction(
-                          status: status,
-                          isInviting: isInvitingThis,
-                          onInvite: () => _handleInvite(friend),
-                        ),
-                      ],
-                    ),
+                  return FriendInviteTile(
+                    friend: friend,
+                    status: status,
+                    isLoading: isTileLoading,
+                    onInvite: () => _handleInvite(friend),
                   );
                 },
               ),
@@ -350,123 +291,5 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
         ],
       ),
     );
-  }
-
-  Widget _buildStatusAction({
-    required FriendInvitationStatus status,
-    required bool isInviting,
-    required VoidCallback onInvite,
-  }) {
-    if (isInviting) {
-      return const SizedBox(
-        width: 28,
-        height: 28,
-        child: Padding(
-          padding: EdgeInsets.all(4.0),
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Color(0xFF00E5FF),
-          ),
-        ),
-      );
-    }
-
-    switch (status) {
-      case FriendInvitationStatus.alreadyMember:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: LiquidTheme.accentEmerald.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: LiquidTheme.accentEmerald.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle_rounded,
-                  size: 14, color: LiquidTheme.accentEmerald),
-              const SizedBox(width: 4),
-              Text(
-                'Miembro',
-                style: TextStyle(
-                  color: LiquidTheme.accentEmerald,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        );
-
-      case FriendInvitationStatus.pending:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.amber.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.amber.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.hourglass_top_rounded,
-                  size: 14, color: Colors.amber.shade300),
-              const SizedBox(width: 4),
-              Text(
-                'Pendiente',
-                style: TextStyle(
-                  color: Colors.amber.shade300,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        );
-
-      case FriendInvitationStatus.notInvited:
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onInvite,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                gradient: LiquidTheme.liquidPrimaryGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidTheme.primaryLiquid.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.send_rounded,
-                      size: 13, color: Colors.white),
-                  const SizedBox(width: 5),
-                  const Text(
-                    'Invitar',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-    }
   }
 }

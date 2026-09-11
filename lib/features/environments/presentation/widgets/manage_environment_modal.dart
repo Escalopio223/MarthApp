@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/liquid_theme.dart';
 import '../../../../core/widgets/liquid_banner.dart';
-import '../../../../core/widgets/liquid_button.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
-import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/environment_member_model.dart';
 import '../../domain/models/environment_model.dart';
 import '../controllers/environment_controller.dart';
+import 'environment_danger_zone.dart';
+import 'environment_members_list.dart';
 import 'invite_friend_modal.dart';
 import 'migrate_content_dialog.dart';
+import 'personal_environment_view.dart';
 
-/// Modal para visualizar y gestionar cualquier entorno (Personal o Colaborativo)
+/// Modal orquestador para visualizar y gestionar cualquier entorno (Personal o Colaborativo)
 class ManageEnvironmentModal extends StatefulWidget {
   final EnvironmentModel environment;
   final EnvironmentController environmentController;
@@ -66,19 +67,17 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
     try {
       final members =
           await widget.environmentController.getMembers(widget.environment.id);
-      if (mounted) {
-        setState(() {
-          _members = members;
-          _isLoadingMembers = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _members = members;
+        _isLoadingMembers = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Error al cargar miembros: $e';
-          _isLoadingMembers = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Error al cargar miembros: $e';
+        _isLoadingMembers = false;
+      });
     }
   }
 
@@ -93,9 +92,8 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
       memberUserIds: _members.map((m) => m.userId).toList(),
     );
 
-    if (mounted) {
-      _loadMembers();
-    }
+    if (!mounted) return;
+    _loadMembers();
   }
 
   Future<void> _handleRemoveMember(EnvironmentMemberModel member) async {
@@ -140,17 +138,24 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
       ),
     );
 
-    if (confirm == true) {
-      final ok = await widget.environmentController.removeMember(
-        environmentId: widget.environment.id,
-        userId: member.userId,
-      );
-      if (ok && mounted) {
-        setState(() {
-          _members.removeWhere((m) => m.userId == member.userId);
-          _successMessage = 'Miembro "${member.username}" expulsado';
-        });
-      }
+    if (confirm != true || !mounted) return;
+
+    final ok = await widget.environmentController.removeMember(
+      environmentId: widget.environment.id,
+      userId: member.userId,
+    );
+
+    if (!mounted) return;
+    if (ok) {
+      setState(() {
+        _members.removeWhere((m) => m.userId == member.userId);
+        _successMessage = 'Miembro "${member.username}" expulsado';
+      });
+    } else {
+      setState(() {
+        _errorMessage = widget.environmentController.errorMessage ??
+            'No se pudo expulsar al miembro';
+      });
     }
   }
 
@@ -172,7 +177,8 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
       actionTitle: 'Eliminar Definitivamente',
       onMigrateAndProceed: () async {
         if (personalEnv != null && personalEnv.id != sourceId) {
-          final okMigrate = await widget.environmentController.migrateAllContent(
+          final okMigrate =
+              await widget.environmentController.migrateAllContent(
             sourceEnvironmentId: sourceId,
             targetEnvironmentId: personalEnv.id,
           );
@@ -185,7 +191,8 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
       },
     );
 
-    if (result == true && mounted) {
+    if (!mounted) return;
+    if (result == true) {
       Navigator.pop(context);
     }
   }
@@ -200,7 +207,8 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
       actionTitle: 'Abandonar Entorno',
       onMigrateAndProceed: () async {
         if (personalEnv != null && personalEnv.id != sourceId) {
-          final okMigrate = await widget.environmentController.migrateAllContent(
+          final okMigrate =
+              await widget.environmentController.migrateAllContent(
             sourceEnvironmentId: sourceId,
             targetEnvironmentId: personalEnv.id,
           );
@@ -213,7 +221,8 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
       },
     );
 
-    if (result == true && mounted) {
+    if (!mounted) return;
+    if (result == true) {
       Navigator.pop(context);
     }
   }
@@ -365,272 +374,35 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
 
           const Divider(color: Color(0x1FFFFFFF), height: 16),
 
-          // Body Content: Personal vs Collaborative
+          // Contenido modular: Personal vs Colaborativo
           if (isPersonal) ...[
-            _buildPersonalEnvironmentView(),
+            const PersonalEnvironmentView(),
           ] else ...[
-            _buildCollaborativeEnvironmentView(),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPersonalEnvironmentView() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: LiquidTheme.primaryCyan.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidTheme.primaryCyan.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: LiquidTheme.primaryCyan.withValues(alpha: 0.15),
-            ),
-            child: Icon(
-              Icons.lock_rounded,
-              color: LiquidTheme.primaryCyan,
-              size: 28,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Espacio Personal Protegido',
-            style: TextStyle(
-              color: LiquidTheme.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Este es tu entorno base personal creado por defecto. Es 100% privado e intransferible: no se pueden agregar miembros ni puede ser eliminado.\n\nTodo el contenido creado aquí solo es visible por ti.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: LiquidTheme.textSecondary,
-              fontSize: 13,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: LiquidTheme.surfaceDark,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: LiquidTheme.glassBorderColor.withValues(alpha: 0.5),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.shield_rounded,
-                    size: 16, color: LiquidTheme.primaryCyan),
-                const SizedBox(width: 8),
-                Text(
-                  'Acceso exclusivo para tu usuario',
-                  style: TextStyle(
-                    color: LiquidTheme.textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCollaborativeEnvironmentView() {
-    final isOwner = widget.environment.isOwner;
-
-    return Flexible(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Section header: Miembros del entorno + Botón Invitar
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Miembros (${_members.length})',
-                style: TextStyle(
-                  color: LiquidTheme.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (widget.friendsController != null)
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: _openInviteFriends,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: LiquidTheme.liquidPrimaryGradient,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.person_add_rounded,
-                              size: 14, color: Colors.white),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Invitar Amigo',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Lista de miembros
-          if (_isLoadingMembers)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 30),
-              child: Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Color(0xFF00E5FF),
-                ),
-              ),
-            )
-          else if (_members.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text(
-                  'No se encontraron miembros',
-                  style: TextStyle(color: LiquidTheme.textSecondary),
-                ),
-              ),
-            )
-          else
             Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: _members.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final member = _members[index];
-                  final isMemberOwner = member.role == 'owner';
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: LiquidTheme.surfaceDark.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: LiquidTheme.glassBorderColor
-                            .withValues(alpha: 0.3),
-                      ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(
+                    child: EnvironmentMembersList(
+                      members: _members,
+                      isLoading: _isLoadingMembers,
+                      isOwner: isOwner,
+                      canInviteFriends: widget.friendsController != null,
+                      onInviteFriends: _openInviteFriends,
+                      onRemoveMember: _handleRemoveMember,
                     ),
-                    child: Row(
-                      children: [
-                        UserAvatar(
-                          avatarData: member.avatarData,
-                          username: member.username,
-                          size: 38,
-                          showBorder: true,
-                          showGlow: false,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                member.username,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: LiquidTheme.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                isMemberOwner ? 'Propietario' : 'Miembro',
-                                style: TextStyle(
-                                  color: isMemberOwner
-                                      ? LiquidTheme.secondaryLilac
-                                      : LiquidTheme.accentEmerald,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (isOwner && !isMemberOwner)
-                          IconButton(
-                            icon: Icon(
-                              Icons.person_remove_rounded,
-                              size: 18,
-                              color: LiquidTheme.accentCoral
-                                  .withValues(alpha: 0.8),
-                            ),
-                            tooltip: 'Expulsar del entorno',
-                            onPressed: () => _handleRemoveMember(member),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-
-          const SizedBox(height: 16),
-
-          // Zona de peligro: Eliminar o Abandonar
-          if (isOwner) ...[
-            LiquidButton(
-              text: 'Eliminar Entorno',
-              icon: Icons.delete_outline_rounded,
-              gradient: LinearGradient(
-                colors: [
-                  LiquidTheme.accentCoral,
-                  Colors.red.shade900,
+                  ),
+                  const SizedBox(height: 16),
+                  EnvironmentDangerZone(
+                    isOwner: isOwner,
+                    isActionLoading:
+                        widget.environmentController.isActionLoading,
+                    onDeleteEnvironment: _handleDeleteEnvironment,
+                    onLeaveEnvironment: _handleLeaveEnvironment,
+                  ),
                 ],
               ),
-              onPressed: _handleDeleteEnvironment,
-            ),
-          ] else ...[
-            LiquidButton(
-              text: 'Abandonar Entorno',
-              icon: Icons.exit_to_app_rounded,
-              gradient: LinearGradient(
-                colors: [
-                  LiquidTheme.accentCoral,
-                  Colors.red.shade900,
-                ],
-              ),
-              onPressed: _handleLeaveEnvironment,
             ),
           ],
         ],
