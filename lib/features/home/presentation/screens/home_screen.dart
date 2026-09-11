@@ -7,6 +7,9 @@ import '../../../../core/widgets/neumorphic_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
+import '../../../profile/domain/models/avatar_data.dart';
+import '../../../profile/presentation/controllers/profile_controller.dart';
+import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../widgets/backend_status_card.dart';
 import '../widgets/home_greeting_card.dart';
@@ -16,11 +19,13 @@ import '../widgets/home_quick_action_card.dart';
 class HomeScreen extends StatefulWidget {
   final AuthController authController;
   final FriendsController? friendsController;
+  final ProfileController? profileController;
 
   const HomeScreen({
     super.key,
     required this.authController,
     this.friendsController,
+    this.profileController,
   });
 
   @override
@@ -29,43 +34,58 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final FriendsController _friendsController;
+  late final ProfileController _profileController;
 
   @override
   void initState() {
     super.initState();
     _friendsController = widget.friendsController ?? FriendsController();
-    _friendsController.addListener(_onFriendsControllerUpdate);
+    _friendsController.addListener(_onControllerUpdate);
+
+    _profileController = widget.profileController ?? ProfileController();
+    _profileController.addListener(_onControllerUpdate);
 
     final user = widget.authController.user;
     if (user != null) {
-      _friendsController.initialize(user.id, defaultEmail: user.email);
+      if (widget.friendsController == null) {
+        _friendsController.initialize(user.id, defaultEmail: user.email);
+      }
+      if (widget.profileController == null) {
+        _profileController.initialize(user.id, defaultEmail: user.email);
+      }
     }
   }
 
-  void _onFriendsControllerUpdate() {
+  void _onControllerUpdate() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _friendsController.removeListener(_onFriendsControllerUpdate);
+    _friendsController.removeListener(_onControllerUpdate);
+    _profileController.removeListener(_onControllerUpdate);
     if (widget.friendsController == null) {
       _friendsController.dispose();
+    }
+    if (widget.profileController == null) {
+      _profileController.dispose();
     }
     super.dispose();
   }
 
-  void _openSettings(BuildContext context) {
-    Navigator.push(
+  Future<void> _openSettings(BuildContext context) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => SettingsScreen(
           authController: widget.authController,
           themeController: LiquidThemeScope.of(context),
           friendsController: _friendsController,
+          profileController: _profileController,
         ),
       ),
     );
+    if (mounted) setState(() {});
   }
 
   void _openFriends(BuildContext context) {
@@ -83,8 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final user = widget.authController.user;
     final email = user?.email ?? 'Explorador';
+    final currentProfile = _profileController.currentProfile ??
+        _friendsController.currentProfile;
     final activeUsername =
-        _friendsController.currentProfile?.username ?? email.split('@').first;
+        currentProfile?.username ?? email.split('@').first;
     final pendingCount = _friendsController.pendingCount;
     final friendsCount = _friendsController.friends.length;
 
@@ -208,26 +230,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSettingsIconButton(BuildContext context) {
+    final currentProfile = _profileController.currentProfile ??
+        _friendsController.currentProfile;
+    final email = widget.authController.user?.email;
+
     return Padding(
       padding: const EdgeInsets.only(right: 16.0),
       child: NeumorphicContainer(
         borderRadius: 24,
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(2),
         baseColor: LiquidTheme.surfaceDark,
         onTap: () => _openSettings(context),
-        child: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LiquidTheme.liquidPrimaryGradient,
-          ),
-          child: const Icon(
-            Icons.person_rounded,
-            color: Color(0xFF0D1219),
-            size: 22,
-          ),
-        ),
+        child: currentProfile != null
+            ? UserAvatar.fromProfile(
+                profile: currentProfile,
+                size: 38,
+                showGlow: true,
+              )
+            : UserAvatar(
+                avatarData: const AvatarData.initials(),
+                username: email?.split('@').first ?? 'Usuario',
+                size: 38,
+                showGlow: true,
+              ),
       ),
     );
   }

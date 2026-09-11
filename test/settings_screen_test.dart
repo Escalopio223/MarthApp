@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:marth_app/features/home/presentation/screens/home_screen.dart';
+import 'package:marth_app/features/profile/presentation/widgets/user_avatar.dart';
 import 'package:marth_app/features/settings/domain/friend_code_manager.dart';
 import 'package:marth_app/features/settings/presentation/screens/settings_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -145,5 +147,23 @@ void main() {
     // Modal is dismissed
     expect(find.text('Actualizar Contraseña'), findsNothing);
   });
+
+  testWidgets('HomeScreen renders dynamic UserAvatar in top right action button',
+      (WidgetTester tester) async {
+    final authController =
+        AuthController(authService: FakeSettingsAuthService());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          authController: authController,
+        ),
+      ),
+    );
+
+    // Verify AppBar contains UserAvatar
+    expect(find.byType(UserAvatar), findsOneWidget);
+  });
 }
+
 

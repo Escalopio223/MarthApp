@@ -134,8 +134,10 @@ class AuthService implements IAuthRepository {
         redirectTo: redirectUrl,
       );
     } on AuthException catch (e) {
+      debugPrint('[AuthService] Error al enviar recuperación de contraseña: "${e.message}" (código: ${e.statusCode})');
       throw AppAuthException.fromSupabase(e);
     } catch (e) {
+      debugPrint('[AuthService] Error inesperado en recuperación: $e');
       throw AppAuthException('Error al enviar correo de recuperación: $e');
     }
   }
