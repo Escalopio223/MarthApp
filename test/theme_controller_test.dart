@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:marth_app/core/theme/app_theme.dart';
 import 'package:marth_app/core/theme/app_theme_config.dart';
-import 'package:marth_app/core/theme/liquid_theme.dart';
 import 'package:marth_app/core/theme/theme_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,146 +13,135 @@ void main() {
   });
 
   group('AppThemes Dynamic Multi-Theme Engine Tests', () {
-    test('Exactly 10 themes exist (5 dark and 5 light)', () {
-      expect(AppThemes.all.length, equals(10));
-      expect(AppThemes.darkThemes.length, equals(5));
-      expect(AppThemes.lightThemes.length, equals(5));
+    test('Exactly 6 core themes exist (3 dark and 3 light)', () {
+      expect(AppThemes.all.length, equals(6));
+      expect(AppThemes.darkThemes.length, equals(3));
+      expect(AppThemes.lightThemes.length, equals(3));
     });
 
-    test('Midnight Blue has base exact tokens', () {
-      final theme = AppThemes.midnightBlue;
-      expect(theme.bgCanvas, equals(const Color(0xFF101419)));
-      expect(theme.bgSurface, equals(const Color(0xFF1A1F26)));
-      expect(theme.shadowDark, equals(const Color(0xFF0D1014)));
-      expect(theme.shadowLight, equals(const Color(0xFF222932)));
-      expect(theme.accentPrimary, equals(const Color(0xFF7BB6FF)));
-      expect(theme.accentSecondary, equals(const Color(0xFFBD93F9)));
-      expect(theme.textPrimary, equals(const Color(0xFFE6EDF3)));
-      expect(theme.textSecondary, equals(const Color(0xFF8B9BB4)));
+    test('Midnight Slate has base exact tokens', () {
+      final theme = AppThemes.midnightSlate;
+      expect(theme.bgCanvas, equals(const Color(0xFF10141D)));
+      expect(theme.bgSurface, equals(const Color(0xFF1A202C)));
+      expect(theme.shadowDark, equals(const Color(0xFF0B0F15)));
+      expect(theme.shadowLight, equals(const Color(0xFF2D3748)));
+      expect(theme.accentPrimary, equals(const Color(0xFF38BDF8)));
+      expect(theme.accentSecondary, equals(const Color(0xFF818CF8)));
+      expect(theme.textPrimary, equals(const Color(0xFFF1F5F9)));
+      expect(theme.textSecondary, equals(const Color(0xFF94A3B8)));
       expect(theme.isDark, isTrue);
     });
 
-    test('Cyber Emerald has refined non-strident tokens', () {
-      final theme = AppThemes.cyberEmerald;
-      expect(theme.bgCanvas, equals(const Color(0xFF0C1715)));
-      expect(theme.bgSurface, equals(const Color(0xFF142421)));
-      expect(theme.shadowDark, equals(const Color(0xFF060D0B)));
-      expect(theme.shadowLight, equals(const Color(0xFF1E3530)));
-      expect(theme.accentPrimary, equals(const Color(0xFF10B981)));
-      expect(theme.accentSecondary, equals(const Color(0xFF06B6D4)));
-      expect(theme.textPrimary, equals(const Color(0xFFECFDF5)));
-      expect(theme.textSecondary, equals(const Color(0xFF80A79E)));
-    });
-
-    test('Obsidian Crimson has refined non-strident tokens', () {
-      final theme = AppThemes.obsidianCrimson;
-      expect(theme.bgCanvas, equals(const Color(0xFF130C0E)));
-      expect(theme.bgSurface, equals(const Color(0xFF1F1317)));
-      expect(theme.shadowDark, equals(const Color(0xFF0A0607)));
-      expect(theme.shadowLight, equals(const Color(0xFF2C1C21)));
-      expect(theme.accentPrimary, equals(const Color(0xFFE11D48)));
-      expect(theme.accentSecondary, equals(const Color(0xFF9F1239)));
-      expect(theme.textPrimary, equals(const Color(0xFFFDF2F4)));
-      expect(theme.textSecondary, equals(const Color(0xFFA68087)));
-    });
-
-    test('Deep Amethyst has exact specification tokens', () {
-      final theme = AppThemes.deepAmethyst;
-      expect(theme.bgCanvas, equals(const Color(0xFF100C19)));
-      expect(theme.bgSurface, equals(const Color(0xFF1B152B)));
-      expect(theme.shadowDark, equals(const Color(0xFF09060E)));
-      expect(theme.shadowLight, equals(const Color(0xFF281F3E)));
+    test('Obsidian Amethyst has refined personality tokens', () {
+      final theme = AppThemes.obsidianAmethyst;
+      expect(theme.bgCanvas, equals(const Color(0xFF130D1E)));
+      expect(theme.bgSurface, equals(const Color(0xFF1F1530)));
+      expect(theme.shadowDark, equals(const Color(0xFF0A0610)));
+      expect(theme.shadowLight, equals(const Color(0xFF2F204A)));
       expect(theme.accentPrimary, equals(const Color(0xFFA855F7)));
       expect(theme.accentSecondary, equals(const Color(0xFFEC4899)));
       expect(theme.textPrimary, equals(const Color(0xFFF3EEFA)));
-      expect(theme.textSecondary, equals(const Color(0xFF9B8EA9)));
+      expect(theme.textSecondary, equals(const Color(0xFFA798BA)));
+      expect(theme.isDark, isTrue);
     });
 
-    test('Eclipse Carbon has exact specification tokens', () {
-      final theme = AppThemes.eclipseCarbon;
+    test('Soft Clay has warm ceramic tokens', () {
+      final theme = AppThemes.softClay;
+      expect(theme.bgCanvas, equals(const Color(0xFFF5F2EE)));
+      expect(theme.bgSurface, equals(const Color(0xFFFFFFFF)));
+      expect(theme.shadowDark, equals(const Color(0xFFDED8D0)));
+      expect(theme.shadowLight, equals(const Color(0xFFFFFFFF)));
+      expect(theme.accentPrimary, equals(const Color(0xFFD95D39)));
+      expect(theme.accentSecondary, equals(const Color(0xFFF28E2B)));
+      expect(theme.textPrimary, equals(const Color(0xFF261E1A)));
+      expect(theme.textSecondary, equals(const Color(0xFF7A6B63)));
+      expect(theme.isDark, isFalse);
+    });
+
+    test('Sage Botanical has fresh botanical tokens', () {
+      final theme = AppThemes.sageBotanical;
+      expect(theme.bgCanvas, equals(const Color(0xFFF0F5F2)));
+      expect(theme.bgSurface, equals(const Color(0xFFFFFFFF)));
+      expect(theme.shadowDark, equals(const Color(0xFFCFDDD4)));
+      expect(theme.shadowLight, equals(const Color(0xFFFFFFFF)));
+      expect(theme.accentPrimary, equals(const Color(0xFF15803D)));
+      expect(theme.accentSecondary, equals(const Color(0xFF22C55E)));
+      expect(theme.textPrimary, equals(const Color(0xFF0F261B)));
+      expect(theme.textSecondary, equals(const Color(0xFF537060)));
+      expect(theme.isDark, isFalse);
+    });
+
+    test('Carbon Eclipse has monochromatic dark tokens', () {
+      final theme = AppThemes.carbonEclipse;
       expect(theme.bgCanvas, equals(const Color(0xFF121214)));
       expect(theme.bgSurface, equals(const Color(0xFF1C1D21)));
       expect(theme.shadowDark, equals(const Color(0xFF0A0A0B)));
-      expect(theme.shadowLight, equals(const Color(0xFF292A30)));
-      expect(theme.accentPrimary, equals(const Color(0xFFE2E8F0)));
+      expect(theme.shadowLight, equals(const Color(0xFF2B2C33)));
+      expect(theme.accentPrimary, equals(const Color(0xFFF8FAFC)));
       expect(theme.accentSecondary, equals(const Color(0xFF94A3B8)));
       expect(theme.textPrimary, equals(const Color(0xFFF8FAFC)));
-      expect(theme.textSecondary, equals(const Color(0xFF64748B)));
+      expect(theme.textSecondary, equals(const Color(0xFF94A3B8)));
+      expect(theme.isDark, isTrue);
     });
 
-    test('Frosted Glacier has exact specification tokens and light shadows', () {
-      final theme = AppThemes.frostedGlacier;
-      expect(theme.bgCanvas, equals(const Color(0xFFF0F5FA)));
+    test('Porcelain Chalk has monochromatic light tokens', () {
+      final theme = AppThemes.porcelainChalk;
+      expect(theme.bgCanvas, equals(const Color(0xFFF4F5F7)));
       expect(theme.bgSurface, equals(const Color(0xFFFFFFFF)));
-      expect(theme.shadowDark, equals(const Color(0xFFD2DFEE)));
+      expect(theme.shadowDark, equals(const Color(0xFFD4D7DE)));
       expect(theme.shadowLight, equals(const Color(0xFFFFFFFF)));
-      expect(theme.accentPrimary, equals(const Color(0xFF0077E6)));
-      expect(theme.accentSecondary, equals(const Color(0xFF00B4D8)));
-      expect(theme.textPrimary, equals(const Color(0xFF0F1E2E)));
-      expect(theme.textSecondary, equals(const Color(0xFF5A738E)));
+      expect(theme.accentPrimary, equals(const Color(0xFF111827)));
+      expect(theme.accentSecondary, equals(const Color(0xFF374151)));
+      expect(theme.textPrimary, equals(const Color(0xFF111827)));
+      expect(theme.textSecondary, equals(const Color(0xFF4B5563)));
       expect(theme.isDark, isFalse);
-
-      // Verify 16px blur on light neumorphism to avoid muddy look
-      final raisedShadows = theme.neumorphicRaisedShadows();
-      expect(raisedShadows[0].blurRadius, equals(16.0));
-      expect(raisedShadows[0].offset, equals(const Offset(8, 8)));
-      expect(raisedShadows[1].blurRadius, equals(16.0));
-      expect(raisedShadows[1].offset, equals(const Offset(-8, -8)));
     });
 
-    test('All themes support 135deg liquid gradients', () {
+    test('All themes support 135deg action gradients', () {
       for (final theme in AppThemes.all) {
-        final gradient = theme.liquidPrimaryGradient;
-        expect(gradient.colors.first, equals(theme.accentPrimary));
-        expect(gradient.colors.last, equals(theme.accentSecondary));
+        final gradient = theme.actionGradient;
         expect(gradient.begin, equals(const Alignment(-0.707, -0.707)));
         expect(gradient.end, equals(const Alignment(0.707, 0.707)));
-      }
-    });
-
-    test('Glass surface opacity is between 65% and 75% for all themes', () {
-      for (final theme in AppThemes.all) {
-        final alpha = theme.glassSurfaceColor.a;
-        expect(alpha, greaterThanOrEqualTo(0.65));
-        expect(alpha, lessThanOrEqualTo(0.75));
-        expect(theme.glassBlur, equals(20.0));
       }
     });
   });
 
   group('ThemeController and Persistence Tests', () {
-    test('ThemeController defaults to Midnight Blue', () {
+    test('ThemeController defaults to Midnight Slate', () {
       final controller = ThemeController();
-      expect(controller.currentThemeId, equals(ThemeId.midnightBlue));
+      expect(controller.currentThemeId, equals(ThemeId.midnightSlate));
       expect(controller.isDark, isTrue);
     });
 
-    test('setTheme updates theme, notifier, and global LiquidTheme facade', () async {
+    test('setTheme updates theme, notifier, and global AppTheme facade',
+        () async {
       final controller = ThemeController();
       bool notified = false;
       controller.addListener(() => notified = true);
 
-      await controller.setTheme(AppThemes.cyberEmerald);
+      await controller.setTheme(AppThemes.obsidianAmethyst);
 
       expect(notified, isTrue);
-      expect(controller.currentThemeId, equals(ThemeId.cyberEmerald));
-      expect(LiquidTheme.current.id, equals(ThemeId.cyberEmerald));
-      expect(LiquidTheme.primaryLiquid, equals(AppThemes.cyberEmerald.accentPrimary));
+      expect(controller.currentThemeId, equals(ThemeId.obsidianAmethyst));
+      expect(AppTheme.current.id, equals(ThemeId.obsidianAmethyst));
+      expect(AppTheme.primaryAccent,
+          equals(AppThemes.obsidianAmethyst.accentPrimary));
     });
 
     test('setThemeById switches to Light Theme correctly', () async {
       final controller = ThemeController();
-      await controller.setThemeById(ThemeId.frostedGlacier);
+      await controller.setThemeById(ThemeId.softClay);
 
-      expect(controller.currentThemeId, equals(ThemeId.frostedGlacier));
+      expect(controller.currentThemeId, equals(ThemeId.softClay));
       expect(controller.isDark, isFalse);
-      expect(LiquidTheme.current.isDark, isFalse);
-      expect(LiquidTheme.textPrimary, equals(const Color(0xFF0F1E2E)));
+      expect(AppTheme.current.isDark, isFalse);
+      expect(AppTheme.textPrimary, equals(const Color(0xFF261E1A)));
     });
 
     test('AppThemes.fromId handles valid and invalid IDs safely', () {
-      expect(AppThemes.fromId('roseQuartz').id, equals(ThemeId.roseQuartz));
-      expect(AppThemes.fromId('invalidThemeId').id, equals(ThemeId.midnightBlue));
+      expect(AppThemes.fromId('softClay').id, equals(ThemeId.softClay));
+      expect(AppThemes.fromId('invalidThemeId').id,
+          equals(ThemeId.midnightSlate));
     });
   });
 }

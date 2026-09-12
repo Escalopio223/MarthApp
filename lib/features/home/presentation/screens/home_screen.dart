@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/liquid_background.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_background.dart';
+import '../../../../core/widgets/app_container.dart';
 import '../../../../core/widgets/marth_app_logo.dart';
-import '../../../../core/widgets/neumorphic_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => SettingsScreen(
           authController: widget.authController,
-          themeController: LiquidThemeScope.of(context),
+          themeController: AppThemeScope.of(context),
           friendsController: _friendsController,
           profileController: _profileController,
         ),
@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildSettingsIconButton(context),
         ],
       ),
-      body: LiquidBackground(
+      body: AppBackground(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 110, 20, 40),
           child: Center(
@@ -169,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             HomeQuickActionCard(
                               icon: Icons.group_rounded,
-                              iconColor: LiquidTheme.primaryLiquid,
+                              iconColor: AppTheme.primaryLiquid,
                               title: 'Amigos',
                               subtitle: totalPendingCount > 0
                                   ? '$totalPendingCount solicitud(es)'
@@ -186,11 +186,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: LiquidTheme.accentCoral,
+                                    color: AppTheme.accentCoral,
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: LiquidTheme.accentCoral
+                                        color: AppTheme.accentCoral
                                             .withValues(alpha: 0.4),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
@@ -214,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: HomeQuickActionCard(
                           icon: Icons.settings_suggest_rounded,
-                          iconColor: LiquidTheme.secondaryLilac,
+                          iconColor: AppTheme.secondaryLilac,
                           title: 'Ajustes',
                           subtitle: 'Gestiona tu cuenta y perfil',
                           onTap: () => _openSettings(context),
@@ -249,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 22,
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
           ),
         ),
       ],
@@ -263,10 +263,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(right: 16.0),
-      child: NeumorphicContainer(
+      child: AppContainer(
         borderRadius: 24,
         padding: const EdgeInsets.all(2),
-        baseColor: LiquidTheme.surfaceDark,
+        baseColor: AppTheme.surfaceDark,
         onTap: () => _openSettings(context),
         child: currentProfile != null
             ? UserAvatar.fromProfile(

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../friends/domain/models/profile_model.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
@@ -124,10 +124,10 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       decoration: BoxDecoration(
-        color: LiquidTheme.surfaceDark,
+        color: AppTheme.surfaceDark,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor.withValues(alpha: 0.8),
+          color: AppTheme.glassBorderColor.withValues(alpha: 0.8),
         ),
         boxShadow: [
           BoxShadow(
@@ -147,7 +147,7 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                color: AppTheme.textSecondary.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -162,11 +162,11 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
                 height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: LiquidTheme.accentEmerald.withValues(alpha: 0.2),
+                  color: AppTheme.accentEmerald.withValues(alpha: 0.2),
                 ),
                 child: Icon(
                   Icons.person_add_rounded,
-                  color: LiquidTheme.accentEmerald,
+                  color: AppTheme.accentEmerald,
                   size: 20,
                 ),
               ),
@@ -180,7 +180,7 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: LiquidTheme.textPrimary,
+                        color: AppTheme.textPrimary,
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
@@ -189,7 +189,7 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
                     Text(
                       'Selecciona un amigo para colaborar en este espacio',
                       style: TextStyle(
-                        color: LiquidTheme.textSecondary,
+                        color: AppTheme.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -198,7 +198,7 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
               ),
               IconButton(
                 icon: Icon(Icons.close_rounded,
-                    color: LiquidTheme.textSecondary, size: 20),
+                    color: AppTheme.textSecondary, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -244,13 +244,13 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
                   Icon(
                     Icons.people_outline_rounded,
                     size: 48,
-                    color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'No tienes amigos confirmados',
                     style: TextStyle(
-                      color: LiquidTheme.textPrimary,
+                      color: AppTheme.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
@@ -260,7 +260,7 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
                     'Agrega amigos desde la sección Amigos con su código para poder invitarlos a tus entornos de trabajo.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: LiquidTheme.textSecondary,
+                      color: AppTheme.textSecondary,
                       fontSize: 12,
                       height: 1.4,
                     ),

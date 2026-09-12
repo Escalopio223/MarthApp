@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../domain/models/environment_member_model.dart';
@@ -100,28 +100,28 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: LiquidTheme.surfaceDark,
+        backgroundColor: AppTheme.surfaceDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: LiquidTheme.glassBorderColor),
+          side: BorderSide(color: AppTheme.glassBorderColor),
         ),
         title: Text(
           'Expulsar Miembro',
           style: TextStyle(
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           '¿Estás seguro de que deseas expulsar a "${member.username}" de "${widget.environment.name}"?',
-          style: TextStyle(color: LiquidTheme.textSecondary),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: LiquidTheme.textSecondary),
+              style: TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
@@ -129,7 +129,7 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
             child: Text(
               'Expulsar',
               style: TextStyle(
-                color: LiquidTheme.accentCoral,
+                color: AppTheme.accentCoral,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -238,8 +238,8 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
         : (isOwner ? Icons.groups_rounded : Icons.group_work_rounded);
 
     final iconColor = isPersonal
-        ? LiquidTheme.primaryCyan
-        : (isOwner ? LiquidTheme.secondaryLilac : LiquidTheme.accentEmerald);
+        ? AppTheme.primaryCyan
+        : (isOwner ? AppTheme.secondaryLilac : AppTheme.accentEmerald);
 
     return Container(
       constraints: BoxConstraints(
@@ -247,10 +247,10 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       decoration: BoxDecoration(
-        color: LiquidTheme.surfaceDark,
+        color: AppTheme.surfaceDark,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor.withValues(alpha: 0.8),
+          color: AppTheme.glassBorderColor.withValues(alpha: 0.8),
         ),
         boxShadow: [
           BoxShadow(
@@ -270,7 +270,7 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                color: AppTheme.textSecondary.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -302,7 +302,7 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: LiquidTheme.textPrimary,
+                              color: AppTheme.textPrimary,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -338,7 +338,7 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
                           ? 'Tu espacio privado por defecto'
                           : 'Espacio de trabajo compartido',
                       style: TextStyle(
-                        color: LiquidTheme.textSecondary,
+                        color: AppTheme.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -347,7 +347,7 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
               ),
               IconButton(
                 icon: Icon(Icons.close_rounded,
-                    color: LiquidTheme.textSecondary, size: 20),
+                    color: AppTheme.textSecondary, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ],

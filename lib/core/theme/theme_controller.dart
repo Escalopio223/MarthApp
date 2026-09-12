@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_theme_config.dart';
-import 'liquid_theme.dart';
+import 'app_theme.dart';
 
 /// Controlador reactivo del sistema de diseño para alternar temas dinámicamente
 /// y persistir la selección en el almacenamiento local.
@@ -14,10 +14,10 @@ class ThemeController extends ChangeNotifier {
   ThemeController({
     AppThemeConfig? initialTheme,
     SharedPreferences? prefs,
-  }) : _currentTheme = initialTheme ?? AppThemes.midnightBlue {
+  }) : _currentTheme = initialTheme ?? AppThemes.midnightSlate {
     _prefs = prefs;
     // Sincronizar facade estático
-    LiquidTheme.current = _currentTheme;
+    AppTheme.current = _currentTheme;
     _initStorage();
   }
 
@@ -31,7 +31,7 @@ class ThemeController extends ChangeNotifier {
       final savedId = _prefs?.getString(_storageKey);
       if (savedId != null && savedId != _currentTheme.id.name) {
         _currentTheme = AppThemes.fromId(savedId);
-        LiquidTheme.current = _currentTheme;
+        AppTheme.current = _currentTheme;
         notifyListeners();
       }
     } catch (e) {
@@ -44,7 +44,7 @@ class ThemeController extends ChangeNotifier {
     if (_currentTheme.id == newTheme.id) return;
 
     _currentTheme = newTheme;
-    LiquidTheme.current = newTheme;
+    AppTheme.current = newTheme;
     notifyListeners();
 
     try {
@@ -59,7 +59,7 @@ class ThemeController extends ChangeNotifier {
   Future<void> setThemeById(ThemeId id) async {
     final theme = AppThemes.all.firstWhere(
       (t) => t.id == id,
-      orElse: () => AppThemes.midnightBlue,
+      orElse: () => AppThemes.midnightSlate,
     );
     await setTheme(theme);
   }

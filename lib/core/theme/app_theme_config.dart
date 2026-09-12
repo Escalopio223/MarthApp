@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// Identificadores de los 10 temas disponibles en MarthApp
+/// Identificadores de los 6 temas core curados en MarthApp
 enum ThemeId {
-  // 5 Temas Oscuros
-  midnightBlue,
-  cyberEmerald,
-  obsidianCrimson,
-  deepAmethyst,
-  eclipseCarbon,
+  // 2 Temas Oscuros
+  midnightSlate,
+  obsidianAmethyst,
 
-  // 5 Temas Claros
-  frostedGlacier,
-  roseQuartz,
+  // 2 Temas Claros
+  softClay,
   sageBotanical,
-  solarAmber,
-  pureClay,
+
+  // 2 Monocromáticos de Alto Contraste
+  carbonEclipse,
+  porcelainChalk,
 }
 
-/// Definición completa de un tema dinámico dentro del sistema de diseño
+/// Definición inmutable de un tema dentro del sistema de diseño Claymórfico
 class AppThemeConfig {
   final ThemeId id;
   final String name;
@@ -31,7 +29,7 @@ class AppThemeConfig {
   final Color shadowLight;
   final Color accentPrimary;
   final Color accentSecondary;
-  final List<Color> liquidGradientColors;
+  final List<Color> actionGradientColors;
   final Color textPrimary;
   final Color textSecondary;
   final Color ctaTextColor;
@@ -47,74 +45,95 @@ class AppThemeConfig {
     required this.shadowLight,
     required this.accentPrimary,
     required this.accentSecondary,
-    required this.liquidGradientColors,
+    required this.actionGradientColors,
     required this.textPrimary,
     required this.textSecondary,
     required this.ctaTextColor,
   });
 
   // ===========================================================================
-  // 1. Cálculos Dinámicos de Glassmorfismo
+  // 1. Modelado Volumétrico Claymórfico (Superficies & Relieve 3D Ergonómico)
   // ===========================================================================
 
-  /// Superficie translúcida de cristal (65%–75% opacidad)
-  Color get glassSurfaceColor => bgSurface.withValues(alpha: isDark ? 0.70 : 0.75);
+  /// Micro-gradiente cenital sutil para generar curvatura volumétrica 3D en la arcilla.
+  /// Evita el efecto plano sin requerir filtros de desenfoque GPU.
+  LinearGradient claySurfaceGradient({Color? baseColor}) {
+    final effectiveColor = baseColor ?? bgSurface;
+    final topHighlight = isDark
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.05), effectiveColor)
+        : Color.alphaBlend(Colors.white.withValues(alpha: 0.40), effectiveColor);
+    final bottomShade = isDark
+        ? Color.alphaBlend(Colors.black.withValues(alpha: 0.08), effectiveColor)
+        : Color.alphaBlend(Colors.black.withValues(alpha: 0.04), effectiveColor);
 
-  /// Borde estructural sutil de 1px
-  Color get glassBorderColor => textSecondary.withValues(alpha: isDark ? 0.20 : 0.25);
+    return LinearGradient(
+      colors: [topHighlight, bottomShade],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+    );
+  }
 
-  /// Desenfoque por defecto de 20px
-  double get glassBlur => 20.0;
+  /// Sistema de dobles sombras contenidas para elevación táctil ("Controlled Clay").
+  /// Evita solapamientos en listas densas limitando el blur a 10px.
+  List<BoxShadow> clayRaisedShadows({
+    Color? baseColor,
+    bool isPressed = false,
+  }) {
+    if (isPressed) {
+      return [
+        BoxShadow(
+          color: shadowDark.withValues(alpha: isDark ? 0.35 : 0.15),
+          offset: const Offset(1, 2),
+          blurRadius: 4,
+        ),
+        BoxShadow(
+          color: shadowLight.withValues(alpha: isDark ? 0.15 : 0.60),
+          offset: const Offset(-1, -1),
+          blurRadius: 3,
+        ),
+      ];
+    }
 
-  // ===========================================================================
-  // 2. Cálculos Dinámicos de Neumorfismo 'Soft UI'
-  // ===========================================================================
-
-  /// Doble sombra neumórfica para elementos elevados.
-  /// En temas claros se emplean desenfoques amplios (16px) y opacidades reducidas
-  /// para evitar sombras sucias o agresivas.
-  List<BoxShadow> neumorphicRaisedShadows({Color? baseColor}) {
     if (isDark) {
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: 0.9),
-          offset: const Offset(4, 4),
+          color: shadowDark.withValues(alpha: 0.45),
+          offset: const Offset(3, 4),
           blurRadius: 10,
         ),
         BoxShadow(
-          color: shadowLight.withValues(alpha: 0.7),
-          offset: const Offset(-3, -3),
-          blurRadius: 8,
+          color: shadowLight.withValues(alpha: 0.25),
+          offset: const Offset(-2, -2),
+          blurRadius: 6,
         ),
       ];
     } else {
-      // Calibración para temas claros: 8px 8px 16px sombra suave, -8px -8px 16px luz clara
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: 0.55),
-          offset: const Offset(8, 8),
-          blurRadius: 16,
+          color: shadowDark.withValues(alpha: 0.35),
+          offset: const Offset(3, 5),
+          blurRadius: 10,
         ),
         BoxShadow(
-          color: shadowLight.withValues(alpha: 0.95),
-          offset: const Offset(-8, -8),
-          blurRadius: 16,
+          color: shadowLight.withValues(alpha: 0.90),
+          offset: const Offset(-2, -2),
+          blurRadius: 6,
         ),
       ];
     }
   }
 
-  /// Doble sombra neumórfica incrustada (Inset)
-  List<BoxShadow> neumorphicInsetShadows() {
+  /// Sombra incrustada / hendidura cóncava para campos de texto y elementos incrustados
+  List<BoxShadow> clayInsetShadows() {
     if (isDark) {
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: 0.8),
+          color: shadowDark.withValues(alpha: 0.40),
           offset: const Offset(2, 2),
           blurRadius: 4,
         ),
         BoxShadow(
-          color: shadowLight.withValues(alpha: 0.4),
+          color: shadowLight.withValues(alpha: 0.15),
           offset: const Offset(-2, -2),
           blurRadius: 4,
         ),
@@ -122,31 +141,45 @@ class AppThemeConfig {
     } else {
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: 0.45),
-          offset: const Offset(4, 4),
-          blurRadius: 8,
+          color: shadowDark.withValues(alpha: 0.22),
+          offset: const Offset(2, 2),
+          blurRadius: 4,
         ),
         BoxShadow(
-          color: shadowLight.withValues(alpha: 0.9),
-          offset: const Offset(-4, -4),
-          blurRadius: 8,
+          color: shadowLight.withValues(alpha: 0.85),
+          offset: const Offset(-2, -2),
+          blurRadius: 4,
         ),
       ];
     }
   }
 
   // ===========================================================================
-  // 3. Gradiente Interactivo Líquido (Liquid UI a 135°)
+  // 2. Gradientes de Acción y Bordes Estructurales
   // ===========================================================================
 
-  LinearGradient get liquidPrimaryGradient => LinearGradient(
-        colors: liquidGradientColors,
-        begin: const Alignment(-0.707, -0.707), // 135 grados
+  /// Gradiente dinámico de acción principal a 135°
+  LinearGradient get actionGradient => LinearGradient(
+        colors: actionGradientColors,
+        begin: const Alignment(-0.707, -0.707),
         end: const Alignment(0.707, 0.707),
       );
 
+  /// Borde estructural moderado para delimitar componentes de arcilla
+  Color get cardBorderColor =>
+      textSecondary.withValues(alpha: isDark ? 0.14 : 0.18);
+
+  // Alias retrocompatibles para migración fluida
+  LinearGradient get liquidPrimaryGradient => actionGradient;
+  Color get glassBorderColor => cardBorderColor;
+  Color get glassSurfaceColor => bgSurface;
+  double get glassBlur => 0.0;
+  List<BoxShadow> neumorphicRaisedShadows({Color? baseColor}) =>
+      clayRaisedShadows(baseColor: baseColor);
+  List<BoxShadow> neumorphicInsetShadows() => clayInsetShadows();
+
   // ===========================================================================
-  // 4. Flutter ThemeData Dinámico (Material 3)
+  // 3. ThemeData Dinámico de Flutter (Material 3)
   // ===========================================================================
 
   ThemeData get themeData {
@@ -168,7 +201,7 @@ class AppThemeConfig {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: bgSurface.withValues(alpha: isDark ? 0.65 : 0.85),
+        fillColor: bgSurface,
         hintStyle: TextStyle(
           color: textSecondary.withValues(alpha: 0.75),
           fontSize: 14,
@@ -177,14 +210,14 @@ class AppThemeConfig {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: glassBorderColor,
+            color: cardBorderColor,
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
-            color: glassBorderColor,
+            color: cardBorderColor,
             width: 1,
           ),
         ),
@@ -214,234 +247,164 @@ class AppThemeConfig {
   }
 }
 
-/// Catálogo de los 10 temas exactos especificados en el sistema de diseño
+/// Catálogo de los 6 temas core curados
 class AppThemes {
   AppThemes._();
 
   // ===========================================================================
-  // 5 Temas Oscuros
+  // 2 Temas Oscuros
   // ===========================================================================
 
-  /// 1. Midnight Blue (Tema Base / Oficial)
-  static const AppThemeConfig midnightBlue = AppThemeConfig(
-    id: ThemeId.midnightBlue,
-    name: 'Midnight Blue',
-    tag: 'Tema Oficial / Cristal Profundo',
+  /// 1. Midnight Slate (Tema Base Oficial / Oscuro Elegante)
+  static const AppThemeConfig midnightSlate = AppThemeConfig(
+    id: ThemeId.midnightSlate,
+    name: 'Midnight Slate',
+    tag: 'Oscuro Elegante / Pizarra Azul',
     isDark: true,
-    bgCanvas: Color(0xFF101419),
-    bgSurface: Color(0xFF1A1F26),
-    shadowDark: Color(0xFF0D1014),
-    shadowLight: Color(0xFF222932),
-    accentPrimary: Color(0xFF7BB6FF),
-    accentSecondary: Color(0xFFBD93F9),
-    liquidGradientColors: [Color(0xFF7BB6FF), Color(0xFFBD93F9)],
-    textPrimary: Color(0xFFE6EDF3),
-    textSecondary: Color(0xFF8B9BB4),
-    ctaTextColor: Color(0xFF0D1219),
+    bgCanvas: Color(0xFF10141D),
+    bgSurface: Color(0xFF1A202C),
+    shadowDark: Color(0xFF0B0F15),
+    shadowLight: Color(0xFF2D3748),
+    accentPrimary: Color(0xFF38BDF8), // Sky Cyan
+    accentSecondary: Color(0xFF818CF8), // Soft Indigo
+    actionGradientColors: [Color(0xFF38BDF8), Color(0xFF818CF8)],
+    textPrimary: Color(0xFFF1F5F9), // Slate 100 (Ratio > 12:1)
+    textSecondary: Color(0xFF94A3B8), // Slate 400 (Ratio > 6:1)
+    ctaTextColor: Color(0xFF0F172A),
   );
 
-  /// 2. Cyber Emerald (Esmeralda y Jade tecnológico)
-  static const AppThemeConfig cyberEmerald = AppThemeConfig(
-    id: ThemeId.cyberEmerald,
-    name: 'Cyber Emerald',
-    tag: 'Esmeralda / Jade tecnológico',
+  /// 2. Obsidian Amethyst (Oscuro con Alta Personalidad)
+  static const AppThemeConfig obsidianAmethyst = AppThemeConfig(
+    id: ThemeId.obsidianAmethyst,
+    name: 'Obsidian Amethyst',
+    tag: 'Oscuro Personalidad / Místico',
     isDark: true,
-    bgCanvas: Color(0xFF0C1715),
-    bgSurface: Color(0xFF142421),
-    shadowDark: Color(0xFF060D0B),
-    shadowLight: Color(0xFF1E3530),
-    accentPrimary: Color(0xFF10B981),
-    accentSecondary: Color(0xFF06B6D4),
-    liquidGradientColors: [Color(0xFF10B981), Color(0xFF06B6D4)],
-    textPrimary: Color(0xFFECFDF5),
-    textSecondary: Color(0xFF80A79E),
-    ctaTextColor: Color(0xFF041410),
-  );
-
-  /// 3. Obsidian Crimson (Garnet / Borgoña sofisticado)
-  static const AppThemeConfig obsidianCrimson = AppThemeConfig(
-    id: ThemeId.obsidianCrimson,
-    name: 'Obsidian Crimson',
-    tag: 'Garnet / Borgoña sofisticado',
-    isDark: true,
-    bgCanvas: Color(0xFF130C0E),
-    bgSurface: Color(0xFF1F1317),
-    shadowDark: Color(0xFF0A0607),
-    shadowLight: Color(0xFF2C1C21),
-    accentPrimary: Color(0xFFE11D48),
-    accentSecondary: Color(0xFF9F1239),
-    liquidGradientColors: [Color(0xFFE11D48), Color(0xFF9F1239)],
-    textPrimary: Color(0xFFFDF2F4),
-    textSecondary: Color(0xFFA68087),
+    bgCanvas: Color(0xFF130D1E),
+    bgSurface: Color(0xFF1F1530),
+    shadowDark: Color(0xFF0A0610),
+    shadowLight: Color(0xFF2F204A),
+    accentPrimary: Color(0xFFA855F7), // Purple 500
+    accentSecondary: Color(0xFFEC4899), // Pink 500
+    actionGradientColors: [Color(0xFF7E22CE), Color(0xFF9D174D)], // Contrast > 7:1 con blanco
+    textPrimary: Color(0xFFF3EEFA), // Lavanda clara (Ratio > 11:1)
+    textSecondary: Color(0xFFA798BA), // (Ratio > 5.5:1)
     ctaTextColor: Colors.white,
   );
 
-  /// 4. Deep Amethyst (Místico / Noche púrpura)
-  static const AppThemeConfig deepAmethyst = AppThemeConfig(
-    id: ThemeId.deepAmethyst,
-    name: 'Deep Amethyst',
-    tag: 'Místico / Noche púrpura',
-    isDark: true,
-    bgCanvas: Color(0xFF100C19),
-    bgSurface: Color(0xFF1B152B),
-    shadowDark: Color(0xFF09060E),
-    shadowLight: Color(0xFF281F3E),
-    accentPrimary: Color(0xFFA855F7),
-    accentSecondary: Color(0xFFEC4899),
-    liquidGradientColors: [Color(0xFFA855F7), Color(0xFFEC4899)],
-    textPrimary: Color(0xFFF3EEFA),
-    textSecondary: Color(0xFF9B8EA9),
+  // ===========================================================================
+  // 2 Temas Claros
+  // ===========================================================================
+
+  /// 3. Soft Clay (Claro Cálido / Cerámico Artesanal)
+  static const AppThemeConfig softClay = AppThemeConfig(
+    id: ThemeId.softClay,
+    name: 'Soft Clay',
+    tag: 'Claro Cálido / Terracota',
+    isDark: false,
+    bgCanvas: Color(0xFFF5F2EE),
+    bgSurface: Color(0xFFFFFFFF),
+    shadowDark: Color(0xFFDED8D0),
+    shadowLight: Color(0xFFFFFFFF),
+    accentPrimary: Color(0xFFD95D39), // Terracota Clay
+    accentSecondary: Color(0xFFF28E2B), // Ocre Cálido
+    actionGradientColors: [Color(0xFF9A3412), Color(0xFFC2410C)], // Arcilla horneada (Contrast > 6:1)
+    textPrimary: Color(0xFF261E1A), // Espresso (Ratio > 13:1)
+    textSecondary: Color(0xFF7A6B63), // (Ratio > 5:1)
     ctaTextColor: Colors.white,
   );
 
-  /// 5. Eclipse Carbon (Monocromático neutro / Industrial)
-  static const AppThemeConfig eclipseCarbon = AppThemeConfig(
-    id: ThemeId.eclipseCarbon,
-    name: 'Eclipse Carbon',
-    tag: 'Monocromático / Industrial',
+  /// 4. Sage Botanical (Claro Fresco / Botánico)
+  static const AppThemeConfig sageBotanical = AppThemeConfig(
+    id: ThemeId.sageBotanical,
+    name: 'Sage Botanical',
+    tag: 'Claro Fresco / Botánico',
+    isDark: false,
+    bgCanvas: Color(0xFFF0F5F2),
+    bgSurface: Color(0xFFFFFFFF),
+    shadowDark: Color(0xFFCFDDD4),
+    shadowLight: Color(0xFFFFFFFF),
+    accentPrimary: Color(0xFF15803D), // Forest Green
+    accentSecondary: Color(0xFF22C55E), // Fresh Green
+    actionGradientColors: [Color(0xFF14532D), Color(0xFF166534)], // Bosque profundo (Contrast > 8:1)
+    textPrimary: Color(0xFF0F261B), // Bosque profundo (Ratio > 14:1)
+    textSecondary: Color(0xFF537060), // (Ratio > 5.5:1)
+    ctaTextColor: Colors.white,
+  );
+
+  // ===========================================================================
+  // 2 Monocromáticos de Alto Contraste
+  // ===========================================================================
+
+  /// 5. Carbon Eclipse (Monocromático Dark / Industrial)
+  static const AppThemeConfig carbonEclipse = AppThemeConfig(
+    id: ThemeId.carbonEclipse,
+    name: 'Carbon Eclipse',
+    tag: 'Monocromático Dark / Alto Contraste',
     isDark: true,
     bgCanvas: Color(0xFF121214),
     bgSurface: Color(0xFF1C1D21),
     shadowDark: Color(0xFF0A0A0B),
-    shadowLight: Color(0xFF292A30),
-    accentPrimary: Color(0xFFE2E8F0),
-    accentSecondary: Color(0xFF94A3B8),
-    liquidGradientColors: [Color(0xFFE2E8F0), Color(0xFF94A3B8)],
-    textPrimary: Color(0xFFF8FAFC),
-    textSecondary: Color(0xFF64748B),
-    ctaTextColor: Color(0xFF121214),
+    shadowLight: Color(0xFF2B2C33),
+    accentPrimary: Color(0xFFF8FAFC), // Pure White Platinum
+    accentSecondary: Color(0xFF94A3B8), // Steel Slate
+    actionGradientColors: [Color(0xFFF8FAFC), Color(0xFFCBD5E1)],
+    textPrimary: Color(0xFFF8FAFC), // (Ratio > 15:1)
+    textSecondary: Color(0xFF94A3B8), // (Ratio > 6:1)
+    ctaTextColor: Color(0xFF0F172A),
+  );
+
+  /// 6. Porcelain Chalk (Monocromático Light / Nórdico)
+  static const AppThemeConfig porcelainChalk = AppThemeConfig(
+    id: ThemeId.porcelainChalk,
+    name: 'Porcelain Chalk',
+    tag: 'Monocromático Light / Alto Contraste',
+    isDark: false,
+    bgCanvas: Color(0xFFF4F5F7),
+    bgSurface: Color(0xFFFFFFFF),
+    shadowDark: Color(0xFFD4D7DE),
+    shadowLight: Color(0xFFFFFFFF),
+    accentPrimary: Color(0xFF111827), // Tinta Negra
+    accentSecondary: Color(0xFF374151), // Grafito
+    actionGradientColors: [Color(0xFF111827), Color(0xFF374151)],
+    textPrimary: Color(0xFF111827), // (Ratio > 16:1)
+    textSecondary: Color(0xFF4B5563), // (Ratio > 6.5:1)
+    ctaTextColor: Colors.white,
   );
 
   // ===========================================================================
-  // 5 Temas Claros
+  // Agrupaciones y Consultas
   // ===========================================================================
 
-  /// 6. Frosted Glacier (Cristal ártico / Limpio)
-  static const AppThemeConfig frostedGlacier = AppThemeConfig(
-    id: ThemeId.frostedGlacier,
-    name: 'Frosted Glacier',
-    tag: 'Cristal ártico / Limpio',
-    isDark: false,
-    bgCanvas: Color(0xFFF0F5FA),
-    bgSurface: Color(0xFFFFFFFF),
-    shadowDark: Color(0xFFD2DFEE),
-    shadowLight: Color(0xFFFFFFFF),
-    accentPrimary: Color(0xFF0077E6),
-    accentSecondary: Color(0xFF00B4D8),
-    liquidGradientColors: [Color(0xFF0077E6), Color(0xFF00B4D8)],
-    textPrimary: Color(0xFF0F1E2E),
-    textSecondary: Color(0xFF5A738E),
-    ctaTextColor: Colors.white,
-  );
-
-  /// 7. Rose Quartz (Cálido / Elegante)
-  static const AppThemeConfig roseQuartz = AppThemeConfig(
-    id: ThemeId.roseQuartz,
-    name: 'Rose Quartz',
-    tag: 'Cálido / Elegante',
-    isDark: false,
-    bgCanvas: Color(0xFFFAF0F2),
-    bgSurface: Color(0xFFFFFFFF),
-    shadowDark: Color(0xFFEED5DB),
-    shadowLight: Color(0xFFFFFFFF),
-    accentPrimary: Color(0xFFE63956),
-    accentSecondary: Color(0xFFFF758F),
-    liquidGradientColors: [Color(0xFFE63956), Color(0xFFFF758F)],
-    textPrimary: Color(0xFF2A1216),
-    textSecondary: Color(0xFF8C626C),
-    ctaTextColor: Colors.white,
-  );
-
-  /// 8. Sage Botanical (Natural / Minimalista)
-  static const AppThemeConfig sageBotanical = AppThemeConfig(
-    id: ThemeId.sageBotanical,
-    name: 'Sage Botanical',
-    tag: 'Natural / Minimalista',
-    isDark: false,
-    bgCanvas: Color(0xFFF0F5F2),
-    bgSurface: Color(0xFFFFFFFF),
-    shadowDark: Color(0xFFD2E4D9),
-    shadowLight: Color(0xFFFFFFFF),
-    accentPrimary: Color(0xFF1B8A5A),
-    accentSecondary: Color(0xFF52B788),
-    liquidGradientColors: [Color(0xFF1B8A5A), Color(0xFF52B788)],
-    textPrimary: Color(0xFF0F261B),
-    textSecondary: Color(0xFF597A6A),
-    ctaTextColor: Colors.white,
-  );
-
-  /// 9. Solar Amber (Energético / Luminoso)
-  static const AppThemeConfig solarAmber = AppThemeConfig(
-    id: ThemeId.solarAmber,
-    name: 'Solar Amber',
-    tag: 'Energético / Luminoso',
-    isDark: false,
-    bgCanvas: Color(0xFFFAF5EE),
-    bgSurface: Color(0xFFFFFFFF),
-    shadowDark: Color(0xFFEFE2CE),
-    shadowLight: Color(0xFFFFFFFF),
-    accentPrimary: Color(0xFFD97706),
-    accentSecondary: Color(0xFFF59E0B),
-    liquidGradientColors: [Color(0xFFD97706), Color(0xFFF59E0B)],
-    textPrimary: Color(0xFF2B1D09),
-    textSecondary: Color(0xFF8A7050),
-    ctaTextColor: Colors.white,
-  );
-
-  /// 10. Pure Clay (Orgánico / Cerámico contemporáneo)
-  static const AppThemeConfig pureClay = AppThemeConfig(
-    id: ThemeId.pureClay,
-    name: 'Pure Clay',
-    tag: 'Orgánico / Cerámico contemporáneo',
-    isDark: false,
-    bgCanvas: Color(0xFFF5F3F0),
-    bgSurface: Color(0xFFFFFFFF),
-    shadowDark: Color(0xFFE2DED7),
-    shadowLight: Color(0xFFFFFFFF),
-    accentPrimary: Color(0xFFD96B43),
-    accentSecondary: Color(0xFFE89874),
-    liquidGradientColors: [Color(0xFFD96B43), Color(0xFFE89874)],
-    textPrimary: Color(0xFF261E1A),
-    textSecondary: Color(0xFF806E66),
-    ctaTextColor: Colors.white,
-  );
-
-  /// Lista con todos los temas disponibles en orden
   static const List<AppThemeConfig> all = [
-    midnightBlue,
-    cyberEmerald,
-    obsidianCrimson,
-    deepAmethyst,
-    eclipseCarbon,
-    frostedGlacier,
-    roseQuartz,
+    midnightSlate,
+    obsidianAmethyst,
+    softClay,
     sageBotanical,
-    solarAmber,
-    pureClay,
+    carbonEclipse,
+    porcelainChalk,
   ];
 
   static const List<AppThemeConfig> darkThemes = [
-    midnightBlue,
-    cyberEmerald,
-    obsidianCrimson,
-    deepAmethyst,
-    eclipseCarbon,
+    midnightSlate,
+    obsidianAmethyst,
+    carbonEclipse,
   ];
 
   static const List<AppThemeConfig> lightThemes = [
-    frostedGlacier,
-    roseQuartz,
+    softClay,
     sageBotanical,
-    solarAmber,
-    pureClay,
+    porcelainChalk,
   ];
 
-  /// Obtiene un tema por su id con fallback seguro al tema por defecto
+  // Alias retrocompatible para arranque
+  static const AppThemeConfig midnightBlue = midnightSlate;
+
+  /// Obtiene un tema por su id con fallback seguro a midnightSlate
   static AppThemeConfig fromId(String? idName) {
-    if (idName == null) return midnightBlue;
+    if (idName == null) return midnightSlate;
     return all.firstWhere(
       (theme) => theme.id.name == idName,
-      orElse: () => midnightBlue,
+      orElse: () => midnightSlate,
     );
   }
 }

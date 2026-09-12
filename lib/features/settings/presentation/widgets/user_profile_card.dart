@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_container.dart';
 import '../../../../core/widgets/liquid_banner.dart';
-import '../../../../core/widgets/neumorphic_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../auth/presentation/widgets/update_password_modal.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
@@ -160,9 +160,8 @@ class _UserProfileCardState extends State<UserProfileCard> {
 
     final successMessage = profileCtrl?.successMessage ?? friendsCtrl?.successMessage;
 
-    return GlassCard(
-      blur: 16.0,
-      borderRadius: 22.0,
+    return AppCard(
+      borderRadius: 18.0,
       padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -187,7 +186,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                         Text(
                           'Cuenta Activa',
                           style: TextStyle(
-                            color: LiquidTheme.primaryCyan,
+                            color: AppTheme.primaryCyan,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
@@ -199,7 +198,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                             icon: Icon(
                               Icons.edit_rounded,
                               size: 18,
-                              color: LiquidTheme.primaryLiquid,
+                              color: AppTheme.primaryLiquid,
                             ),
                             tooltip: 'Editar nombre de usuario',
                             onPressed: () {
@@ -218,7 +217,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                       Text(
                         '@$currentUsername',
                         style: TextStyle(
-                          color: LiquidTheme.textPrimary,
+                          color: AppTheme.textPrimary,
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
@@ -227,7 +226,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                       Text(
                         widget.email,
                         style: TextStyle(
-                          color: LiquidTheme.textSecondary,
+                          color: AppTheme.textSecondary,
                           fontSize: 13,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -240,7 +239,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                             child: TextField(
                               controller: _usernameController,
                               style: TextStyle(
-                                color: LiquidTheme.textPrimary,
+                                color: AppTheme.textPrimary,
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -248,7 +247,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                               decoration: InputDecoration(
                                 prefixText: '@',
                                 prefixStyle: TextStyle(
-                                  color: LiquidTheme.primaryLiquid,
+                                  color: AppTheme.primaryLiquid,
                                   fontWeight: FontWeight.bold,
                                 ),
                                 hintText: 'nuevo_usuario',
@@ -272,7 +271,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                             IconButton(
                               icon: Icon(
                                 Icons.check_circle_rounded,
-                                color: LiquidTheme.accentEmerald,
+                                color: AppTheme.accentEmerald,
                                 size: 24,
                               ),
                               tooltip: 'Guardar',
@@ -281,7 +280,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                             IconButton(
                               icon: Icon(
                                 Icons.cancel_rounded,
-                                color: LiquidTheme.textSecondary,
+                                color: AppTheme.textSecondary,
                                 size: 24,
                               ),
                               tooltip: 'Cancelar',
@@ -307,10 +306,10 @@ class _UserProfileCardState extends State<UserProfileCard> {
           const SizedBox(height: 16),
 
           // Botón Cambiar Contraseña / Seguridad
-          NeumorphicContainer(
+          AppContainer(
             borderRadius: 14,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            baseColor: LiquidTheme.surfaceDark.withValues(alpha: 0.6),
+            baseColor: AppTheme.surfaceDark.withValues(alpha: 0.6),
             child: InkWell(
               borderRadius: BorderRadius.circular(14),
               onTap: _openChangePasswordModal,
@@ -318,7 +317,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                 children: [
                   Icon(
                     Icons.lock_reset_rounded,
-                    color: LiquidTheme.primaryLiquid,
+                    color: AppTheme.primaryLiquid,
                     size: 20,
                   ),
                   const SizedBox(width: 10),
@@ -326,7 +325,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                     child: Text(
                       'Cambiar Contraseña',
                       style: TextStyle(
-                        color: LiquidTheme.textPrimary,
+                        color: AppTheme.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -334,7 +333,7 @@ class _UserProfileCardState extends State<UserProfileCard> {
                   ),
                   Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: LiquidTheme.textSecondary,
+                    color: AppTheme.textSecondary,
                     size: 14,
                   ),
                 ],

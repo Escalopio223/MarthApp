@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../theme/liquid_theme.dart';
+import '../theme/app_theme.dart';
 
 /// Logotipo oficial de MarthApp dibujado vectorialmente con fondo 100% transparente.
 /// Muta dinámicamente según la paleta cromática y gradientes del tema activo.
@@ -9,11 +9,11 @@ class MarthAppLogo extends StatelessWidget {
   final double size;
 
   /// Color sólido opcional. Si no se especifica y [gradient] es nulo,
-  /// utiliza [LiquidTheme.liquidPrimaryGradient] o [LiquidTheme.primaryLiquid].
+  /// utiliza [AppTheme.liquidPrimaryGradient] o [AppTheme.primaryLiquid].
   final Color? color;
 
   /// Gradiente opcional para pintar las líneas.
-  /// Por defecto utiliza [LiquidTheme.liquidPrimaryGradient] para mutar según el tema.
+  /// Por defecto utiliza [AppTheme.liquidPrimaryGradient] para mutar según el tema.
   final Gradient? gradient;
 
   /// Grosor de trazo personalizado. Si es nulo, se calcula proporcionalmente al tamaño.
@@ -56,10 +56,10 @@ class MarthAppLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     // Si no se especifica color ni gradiente, mutar dinámicamente con el tema activo
     final effectiveGradient = color == null
-        ? (gradient ?? LiquidTheme.liquidPrimaryGradient)
+        ? (gradient ?? AppTheme.liquidPrimaryGradient)
         : null;
     final effectiveColor = effectiveGradient == null
-        ? (color ?? LiquidTheme.primaryLiquid)
+        ? (color ?? AppTheme.primaryLiquid)
         : null;
 
     final logoPainter = CustomPaint(
@@ -80,7 +80,7 @@ class MarthAppLogo extends StatelessWidget {
     }
 
     final glowColor =
-        effectiveColor ?? LiquidTheme.primaryLiquid;
+        effectiveColor ?? AppTheme.primaryLiquid;
 
     return SizedBox(
       width: size,
@@ -133,20 +133,20 @@ class _MarthAppLogoBadge extends MarthAppLogo {
       height: badgeSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: LiquidTheme.surfaceDark.withValues(alpha: 0.8),
+        color: AppTheme.surfaceDark.withValues(alpha: 0.8),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor,
+          color: AppTheme.glassBorderColor,
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.6),
+            color: AppTheme.neumorphicDarkShadow.withValues(alpha: 0.6),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
           if (withGlow)
             BoxShadow(
-              color: LiquidTheme.primaryLiquid.withValues(alpha: 0.25),
+              color: AppTheme.primaryLiquid.withValues(alpha: 0.25),
               blurRadius: 20,
               spreadRadius: 1,
             ),

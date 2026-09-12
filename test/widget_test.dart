@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:marth_app/core/widgets/liquid_button.dart';
+import 'package:marth_app/core/widgets/app_button.dart';
 import 'package:marth_app/core/widgets/marth_app_logo.dart';
 import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
 import 'package:marth_app/features/auth/presentation/controllers/auth_controller.dart';
@@ -137,7 +137,7 @@ void main() {
     await tester.enterText(textFields.at(2), '654321');
 
     // Pulsar botón Crear Cuenta
-    await tester.tap(find.widgetWithText(LiquidButton, 'Crear Cuenta'));
+    await tester.tap(find.widgetWithText(AppButton, 'Crear Cuenta'));
     await tester.pumpAndSettle();
 
     expect(find.text('Las contraseñas no coinciden'), findsOneWidget);
@@ -159,7 +159,7 @@ void main() {
     await tester.enterText(textFields.at(2), '123456');
 
     // Pulsar botón Crear Cuenta
-    await tester.tap(find.widgetWithText(LiquidButton, 'Crear Cuenta'));
+    await tester.tap(find.widgetWithText(AppButton, 'Crear Cuenta'));
     await tester.pumpAndSettle();
 
     // Debe haber vuelto al modo Iniciar Sesión (2 campos) y mostrar banner de éxito

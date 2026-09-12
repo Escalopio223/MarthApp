@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 
 enum AuthMode { login, register }
 
@@ -23,22 +23,22 @@ class AuthModeSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: LiquidTheme.surfaceDark, // #1A1F26
+        color: AppTheme.surfaceDark, // #1A1F26
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor,
+          color: AppTheme.glassBorderColor,
           width: 0.8,
         ),
         boxShadow: [
           // Sombra oscura inferior
           BoxShadow(
-            color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.8),
+            color: AppTheme.neumorphicDarkShadow.withValues(alpha: 0.8),
             offset: const Offset(2, 2),
             blurRadius: 6,
           ),
           // Realce claro superior
           BoxShadow(
-            color: LiquidTheme.neumorphicLightHighlight.withValues(alpha: 0.5),
+            color: AppTheme.neumorphicLightHighlight.withValues(alpha: 0.5),
             offset: const Offset(-2, -2),
             blurRadius: 6,
           ),
@@ -77,13 +77,13 @@ class AuthModeSelector extends StatelessWidget {
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          gradient: isSelected ? LiquidTheme.liquidPrimaryGradient : null,
+          gradient: isSelected ? AppTheme.liquidPrimaryGradient : null,
           color: isSelected ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: LiquidTheme.primaryLiquid.withValues(alpha: 0.35),
+                    color: AppTheme.primaryLiquid.withValues(alpha: 0.35),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -98,7 +98,7 @@ class AuthModeSelector extends StatelessWidget {
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
                   ? const Color(0xFF0D1219) // WCAG AA sobre gradiente cian-lila
-                  : LiquidTheme.textSecondary,
+                  : AppTheme.textSecondary,
             ),
           ),
         ),

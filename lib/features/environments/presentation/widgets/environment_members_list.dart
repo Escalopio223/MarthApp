@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/environment_member_model.dart';
 
@@ -35,7 +35,7 @@ class EnvironmentMembersList extends StatelessWidget {
             Text(
               'Miembros (${members.length})',
               style: TextStyle(
-                color: LiquidTheme.textPrimary,
+                color: AppTheme.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
@@ -50,7 +50,7 @@ class EnvironmentMembersList extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: LiquidTheme.liquidPrimaryGradient,
+                      gradient: AppTheme.liquidPrimaryGradient,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -93,7 +93,7 @@ class EnvironmentMembersList extends StatelessWidget {
             child: Center(
               child: Text(
                 'No se encontraron miembros',
-                style: TextStyle(color: LiquidTheme.textSecondary),
+                style: TextStyle(color: AppTheme.textSecondary),
               ),
             ),
           )
@@ -111,11 +111,11 @@ class EnvironmentMembersList extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: LiquidTheme.surfaceDark.withValues(alpha: 0.6),
+                    color: AppTheme.surfaceDark.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color:
-                          LiquidTheme.glassBorderColor.withValues(alpha: 0.3),
+                          AppTheme.glassBorderColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -137,7 +137,7 @@ class EnvironmentMembersList extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: LiquidTheme.textPrimary,
+                                color: AppTheme.textPrimary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -147,8 +147,8 @@ class EnvironmentMembersList extends StatelessWidget {
                               isMemberOwner ? 'Propietario' : 'Miembro',
                               style: TextStyle(
                                 color: isMemberOwner
-                                    ? LiquidTheme.secondaryLilac
-                                    : LiquidTheme.accentEmerald,
+                                    ? AppTheme.secondaryLilac
+                                    : AppTheme.accentEmerald,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -161,7 +161,7 @@ class EnvironmentMembersList extends StatelessWidget {
                           icon: Icon(
                             Icons.person_remove_rounded,
                             size: 18,
-                            color: LiquidTheme.accentCoral
+                            color: AppTheme.accentCoral
                                 .withValues(alpha: 0.8),
                           ),
                           tooltip: 'Expulsar del entorno',

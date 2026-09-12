@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 
 /// Configuración visual y de marca para proveedores OAuth activos
 class SocialProviderConfig {
@@ -28,7 +28,7 @@ class SocialProviderConfig {
           label: 'Continuar con Google',
           backgroundColor: const Color(0xFFFFFFFF),
           textColor: const Color(0xFF1F2937),
-          borderColor: LiquidTheme.glassBorderColor,
+          borderColor: AppTheme.glassBorderColor,
           iconWidget: _buildGoogleIcon(),
         );
 
@@ -36,13 +36,13 @@ class SocialProviderConfig {
         return SocialProviderConfig(
           name: 'GitHub',
           label: 'Continuar con GitHub',
-          backgroundColor: LiquidTheme.surfaceDark, // #1A1F26
-          textColor: LiquidTheme.textPrimary, // #E6EDF3
-          borderColor: LiquidTheme.glassBorderColor, // rgba(139, 155, 180, 0.2)
+          backgroundColor: AppTheme.surfaceDark, // #1A1F26
+          textColor: AppTheme.textPrimary, // #E6EDF3
+          borderColor: AppTheme.glassBorderColor, // rgba(139, 155, 180, 0.2)
           iconWidget: Icon(
             Icons.code_rounded,
             size: 22,
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
           ),
         );
 
@@ -50,13 +50,13 @@ class SocialProviderConfig {
         return SocialProviderConfig(
           name: provider.name,
           label: 'Continuar con ${provider.name}',
-          backgroundColor: LiquidTheme.surfaceDark,
-          textColor: LiquidTheme.textPrimary,
-          borderColor: LiquidTheme.glassBorderColor,
+          backgroundColor: AppTheme.surfaceDark,
+          textColor: AppTheme.textPrimary,
+          borderColor: AppTheme.glassBorderColor,
           iconWidget: Icon(
             Icons.login_rounded,
             size: 20,
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
           ),
         );
     }
@@ -104,7 +104,7 @@ class SocialAuthButton extends StatelessWidget {
           boxShadow: isGoogle
               ? [
                   BoxShadow(
-                    color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.5),
+                    color: AppTheme.neumorphicDarkShadow.withValues(alpha: 0.5),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -112,13 +112,13 @@ class SocialAuthButton extends StatelessWidget {
               : [
                   // Sombra neumórfica exterior oscura
                   BoxShadow(
-                    color: LiquidTheme.neumorphicDarkShadow.withValues(alpha: 0.8),
+                    color: AppTheme.neumorphicDarkShadow.withValues(alpha: 0.8),
                     blurRadius: 8,
                     offset: const Offset(3, 3),
                   ),
                   // Realce neumórfico claro superior
                   BoxShadow(
-                    color: LiquidTheme.neumorphicLightHighlight.withValues(alpha: 0.4),
+                    color: AppTheme.neumorphicLightHighlight.withValues(alpha: 0.4),
                     blurRadius: 6,
                     offset: const Offset(-2, -2),
                   ),

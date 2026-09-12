@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../friends/domain/models/profile_model.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
 
@@ -30,10 +30,10 @@ class FriendInviteTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: LiquidTheme.surfaceDark.withValues(alpha: 0.6),
+        color: AppTheme.surfaceDark.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor.withValues(alpha: 0.3),
+          color: AppTheme.glassBorderColor.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -54,7 +54,7 @@ class FriendInviteTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: LiquidTheme.textPrimary,
+                    color: AppTheme.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -67,7 +67,7 @@ class FriendInviteTile extends StatelessWidget {
                           ? 'Esperando respuesta del amigo'
                           : 'Disponible para invitar'),
                   style: TextStyle(
-                    color: LiquidTheme.textSecondary,
+                    color: AppTheme.textSecondary,
                     fontSize: 11,
                   ),
                 ),
@@ -101,22 +101,22 @@ class FriendInviteTile extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: LiquidTheme.accentEmerald.withValues(alpha: 0.15),
+            color: AppTheme.accentEmerald.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: LiquidTheme.accentEmerald.withValues(alpha: 0.4),
+              color: AppTheme.accentEmerald.withValues(alpha: 0.4),
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.check_circle_rounded,
-                  size: 14, color: LiquidTheme.accentEmerald),
+                  size: 14, color: AppTheme.accentEmerald),
               const SizedBox(width: 4),
               Text(
                 'Miembro',
                 style: TextStyle(
-                  color: LiquidTheme.accentEmerald,
+                  color: AppTheme.accentEmerald,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -162,11 +162,11 @@ class FriendInviteTile extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                gradient: LiquidTheme.liquidPrimaryGradient,
+                gradient: AppTheme.liquidPrimaryGradient,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: LiquidTheme.primaryLiquid.withValues(alpha: 0.3),
+                    color: AppTheme.primaryLiquid.withValues(alpha: 0.3),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),

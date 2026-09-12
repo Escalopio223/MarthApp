@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/neumorphic_container.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
 
-/// Tarjeta neumórfica con información técnica de estado de conexión
+/// Tarjeta con información técnica de estado de conexión
 class BackendStatusCard extends StatelessWidget {
   final String userEmail;
 
@@ -13,23 +13,23 @@ class BackendStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return NeumorphicContainer(
-      borderRadius: 22,
-      padding: const EdgeInsets.all(22),
+    return AppCard(
+      borderRadius: 18,
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               const Icon(Icons.cloud_done_rounded,
-                  color: LiquidTheme.accentEmerald, size: 22),
+                  color: AppTheme.accentEmerald, size: 22),
               const SizedBox(width: 10),
               Text(
                 'Backend Supabase Conectado',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: LiquidTheme.textPrimary,
+                  color: AppTheme.textPrimary,
                 ),
               ),
             ],
@@ -42,7 +42,7 @@ class BackendStatusCard extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'monospace',
               fontSize: 12,
-              color: LiquidTheme.textSecondary,
+              color: AppTheme.textSecondary,
               height: 1.6,
             ),
           ),

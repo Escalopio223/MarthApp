@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/liquid_background.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_background.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../domain/friend_code_manager.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
@@ -73,29 +73,29 @@ class _FriendsScreenState extends State<FriendsScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: LiquidTheme.textPrimary, size: 20),
+              color: AppTheme.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Amigos y Solicitudes',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
           ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh_rounded, color: LiquidTheme.textPrimary),
+            icon: Icon(Icons.refresh_rounded, color: AppTheme.textPrimary),
             tooltip: 'Actualizar en vivo',
             onPressed: () => controller.refresh(),
           ),
         ],
       ),
-      body: LiquidBackground(
+      body: AppBackground(
         child: RefreshIndicator(
-          color: LiquidTheme.primaryLiquid,
-          backgroundColor: LiquidTheme.surfaceDark,
+          color: AppTheme.primaryLiquid,
+          backgroundColor: AppTheme.surfaceDark,
           onRefresh: () => controller.refresh(),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -201,12 +201,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
         Row(
           children: [
             Icon(Icons.mark_email_unread_rounded,
-                color: LiquidTheme.accentEmerald, size: 20),
+                color: AppTheme.accentEmerald, size: 20),
             const SizedBox(width: 8),
             Text(
               'Invitaciones a Entornos (${envController.pendingInvitationsCount})',
               style: TextStyle(
-                color: LiquidTheme.textPrimary,
+                color: AppTheme.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),

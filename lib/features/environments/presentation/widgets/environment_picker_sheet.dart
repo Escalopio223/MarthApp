@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/liquid_button.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_button.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../controllers/environment_controller.dart';
 import 'create_environment_modal.dart';
@@ -50,10 +50,10 @@ class EnvironmentPickerSheet extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
           decoration: BoxDecoration(
-            color: LiquidTheme.surfaceDark,
+            color: AppTheme.surfaceDark,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             border: Border.all(
-              color: LiquidTheme.glassBorderColor.withValues(alpha: 0.8),
+              color: AppTheme.glassBorderColor.withValues(alpha: 0.8),
             ),
             boxShadow: [
               BoxShadow(
@@ -73,7 +73,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -87,14 +87,14 @@ class EnvironmentPickerSheet extends StatelessWidget {
                   Text(
                     'Entornos de Trabajo',
                     style: TextStyle(
-                      color: LiquidTheme.textPrimary,
+                      color: AppTheme.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   IconButton(
                     icon: Icon(Icons.close_rounded,
-                        color: LiquidTheme.textSecondary, size: 20),
+                        color: AppTheme.textSecondary, size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -140,10 +140,10 @@ class EnvironmentPickerSheet extends StatelessWidget {
               const SizedBox(height: 20),
 
               // Botón de acción: Crear nuevo entorno
-              LiquidButton(
+              AppButton(
                 text: 'Crear Nuevo Entorno',
                 icon: Icons.add_circle_outline_rounded,
-                gradient: LiquidTheme.liquidPrimaryGradient,
+                gradient: AppTheme.liquidPrimaryGradient,
                 onPressed: () {
                   Navigator.pop(context);
                   CreateEnvironmentModal.show(
@@ -163,7 +163,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    final iconColor = LiquidTheme.secondaryLilac;
+    final iconColor = AppTheme.secondaryLilac;
 
     return Material(
       color: Colors.transparent,
@@ -175,12 +175,12 @@ class EnvironmentPickerSheet extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected
                 ? iconColor.withValues(alpha: 0.12)
-                : LiquidTheme.surfaceDark.withValues(alpha: 0.5),
+                : AppTheme.surfaceDark.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected
                   ? iconColor.withValues(alpha: 0.8)
-                  : LiquidTheme.glassBorderColor.withValues(alpha: 0.4),
+                  : AppTheme.glassBorderColor.withValues(alpha: 0.4),
               width: isSelected ? 1.5 : 1.0,
             ),
           ),
@@ -212,7 +212,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: LiquidTheme.textPrimary,
+                              color: AppTheme.textPrimary,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -243,7 +243,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: LiquidTheme.textSecondary,
+                        color: AppTheme.textSecondary,
                         fontSize: 11,
                       ),
                     ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 
 /// Componente presentacional puro para la visualización del espacio personal protegido ("Mi Espacio")
 class PersonalEnvironmentView extends StatelessWidget {
@@ -10,10 +10,10 @@ class PersonalEnvironmentView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: LiquidTheme.primaryCyan.withValues(alpha: 0.08),
+        color: AppTheme.primaryCyan.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: LiquidTheme.primaryCyan.withValues(alpha: 0.3),
+          color: AppTheme.primaryCyan.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -24,11 +24,11 @@ class PersonalEnvironmentView extends StatelessWidget {
             height: 54,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: LiquidTheme.primaryCyan.withValues(alpha: 0.15),
+              color: AppTheme.primaryCyan.withValues(alpha: 0.15),
             ),
             child: Icon(
               Icons.lock_rounded,
-              color: LiquidTheme.primaryCyan,
+              color: AppTheme.primaryCyan,
               size: 28,
             ),
           ),
@@ -36,7 +36,7 @@ class PersonalEnvironmentView extends StatelessWidget {
           Text(
             'Espacio Personal Protegido',
             style: TextStyle(
-              color: LiquidTheme.textPrimary,
+              color: AppTheme.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -46,7 +46,7 @@ class PersonalEnvironmentView extends StatelessWidget {
             'Este es tu entorno base personal creado por defecto. Es 100% privado e intransferible: no se pueden agregar miembros ni puede ser eliminado.\n\nTodo el contenido creado aquí solo es visible por ti.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: LiquidTheme.textSecondary,
+              color: AppTheme.textSecondary,
               fontSize: 13,
               height: 1.4,
             ),
@@ -55,10 +55,10 @@ class PersonalEnvironmentView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: LiquidTheme.surfaceDark,
+              color: AppTheme.surfaceDark,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: LiquidTheme.glassBorderColor.withValues(alpha: 0.5),
+                color: AppTheme.glassBorderColor.withValues(alpha: 0.5),
               ),
             ),
             child: Row(
@@ -67,13 +67,13 @@ class PersonalEnvironmentView extends StatelessWidget {
                 Icon(
                   Icons.shield_rounded,
                   size: 16,
-                  color: LiquidTheme.primaryCyan,
+                  color: AppTheme.primaryCyan,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Acceso exclusivo para tu usuario',
                   style: TextStyle(
-                    color: LiquidTheme.textPrimary,
+                    color: AppTheme.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),

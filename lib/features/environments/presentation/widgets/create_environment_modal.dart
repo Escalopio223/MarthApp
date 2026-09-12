@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/liquid_banner.dart';
-import '../../../../core/widgets/liquid_button.dart';
 import '../controllers/environment_controller.dart';
 
 /// Modal interactivo para crear un nuevo entorno compartido de trabajo
@@ -78,9 +78,8 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
           color: Colors.transparent,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
-            child: GlassCard(
-              blur: 24.0,
-              borderRadius: 24.0,
+            child: AppCard(
+              borderRadius: 20.0,
               padding: const EdgeInsets.all(28.0),
               child: Form(
                 key: _formKey,
@@ -95,11 +94,11 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: LiquidTheme.primaryCyan.withValues(alpha: 0.18),
+                            color: AppTheme.primaryCyan.withValues(alpha: 0.18),
                           ),
                           child: Icon(
                             Icons.groups_rounded,
-                            color: LiquidTheme.primaryCyan,
+                            color: AppTheme.primaryCyan,
                             size: 24,
                           ),
                         ),
@@ -111,7 +110,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                               Text(
                                 'Nuevo Entorno',
                                 style: TextStyle(
-                                  color: LiquidTheme.textPrimary,
+                                  color: AppTheme.textPrimary,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -120,7 +119,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                               Text(
                                 'Crea un espacio para colaborar con amigos',
                                 style: TextStyle(
-                                  color: LiquidTheme.textSecondary,
+                                  color: AppTheme.textSecondary,
                                   fontSize: 12,
                                 ),
                               ),
@@ -130,7 +129,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                         IconButton(
                           icon: Icon(
                             Icons.close_rounded,
-                            color: LiquidTheme.textSecondary,
+                            color: AppTheme.textSecondary,
                             size: 22,
                           ),
                           tooltip: 'Cerrar',
@@ -145,7 +144,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                     Text(
                       'Nombre del Entorno',
                       style: TextStyle(
-                        color: LiquidTheme.textPrimary,
+                        color: AppTheme.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -153,11 +152,11 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _nameController,
-                      style: TextStyle(color: LiquidTheme.textPrimary),
+                      style: TextStyle(color: AppTheme.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Ej. Piso Compartido, Viaje Verano...',
                         prefixIcon: Icon(Icons.drive_file_rename_outline_rounded,
-                            color: LiquidTheme.textSecondary),
+                            color: AppTheme.textSecondary),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -181,7 +180,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
 
                     const SizedBox(height: 24),
 
-                    LiquidButton(
+                    AppButton(
                       text: 'Crear Entorno',
                       isLoading: isLoading,
                       icon: Icons.check_rounded,

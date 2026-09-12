@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/models/profile_model.dart';
 import '../controllers/environment_controller.dart';
 import 'environment_selection_list.dart';
@@ -31,7 +31,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
           content: const Text(
             'No tienes entornos colaborativos propios creados. Crea uno primero desde el selector de entornos.',
           ),
-          backgroundColor: LiquidTheme.surfaceDark,
+          backgroundColor: AppTheme.surfaceDark,
         ),
       );
       return;
@@ -57,10 +57,10 @@ class InviteToEnvironmentSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       decoration: BoxDecoration(
-        color: LiquidTheme.surfaceDark,
+        color: AppTheme.surfaceDark,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor.withValues(alpha: 0.8),
+          color: AppTheme.glassBorderColor.withValues(alpha: 0.8),
         ),
         boxShadow: [
           BoxShadow(
@@ -79,7 +79,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                color: AppTheme.textSecondary.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -88,13 +88,13 @@ class InviteToEnvironmentSheet extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.group_add_rounded,
-                  color: LiquidTheme.accentEmerald, size: 22),
+                  color: AppTheme.accentEmerald, size: 22),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Invitar a "${friend.username}"',
                   style: TextStyle(
-                    color: LiquidTheme.textPrimary,
+                    color: AppTheme.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -102,7 +102,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(Icons.close_rounded,
-                    color: LiquidTheme.textSecondary, size: 20),
+                    color: AppTheme.textSecondary, size: 20),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -110,7 +110,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Selecciona el entorno colaborativo al que deseas invitarlo:',
-            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 14),
           ConstrainedBox(
@@ -146,7 +146,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
           content: Text(
             'Invitación enviada a ${friend.username} para "$environmentName"',
           ),
-          backgroundColor: LiquidTheme.accentEmerald,
+          backgroundColor: AppTheme.accentEmerald,
         ),
       );
     } else {
@@ -156,7 +156,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
             environmentController.errorMessage ??
                 'No se pudo enviar la invitación',
           ),
-          backgroundColor: LiquidTheme.accentCoral,
+          backgroundColor: AppTheme.accentCoral,
         ),
       );
     }

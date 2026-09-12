@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
-import '../../../../core/widgets/liquid_button.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_card.dart';
 
 /// Modal de salvaguarda obligatorio previo a eliminar, abandonar o expulsar de un entorno
 /// Ofrece la opción de migrar el contenido propio al espacio personal antes de proceder.
@@ -98,9 +98,8 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
           color: Colors.transparent,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440),
-            child: GlassCard(
-              blur: 24.0,
-              borderRadius: 24.0,
+            child: AppCard(
+              borderRadius: 20.0,
               padding: const EdgeInsets.all(28.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -133,7 +132,7 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: LiquidTheme.textPrimary,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -142,7 +141,7 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                     'Antes de realizar esta acción en "${widget.environmentName}", puedes reasignar atómicamente todas tus listas y elementos creados a tu entorno personal "Mi Espacio" para no perderlos.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: LiquidTheme.textSecondary,
+                      color: AppTheme.textSecondary,
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -153,14 +152,14 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: LiquidTheme.accentCoral.withValues(alpha: 0.15),
+                        color: AppTheme.accentCoral.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         _errorMessage!,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: LiquidTheme.accentCoral,
+                          color: AppTheme.accentCoral,
                           fontSize: 12,
                         ),
                       ),
@@ -170,7 +169,7 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                   const SizedBox(height: 24),
 
                   // Botón 1: Migrar y continuar
-                  LiquidButton(
+                  AppButton(
                     text: 'Migrar a "Mi Espacio" y Continuar',
                     icon: Icons.drive_file_move_rounded,
                     isLoading: _isMigrating,
@@ -181,9 +180,9 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                   // Botón 2: Continuar sin migrar
                   OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: LiquidTheme.accentCoral,
+                      foregroundColor: AppTheme.accentCoral,
                       side: BorderSide(
-                        color: LiquidTheme.accentCoral.withValues(alpha: 0.5),
+                        color: AppTheme.accentCoral.withValues(alpha: 0.5),
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -209,7 +208,7 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                     child: Text(
                       'Cancelar',
                       style: TextStyle(
-                        color: LiquidTheme.textSecondary,
+                        color: AppTheme.textSecondary,
                         fontSize: 13,
                       ),
                     ),

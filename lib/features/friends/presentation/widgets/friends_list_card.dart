@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
-import '../../../../core/widgets/neumorphic_container.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_container.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/profile_model.dart';
 
@@ -22,28 +22,28 @@ class FriendsListCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: LiquidTheme.surfaceDark,
+        backgroundColor: AppTheme.surfaceDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: LiquidTheme.glassBorderColor),
+          side: BorderSide(color: AppTheme.cardBorderColor),
         ),
         title: Text(
           'Eliminar Amigo',
           style: TextStyle(
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           '¿Estás seguro de que deseas eliminar a "${friend.username}" de tu lista de amigos?',
-          style: TextStyle(color: LiquidTheme.textSecondary),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancelar',
-              style: TextStyle(color: LiquidTheme.textSecondary),
+              style: TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
@@ -51,10 +51,10 @@ class FriendsListCard extends StatelessWidget {
               Navigator.pop(ctx);
               onRemoveFriend(friend);
             },
-            child: Text(
+            child: const Text(
               'Eliminar',
               style: TextStyle(
-                color: LiquidTheme.accentCoral,
+                color: AppTheme.accentCoral,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -66,10 +66,9 @@ class FriendsListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      blur: 20.0,
-      borderRadius: 24.0,
-      padding: const EdgeInsets.all(22.0),
+    return AppCard(
+      borderRadius: 18.0,
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -78,12 +77,12 @@ class FriendsListCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: LiquidTheme.primaryLiquid.withValues(alpha: 0.15),
+                  color: AppTheme.primaryAccent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.group_rounded,
-                  color: LiquidTheme.primaryLiquid,
+                  color: AppTheme.primaryAccent,
                   size: 22,
                 ),
               ),
@@ -97,7 +96,7 @@ class FriendsListCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
-                        color: LiquidTheme.textPrimary,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -105,7 +104,7 @@ class FriendsListCard extends StatelessWidget {
                       'Los cambios de nombre se sincronizan al instante',
                       style: TextStyle(
                         fontSize: 12,
-                        color: LiquidTheme.textSecondary,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
@@ -123,13 +122,13 @@ class FriendsListCard extends StatelessWidget {
                   Icon(
                     Icons.people_outline_rounded,
                     size: 48,
-                    color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Aún no tienes amigos agregados',
                     style: TextStyle(
-                      color: LiquidTheme.textSecondary,
+                      color: AppTheme.textSecondary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -139,7 +138,7 @@ class FriendsListCard extends StatelessWidget {
                     'Utiliza el buscador de arriba para enviar una solicitud.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: LiquidTheme.textSecondary.withValues(alpha: 0.7),
+                      color: AppTheme.textSecondary.withValues(alpha: 0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -155,11 +154,11 @@ class FriendsListCard extends StatelessWidget {
               itemBuilder: (context, index) {
                 final friend = friends[index];
 
-                return NeumorphicContainer(
-                  borderRadius: 16,
+                return AppContainer(
+                  borderRadius: 14,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  baseColor: LiquidTheme.surfaceDark,
+                  baseColor: AppTheme.surfaceDark,
                   child: Row(
                     children: [
                       UserAvatar.fromProfile(
@@ -176,16 +175,16 @@ class FriendsListCard extends StatelessWidget {
                             Text(
                               friend.username,
                               style: TextStyle(
-                                color: LiquidTheme.textPrimary,
+                                color: AppTheme.textPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
+                            const Text(
                               'Conectado en MarthApp',
                               style: TextStyle(
-                                color: LiquidTheme.accentEmerald,
+                                color: AppTheme.accentEmerald,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -193,27 +192,27 @@ class FriendsListCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                        if (onInviteToEnvironment != null)
-                          IconButton(
-                            icon: Icon(
-                              Icons.group_add_rounded,
-                              size: 19,
-                              color: LiquidTheme.accentEmerald,
-                            ),
-                            tooltip: 'Invitar a un entorno',
-                            onPressed: () => onInviteToEnvironment!(friend),
-                          ),
+                      if (onInviteToEnvironment != null)
                         IconButton(
-                          icon: Icon(
-                            Icons.person_remove_rounded,
-                            size: 18,
-                            color:
-                                LiquidTheme.textSecondary.withValues(alpha: 0.6),
+                          icon: const Icon(
+                            Icons.group_add_rounded,
+                            size: 19,
+                            color: AppTheme.accentEmerald,
                           ),
-                          tooltip: 'Eliminar amigo',
-                          onPressed: () =>
-                              _showConfirmDeleteDialog(context, friend),
+                          tooltip: 'Invitar a un entorno',
+                          onPressed: () => onInviteToEnvironment!(friend),
                         ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.person_remove_rounded,
+                          size: 18,
+                          color:
+                              AppTheme.textSecondary.withValues(alpha: 0.6),
+                        ),
+                        tooltip: 'Eliminar amigo',
+                        onPressed: () =>
+                            _showConfirmDeleteDialog(context, friend),
+                      ),
                     ],
                   ),
                 );

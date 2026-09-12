@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_container.dart';
 import '../../../../core/widgets/liquid_banner.dart';
-import '../../../../core/widgets/liquid_button.dart';
-import '../../../../core/widgets/neumorphic_container.dart';
 import '../../domain/models/avatar_catalog.dart';
 import '../../domain/models/avatar_data.dart';
 import '../controllers/profile_controller.dart';
@@ -181,10 +181,10 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
 
     return Container(
       decoration: BoxDecoration(
-        color: LiquidTheme.surfaceDark.withValues(alpha: 0.95),
+        color: AppTheme.surfaceDark.withValues(alpha: 0.95),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor,
+          color: AppTheme.glassBorderColor,
           width: 1.5,
         ),
       ),
@@ -204,7 +204,7 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                  color: AppTheme.textSecondary.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -217,13 +217,13 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
                   Text(
                     'Personalizar Avatar',
                     style: TextStyle(
-                      color: LiquidTheme.textPrimary,
+                      color: AppTheme.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, color: LiquidTheme.textSecondary),
+                    icon: Icon(Icons.close_rounded, color: AppTheme.textSecondary),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -237,9 +237,9 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
               // Pestañas Selectoras
               TabBar(
                 controller: _tabController,
-                indicatorColor: LiquidTheme.primaryCyan,
-                labelColor: LiquidTheme.primaryCyan,
-                unselectedLabelColor: LiquidTheme.textSecondary,
+                indicatorColor: AppTheme.primaryCyan,
+                labelColor: AppTheme.primaryCyan,
+                unselectedLabelColor: AppTheme.textSecondary,
                 indicatorWeight: 3,
                 tabs: const [
                   Tab(icon: Icon(Icons.palette_rounded, size: 20), text: 'Icono & Color'),
@@ -274,7 +274,7 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
               const SizedBox(height: 16),
 
               // Botón Guardar
-              LiquidButton(
+              AppButton(
                 text: 'Guardar Avatar',
                 isLoading: isSaving,
                 icon: Icons.check_rounded,
@@ -294,10 +294,10 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
         height: 84,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: LiquidTheme.primaryCyan, width: 2),
+          border: Border.all(color: AppTheme.primaryCyan, width: 2),
           boxShadow: [
             BoxShadow(
-              color: LiquidTheme.primaryCyan.withValues(alpha: 0.35),
+              color: AppTheme.primaryCyan.withValues(alpha: 0.35),
               blurRadius: 20,
             ),
           ],
@@ -328,7 +328,7 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
         Text(
           '1. Selecciona un Icono',
           style: TextStyle(
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),
@@ -355,20 +355,20 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isSelected
-                      ? LiquidTheme.primaryLiquid.withValues(alpha: 0.25)
-                      : LiquidTheme.surfaceDark,
+                      ? AppTheme.primaryLiquid.withValues(alpha: 0.25)
+                      : AppTheme.surfaceDark,
                   border: Border.all(
                     color: isSelected
-                        ? LiquidTheme.primaryCyan
-                        : LiquidTheme.glassBorderColor,
+                        ? AppTheme.primaryCyan
+                        : AppTheme.glassBorderColor,
                     width: isSelected ? 2.0 : 1.0,
                   ),
                 ),
                 child: Icon(
                   entry.value,
                   color: isSelected
-                      ? LiquidTheme.primaryCyan
-                      : LiquidTheme.textSecondary,
+                      ? AppTheme.primaryCyan
+                      : AppTheme.textSecondary,
                   size: 22,
                 ),
               ),
@@ -379,7 +379,7 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
         Text(
           '2. Selecciona un Color de Fondo',
           style: TextStyle(
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),
@@ -439,7 +439,7 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
           Text(
             '¡Imagen lista para subir!',
             style: TextStyle(
-              color: LiquidTheme.accentEmerald,
+              color: AppTheme.accentEmerald,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -448,54 +448,54 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
           Text(
             'Se guardará de forma segura en Supabase Storage al pulsar "Guardar Avatar".',
             textAlign: TextAlign.center,
-            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 12),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 16),
         ] else ...[
           Icon(
             Icons.add_a_photo_outlined,
             size: 48,
-            color: LiquidTheme.textSecondary.withValues(alpha: 0.6),
+            color: AppTheme.textSecondary.withValues(alpha: 0.6),
           ),
           const SizedBox(height: 10),
           Text(
             'Elige una imagen desde tu dispositivo',
-            style: TextStyle(color: LiquidTheme.textPrimary, fontWeight: FontWeight.w600),
+            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
           Text(
             'Formatos compatibles: PNG, JPG, WEBP',
-            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 12),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 16),
         ],
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            NeumorphicContainer(
+            AppContainer(
               borderRadius: 14,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              baseColor: LiquidTheme.surfaceDark,
+              baseColor: AppTheme.surfaceDark,
               child: TextButton.icon(
                 onPressed: () => _pickImage(ImageSource.gallery),
-                icon: Icon(Icons.photo_library_rounded, color: LiquidTheme.primaryLiquid),
+                icon: Icon(Icons.photo_library_rounded, color: AppTheme.primaryLiquid),
                 label: Text(
                   'Galería',
-                  style: TextStyle(color: LiquidTheme.textPrimary, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
             const SizedBox(width: 14),
-            NeumorphicContainer(
+            AppContainer(
               borderRadius: 14,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              baseColor: LiquidTheme.surfaceDark,
+              baseColor: AppTheme.surfaceDark,
               child: TextButton.icon(
                 onPressed: () => _pickImage(ImageSource.camera),
-                icon: Icon(Icons.camera_alt_rounded, color: LiquidTheme.primaryCyan),
+                icon: Icon(Icons.camera_alt_rounded, color: AppTheme.primaryCyan),
                 label: Text(
                   'Cámara',
-                  style: TextStyle(color: LiquidTheme.textPrimary, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -519,7 +519,7 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
           Text(
             'Modo Iniciales Predeterminado',
             style: TextStyle(
-              color: LiquidTheme.textPrimary,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 15,
             ),
@@ -528,7 +528,7 @@ class _AvatarPickerModalState extends State<AvatarPickerModal>
           Text(
             'Utiliza la inicial de tu nombre con el gradiente líquido de la aplicación.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: LiquidTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
         ],
       ),

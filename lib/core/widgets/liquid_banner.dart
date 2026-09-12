@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/liquid_theme.dart';
+import '../theme/app_theme.dart';
 
 enum BannerType { error, success, info }
 
@@ -23,11 +23,11 @@ class LiquidBanner extends StatelessWidget {
   Color get _accentColor {
     switch (type) {
       case BannerType.error:
-        return LiquidTheme.accentCoral;
+        return AppTheme.accentCoral;
       case BannerType.success:
-        return LiquidTheme.accentEmerald;
+        return AppTheme.accentEmerald;
       case BannerType.info:
-        return LiquidTheme.primaryLiquid;
+        return AppTheme.primaryLiquid;
     }
   }
 
@@ -64,7 +64,7 @@ class LiquidBanner extends StatelessWidget {
             child: Text(
               message,
               style: TextStyle(
-                color: LiquidTheme.textPrimary, // #E6EDF3 para máximo contraste WCAG AA
+                color: AppTheme.textPrimary, // #E6EDF3 para máximo contraste WCAG AA
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 height: 1.35,
@@ -76,7 +76,7 @@ class LiquidBanner extends StatelessWidget {
             GestureDetector(
               onTap: onClose,
               child: Icon(Icons.close_rounded,
-                  color: LiquidTheme.textSecondary, size: 18),
+                  color: AppTheme.textSecondary, size: 18),
             ),
           ],
         ],

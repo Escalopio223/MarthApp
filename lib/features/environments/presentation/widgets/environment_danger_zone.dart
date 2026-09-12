@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/liquid_button.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_button.dart';
 
 /// Componente presentacional puro para la zona de peligro (Eliminar o Abandonar entorno)
 class EnvironmentDangerZone extends StatelessWidget {
@@ -20,13 +20,13 @@ class EnvironmentDangerZone extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isOwner) {
-      return LiquidButton(
+      return AppButton(
         text: 'Eliminar Entorno',
         icon: Icons.delete_outline_rounded,
         isLoading: isActionLoading,
         gradient: LinearGradient(
           colors: [
-            LiquidTheme.accentCoral,
+            AppTheme.accentCoral,
             Colors.red.shade900,
           ],
         ),
@@ -34,13 +34,13 @@ class EnvironmentDangerZone extends StatelessWidget {
       );
     }
 
-    return LiquidButton(
+    return AppButton(
       text: 'Abandonar Entorno',
       icon: Icons.exit_to_app_rounded,
       isLoading: isActionLoading,
       gradient: LinearGradient(
         colors: [
-          LiquidTheme.accentCoral,
+          AppTheme.accentCoral,
           Colors.red.shade900,
         ],
       ),

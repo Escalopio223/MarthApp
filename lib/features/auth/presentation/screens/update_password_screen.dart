@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/widgets/liquid_background.dart';
+import '../../../../core/widgets/app_background.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/update_password_card.dart';
 
@@ -30,7 +30,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: LiquidBackground(
+      body: AppBackground(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),

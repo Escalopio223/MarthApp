@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
-import '../../../../core/widgets/liquid_button.dart';
-import '../../../../core/widgets/neumorphic_container.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_container.dart';
 import '../../domain/friend_code_manager.dart';
 
 /// Tarjeta del código de amigo autogenerado con cuenta regresiva de 1 minuto
@@ -31,10 +31,9 @@ class FriendCodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      blur: 18.0,
-      borderRadius: 24.0,
-      padding: const EdgeInsets.all(24.0),
+    return AppCard(
+      borderRadius: 18.0,
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -43,7 +42,7 @@ class FriendCodeCard extends StatelessWidget {
           Text(
             'Comparte tu código temporal. Es válido durante 1 minuto exacto y luego se elimina por seguridad.',
             style: TextStyle(
-              color: LiquidTheme.textSecondary,
+              color: AppTheme.textSecondary,
               fontSize: 13,
               height: 1.4,
             ),
@@ -61,13 +60,13 @@ class FriendCodeCard extends StatelessWidget {
           const SizedBox(height: 18),
 
           // Botón de generación / regeneración
-          LiquidButton(
+          AppButton(
             text: friendCodeManager.hasActiveCode
                 ? 'Regenerar Código'
                 : 'Generar Código (1 min)',
             icon: Icons.refresh_rounded,
             height: 48,
-            gradient: LiquidTheme.liquidPrimaryGradient,
+            gradient: AppTheme.actionGradient,
             onPressed: onGenerateCode,
           ),
         ],
@@ -81,12 +80,12 @@ class FriendCodeCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: LiquidTheme.primaryCyan.withValues(alpha: 0.15),
+            color: AppTheme.primaryAccent.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             Icons.group_add_rounded,
-            color: LiquidTheme.primaryCyan,
+            color: AppTheme.primaryAccent,
             size: 22,
           ),
         ),
@@ -95,7 +94,7 @@ class FriendCodeCard extends StatelessWidget {
           child: Text(
             'Mi Código de Amigo',
             style: TextStyle(
-              color: LiquidTheme.textPrimary,
+              color: AppTheme.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -108,9 +107,9 @@ class FriendCodeCard extends StatelessWidget {
   Widget _buildActiveCodeBox(BuildContext context) {
     final code = friendCodeManager.currentCode!;
 
-    return NeumorphicContainer(
-      borderRadius: 18,
-      padding: const EdgeInsets.all(18),
+    return AppContainer(
+      borderRadius: 16,
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Row(
@@ -122,14 +121,14 @@ class FriendCodeCard extends StatelessWidget {
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 3,
-                  color: LiquidTheme.primaryCyan,
+                  color: AppTheme.primaryAccent,
                   fontFamily: 'monospace',
                 ),
               ),
               const SizedBox(width: 12),
               IconButton(
                 icon: Icon(Icons.copy_rounded,
-                    color: LiquidTheme.textSecondary),
+                    color: AppTheme.textSecondary),
                 tooltip: 'Copiar código',
                 onPressed: () => _copyToClipboard(context, code),
               ),
@@ -143,11 +142,11 @@ class FriendCodeCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: friendCodeManager.progress,
               minHeight: 8,
-              backgroundColor: LiquidTheme.surfaceDark,
+              backgroundColor: AppTheme.surfaceDark,
               valueColor: AlwaysStoppedAnimation<Color>(
                 friendCodeManager.remainingSeconds <= 15
-                    ? LiquidTheme.accentCoral
-                    : LiquidTheme.primaryLiquid,
+                    ? AppTheme.accentCoral
+                    : AppTheme.primaryAccent,
               ),
             ),
           ),
@@ -159,8 +158,8 @@ class FriendCodeCard extends StatelessWidget {
                 '⏳ Expira en ${friendCodeManager.remainingSeconds}s',
                 style: TextStyle(
                   color: friendCodeManager.remainingSeconds <= 15
-                      ? LiquidTheme.accentCoral
-                      : LiquidTheme.textSecondary,
+                      ? AppTheme.accentCoral
+                      : AppTheme.textSecondary,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -168,7 +167,7 @@ class FriendCodeCard extends StatelessWidget {
               Text(
                 'Duración: 1 min',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: AppTheme.textSecondary.withValues(alpha: 0.7),
                   fontSize: 11,
                 ),
               ),
@@ -181,24 +180,24 @@ class FriendCodeCard extends StatelessWidget {
 
   Widget _buildExpiredNotice() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: LiquidTheme.accentCoral.withValues(alpha: 0.1),
+        color: AppTheme.accentCoral.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: LiquidTheme.accentCoral.withValues(alpha: 0.3),
+          color: AppTheme.accentCoral.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
         children: [
           Icon(Icons.timer_off_rounded,
-              color: LiquidTheme.accentCoral, size: 24),
+              color: AppTheme.accentCoral, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'El código ha expirado y ha sido eliminado automáticamente.',
               style: TextStyle(
-                color: LiquidTheme.accentCoral,
+                color: AppTheme.accentCoral,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -211,24 +210,24 @@ class FriendCodeCard extends StatelessWidget {
 
   Widget _buildInitialNotice() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppTheme.surfaceDark.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: AppTheme.cardBorderColor,
         ),
       ),
       child: Row(
         children: [
           Icon(Icons.info_outline_rounded,
-              color: LiquidTheme.primaryCyan, size: 24),
+              color: AppTheme.primaryAccent, size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'No tienes ningún código activo. Pulsa el botón para generar uno válido durante 1 minuto.',
               style: TextStyle(
-                color: LiquidTheme.textSecondary,
+                color: AppTheme.textSecondary,
                 fontSize: 13,
                 height: 1.4,
               ),

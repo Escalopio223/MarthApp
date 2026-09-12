@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../theme/liquid_theme.dart';
+import '../theme/app_theme.dart';
 
-/// Contenedor táctil Neumórfico ('Soft UI'):
-/// - Superficie base #1A1F26
-/// - Doble sombra suave con exterior oscura (#0D1014) y realce claro (#222932)
-/// - Borde ultra sutil integrado y transición elástica cubic-bezier
-class NeumorphicContainer extends StatelessWidget {
+/// Contenedor táctil Claymórfico para micro-componentes, badges y selectores:
+/// - Soporte para elevación convexa o incrustación cóncava (isInset)
+/// - Doble sombra contenida y micro-borde estructural
+/// - Animación elástica suave
+class AppContainer extends StatelessWidget {
   final Widget child;
   final double borderRadius;
   final EdgeInsetsGeometry padding;
@@ -13,11 +13,11 @@ class NeumorphicContainer extends StatelessWidget {
   final Color? baseColor;
   final VoidCallback? onTap;
 
-  const NeumorphicContainer({
+  const AppContainer({
     super.key,
     required this.child,
-    this.borderRadius = 18.0,
-    this.padding = const EdgeInsets.all(16.0),
+    this.borderRadius = 16.0,
+    this.padding = const EdgeInsets.all(14.0),
     this.isInset = false,
     this.baseColor,
     this.onTap,
@@ -25,20 +25,23 @@ class NeumorphicContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBaseColor = baseColor ?? LiquidTheme.surfaceDark;
+    final effectiveBaseColor = baseColor ?? AppTheme.surfaceDark;
 
     final container = AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       padding: padding,
       decoration: BoxDecoration(
         color: effectiveBaseColor,
+        gradient: isInset
+            ? null
+            : AppTheme.claySurfaceGradient(baseColor: effectiveBaseColor),
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: isInset
-            ? LiquidTheme.neumorphicInsetShadows()
-            : LiquidTheme.neumorphicRaisedShadows(baseColor: effectiveBaseColor),
+            ? AppTheme.clayInsetShadows()
+            : AppTheme.clayRaisedShadows(baseColor: effectiveBaseColor),
         border: Border.all(
-          color: LiquidTheme.glassBorderColor,
+          color: AppTheme.cardBorderColor,
           width: 0.8,
         ),
       ),

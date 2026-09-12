@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/environment_model.dart';
 
 /// Componente presentacional reutilizable para renderizar colecciones de entornos
@@ -30,7 +30,7 @@ class EnvironmentSelectionList extends StatelessWidget {
             emptyMessage,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: LiquidTheme.textSecondary,
+              color: AppTheme.textSecondary,
               fontSize: 13,
             ),
           ),
@@ -51,8 +51,8 @@ class EnvironmentSelectionList extends StatelessWidget {
             : Icons.groups_rounded;
 
         final iconColor = env.isPersonal
-            ? LiquidTheme.primaryCyan
-            : LiquidTheme.accentEmerald;
+            ? AppTheme.primaryCyan
+            : AppTheme.accentEmerald;
 
         final badgeText = env.isPersonal
             ? 'Personal'
@@ -74,12 +74,12 @@ class EnvironmentSelectionList extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isSelected
                     ? iconColor.withValues(alpha: 0.12)
-                    : LiquidTheme.surfaceDark.withValues(alpha: 0.5),
+                    : AppTheme.surfaceDark.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected
                       ? iconColor.withValues(alpha: 0.8)
-                      : LiquidTheme.glassBorderColor.withValues(alpha: 0.4),
+                      : AppTheme.glassBorderColor.withValues(alpha: 0.4),
                   width: isSelected ? 1.5 : 1.0,
                 ),
               ),
@@ -107,7 +107,7 @@ class EnvironmentSelectionList extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: LiquidTheme.textPrimary,
+                                  color: AppTheme.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
@@ -138,7 +138,7 @@ class EnvironmentSelectionList extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: LiquidTheme.textSecondary,
+                            color: AppTheme.textSecondary,
                             fontSize: 11,
                           ),
                         ),
@@ -156,7 +156,7 @@ class EnvironmentSelectionList extends StatelessWidget {
                     IconButton(
                       icon: Icon(
                         Icons.tune_rounded,
-                        color: LiquidTheme.textSecondary.withValues(alpha: 0.8),
+                        color: AppTheme.textSecondary.withValues(alpha: 0.8),
                         size: 19,
                       ),
                       tooltip: 'Gestionar entorno',

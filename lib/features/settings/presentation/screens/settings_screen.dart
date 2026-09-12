@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_controller.dart';
-import '../../../../core/widgets/glass_card.dart';
-import '../../../../core/widgets/liquid_background.dart';
-import '../../../../core/widgets/neumorphic_container.dart';
+import '../../../../core/widgets/app_background.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_container.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
@@ -105,19 +105,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: LiquidTheme.textPrimary, size: 20),
+              color: AppTheme.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Ajustes',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
           ),
         ),
         centerTitle: true,
       ),
-      body: LiquidBackground(
+      body: AppBackground(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 100, 20, 40),
           child: Center(
@@ -139,10 +139,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildRealtimeFriendsNavCard(),
                   const SizedBox(height: 24),
 
-                  // 3. Selector dinámico de temas (10 temas en acordeón)
+                  // 3. Selector dinámico de temas (6 temas en acordeón)
                   ThemeSelectorCard(
                     themeController: widget.themeController ??
-                        LiquidThemeScope.of(context),
+                        AppThemeScope.of(context),
                   ),
                   const SizedBox(height: 28),
 
@@ -161,9 +161,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final pendingCount = _friendsController.pendingCount;
     final friendsCount = _friendsController.friends.length;
 
-    return GlassCard(
-      blur: 16.0,
-      borderRadius: 22.0,
+    return AppCard(
+      borderRadius: 18.0,
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -173,12 +172,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: LiquidTheme.primaryLiquid.withValues(alpha: 0.15),
+                color: AppTheme.primaryLiquid.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.people_alt_rounded,
-                color: LiquidTheme.primaryLiquid,
+                color: AppTheme.primaryLiquid,
                 size: 22,
               ),
             ),
@@ -190,7 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     'Amigos y Solicitudes',
                     style: TextStyle(
-                      color: LiquidTheme.textPrimary,
+                      color: AppTheme.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -202,8 +201,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : '$friendsCount ${friendsCount == 1 ? 'amigo' : 'amigos'}',
                     style: TextStyle(
                       color: pendingCount > 0
-                          ? LiquidTheme.accentCoral
-                          : LiquidTheme.textSecondary,
+                          ? AppTheme.accentCoral
+                          : AppTheme.textSecondary,
                       fontSize: 12,
                       fontWeight: pendingCount > 0
                           ? FontWeight.bold
@@ -215,7 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: LiquidTheme.textSecondary,
+              color: AppTheme.textSecondary,
               size: 16,
             ),
           ],
@@ -225,17 +224,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLogoutButton() {
-    return NeumorphicContainer(
+    return AppContainer(
       borderRadius: 18,
       padding: const EdgeInsets.symmetric(vertical: 6),
-      baseColor: LiquidTheme.surfaceDark,
+      baseColor: AppTheme.surfaceDark,
       child: TextButton.icon(
         onPressed: _logout,
-        icon: Icon(Icons.logout_rounded, color: LiquidTheme.accentCoral),
+        icon: Icon(Icons.logout_rounded, color: AppTheme.accentCoral),
         label: Text(
           'Cerrar Sesión',
           style: TextStyle(
-            color: LiquidTheme.accentCoral,
+            color: AppTheme.accentCoral,
             fontWeight: FontWeight.bold,
             fontSize: 15,
           ),

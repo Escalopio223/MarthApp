@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/liquid_banner.dart';
-import '../../../../core/widgets/liquid_button.dart';
+import '../../../../core/widgets/app_button.dart';
 import '../controllers/auth_controller.dart';
 
 /// Componente modular y reutilizable para el cambio y confirmación de contraseña.
@@ -105,10 +105,9 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
   Widget build(BuildContext context) {
     final isLoading = widget.authController.isLoading;
 
-    return GlassCard(
-      blur: 24.0,
-      borderRadius: 24.0,
-      padding: const EdgeInsets.all(28.0),
+    return AppCard(
+      borderRadius: 18.0,
+      padding: const EdgeInsets.all(24.0),
       child: _isSuccess ? _buildSuccessView() : _buildFormView(isLoading),
     );
   }
@@ -122,11 +121,11 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           height: 68,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: LiquidTheme.accentEmerald.withValues(alpha: 0.2),
-            border: Border.all(color: LiquidTheme.accentEmerald, width: 2),
+            color: AppTheme.accentEmerald.withValues(alpha: 0.2),
+            border: Border.all(color: AppTheme.accentEmerald, width: 2),
             boxShadow: [
               BoxShadow(
-                color: LiquidTheme.accentEmerald.withValues(alpha: 0.35),
+                color: AppTheme.accentEmerald.withValues(alpha: 0.35),
                 blurRadius: 18,
                 offset: const Offset(0, 4),
               ),
@@ -134,7 +133,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           ),
           child: const Icon(
             Icons.check_rounded,
-            color: LiquidTheme.accentEmerald,
+            color: AppTheme.accentEmerald,
             size: 40,
           ),
         ),
@@ -143,7 +142,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           '¡Contraseña Actualizada!',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: LiquidTheme.textPrimary,
+            color: AppTheme.textPrimary,
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -153,15 +152,17 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           'Tu contraseña ha sido modificada con éxito. Ya puedes seguir usando MarthApp.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: LiquidTheme.textSecondary,
+            color: AppTheme.textSecondary,
             fontSize: 14,
             height: 1.4,
           ),
         ),
         const SizedBox(height: 24),
-        LiquidButton(
+        AppButton(
           text: 'Continuar',
-          gradient: LiquidTheme.liquidEmeraldGradient,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF15803D), Color(0xFF166534)],
+          ),
           onPressed: () => widget.onSuccess?.call(),
         ),
       ],
@@ -182,7 +183,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           Text(
             'Nueva Contraseña',
             style: TextStyle(
-              color: LiquidTheme.textPrimary,
+              color: AppTheme.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -192,14 +193,14 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
             controller: _passwordController,
             focusNode: _passwordFocusNode,
             obscureText: _obscurePassword,
-            style: TextStyle(color: LiquidTheme.textPrimary),
+            style: TextStyle(color: AppTheme.textPrimary),
             decoration: InputDecoration(
               hintText: 'Mínimo 8 caracteres',
-              prefixIcon: Icon(Icons.lock_outline_rounded, color: LiquidTheme.textSecondary),
+              prefixIcon: Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                  color: LiquidTheme.textSecondary,
+                  color: AppTheme.textSecondary,
                   size: 20,
                 ),
                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -221,7 +222,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           Text(
             'Confirmar Nueva Contraseña',
             style: TextStyle(
-              color: LiquidTheme.textPrimary,
+              color: AppTheme.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -231,14 +232,14 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
             controller: _confirmPasswordController,
             focusNode: _confirmPasswordFocusNode,
             obscureText: _obscureConfirmPassword,
-            style: TextStyle(color: LiquidTheme.textPrimary),
+            style: TextStyle(color: AppTheme.textPrimary),
             decoration: InputDecoration(
               hintText: 'Repite la nueva contraseña',
-              prefixIcon: Icon(Icons.lock_outline_rounded, color: LiquidTheme.textSecondary),
+              prefixIcon: Icon(Icons.lock_outline_rounded, color: AppTheme.textSecondary),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                  color: LiquidTheme.textSecondary,
+                  color: AppTheme.textSecondary,
                   size: 20,
                 ),
                 onPressed: () =>
@@ -267,7 +268,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
 
           const SizedBox(height: 24),
 
-          LiquidButton(
+          AppButton(
             text: widget.submitButtonText,
             isLoading: isLoading,
             icon: Icons.check_rounded,
@@ -287,10 +288,10 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
             height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LiquidTheme.liquidPrimaryGradient,
+              gradient: AppTheme.liquidPrimaryGradient,
               boxShadow: [
                 BoxShadow(
-                  color: LiquidTheme.primaryCyan.withValues(alpha: 0.35),
+                  color: AppTheme.primaryCyan.withValues(alpha: 0.35),
                   blurRadius: 18,
                   offset: const Offset(0, 6),
                 ),
@@ -309,7 +310,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: LiquidTheme.textPrimary,
+              color: AppTheme.textPrimary,
               letterSpacing: -0.3,
             ),
           ),
@@ -318,7 +319,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
             widget.subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: LiquidTheme.textSecondary,
+              color: AppTheme.textSecondary,
               fontSize: 13,
               height: 1.4,
             ),
@@ -333,11 +334,11 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: LiquidTheme.primaryLiquid.withValues(alpha: 0.18),
+            color: AppTheme.primaryLiquid.withValues(alpha: 0.18),
           ),
           child: Icon(
             Icons.lock_reset_rounded,
-            color: LiquidTheme.primaryLiquid,
+            color: AppTheme.primaryLiquid,
             size: 24,
           ),
         ),
@@ -349,7 +350,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
               Text(
                 widget.title,
                 style: TextStyle(
-                  color: LiquidTheme.textPrimary,
+                  color: AppTheme.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -358,7 +359,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
               Text(
                 widget.subtitle,
                 style: TextStyle(
-                  color: LiquidTheme.textSecondary,
+                  color: AppTheme.textSecondary,
                   fontSize: 12,
                 ),
               ),
@@ -369,7 +370,7 @@ class _UpdatePasswordCardState extends State<UpdatePasswordCard> {
           IconButton(
             icon: Icon(
               Icons.close_rounded,
-              color: LiquidTheme.textSecondary,
+              color: AppTheme.textSecondary,
               size: 22,
             ),
             tooltip: 'Cerrar',

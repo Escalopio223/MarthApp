@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/friend_request_model.dart';
@@ -20,10 +20,9 @@ class IncomingRequestsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      blur: 20.0,
-      borderRadius: 24.0,
-      padding: const EdgeInsets.all(22.0),
+    return AppCard(
+      borderRadius: 18.0,
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -32,12 +31,12 @@ class IncomingRequestsCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: LiquidTheme.accentCoral.withValues(alpha: 0.15),
+                  color: AppTheme.accentCoral.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.mark_email_unread_rounded,
-                  color: LiquidTheme.accentCoral,
+                  color: AppTheme.accentCoral,
                   size: 22,
                 ),
               ),
@@ -48,7 +47,7 @@ class IncomingRequestsCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: LiquidTheme.textPrimary,
+                    color: AppTheme.textPrimary,
                   ),
                 ),
               ),
@@ -67,10 +66,10 @@ class IncomingRequestsCard extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: LiquidTheme.surfaceDark.withValues(alpha: 0.6),
+                  color: AppTheme.surfaceDark.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: LiquidTheme.glassBorderColor,
+                    color: AppTheme.glassBorderColor,
                   ),
                 ),
                 child: Row(
@@ -98,7 +97,7 @@ class IncomingRequestsCard extends StatelessWidget {
                           Text(
                             senderName,
                             style: TextStyle(
-                              color: LiquidTheme.textPrimary,
+                              color: AppTheme.textPrimary,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
@@ -106,7 +105,7 @@ class IncomingRequestsCard extends StatelessWidget {
                           Text(
                             'Quiere ser tu amigo',
                             style: TextStyle(
-                              color: LiquidTheme.textSecondary,
+                              color: AppTheme.textSecondary,
                               fontSize: 12,
                             ),
                           ),
@@ -118,12 +117,12 @@ class IncomingRequestsCard extends StatelessWidget {
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color:
-                              LiquidTheme.accentEmerald.withValues(alpha: 0.2),
+                              AppTheme.accentEmerald.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.check_rounded,
-                          color: LiquidTheme.accentEmerald,
+                          color: AppTheme.accentEmerald,
                           size: 18,
                         ),
                       ),
@@ -134,12 +133,12 @@ class IncomingRequestsCard extends StatelessWidget {
                       icon: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: LiquidTheme.accentCoral.withValues(alpha: 0.2),
+                          color: AppTheme.accentCoral.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.close_rounded,
-                          color: LiquidTheme.accentCoral,
+                          color: AppTheme.accentCoral,
                           size: 18,
                         ),
                       ),

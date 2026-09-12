@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../controllers/environment_controller.dart';
 import 'environment_picker_sheet.dart';
@@ -44,21 +44,21 @@ class EnvironmentSelectorChip extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: LiquidTheme.surfaceDark.withValues(alpha: 0.8),
+                color: AppTheme.surfaceDark.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isAll
-                      ? LiquidTheme.secondaryLilac.withValues(alpha: 0.6)
+                      ? AppTheme.secondaryLilac.withValues(alpha: 0.6)
                       : (active?.isPersonal == true
-                          ? LiquidTheme.primaryCyan.withValues(alpha: 0.6)
-                          : LiquidTheme.accentEmerald.withValues(alpha: 0.6)),
+                          ? AppTheme.primaryCyan.withValues(alpha: 0.6)
+                          : AppTheme.accentEmerald.withValues(alpha: 0.6)),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: (isAll
-                            ? LiquidTheme.secondaryLilac
-                            : LiquidTheme.primaryCyan)
+                            ? AppTheme.secondaryLilac
+                            : AppTheme.primaryCyan)
                         .withValues(alpha: 0.15),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
@@ -72,10 +72,10 @@ class EnvironmentSelectorChip extends StatelessWidget {
                     iconData,
                     size: 16,
                     color: isAll
-                        ? LiquidTheme.secondaryLilac
+                        ? AppTheme.secondaryLilac
                         : (active?.isPersonal == true
-                            ? LiquidTheme.primaryCyan
-                            : LiquidTheme.accentEmerald),
+                            ? AppTheme.primaryCyan
+                            : AppTheme.accentEmerald),
                   ),
                   const SizedBox(width: 6),
                   ConstrainedBox(
@@ -85,7 +85,7 @@ class EnvironmentSelectorChip extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: LiquidTheme.textPrimary,
+                        color: AppTheme.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -95,7 +95,7 @@ class EnvironmentSelectorChip extends StatelessWidget {
                   Icon(
                     Icons.keyboard_arrow_down_rounded,
                     size: 16,
-                    color: LiquidTheme.textSecondary,
+                    color: AppTheme.textSecondary,
                   ),
                 ],
               ),

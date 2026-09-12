@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
-import '../../../../core/widgets/liquid_background.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_background.dart';
 import '../../../../core/widgets/liquid_banner.dart';
-import '../../../../core/widgets/liquid_button.dart';
+import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/marth_app_logo.dart';
 import '../controllers/auth_controller.dart';
 import '../widgets/auth_mode_selector.dart';
@@ -81,16 +81,15 @@ class _AuthScreenState extends State<AuthScreen> {
     final isAnyLoading = _authController.isLoading;
 
     return Scaffold(
-      body: LiquidBackground(
+      body: AppBackground(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
-              child: GlassCard(
-                blur: 24.0,
-                borderRadius: 28.0,
-                padding: const EdgeInsets.all(32.0),
+              child: AppCard(
+                borderRadius: 20.0,
+                padding: const EdgeInsets.all(28.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -155,7 +154,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       if (_mode == AuthMode.register) const SizedBox(height: 24),
 
                       // Botón Principal CTA
-                      LiquidButton(
+                      AppButton(
                         text: _mode == AuthMode.login
                             ? 'Iniciar Sesión'
                             : 'Crear Cuenta',
@@ -217,7 +216,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildTitle() {
     return ShaderMask(
       shaderCallback: (bounds) =>
-          LiquidTheme.liquidPrimaryGradient.createShader(bounds),
+          AppTheme.liquidPrimaryGradient.createShader(bounds),
       child: const Text(
         AppConstants.appName,
         textAlign: TextAlign.center,
@@ -235,11 +234,11 @@ class _AuthScreenState extends State<AuthScreen> {
     return TextFormField(
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
-      style: TextStyle(color: LiquidTheme.textPrimary),
+      style: TextStyle(color: AppTheme.textPrimary),
       decoration: InputDecoration(
         labelText: 'Correo Electrónico',
         prefixIcon: Icon(Icons.mail_outline_rounded,
-            color: LiquidTheme.primaryCyan),
+            color: AppTheme.primaryCyan),
         hintText: 'ejemplo@marthapp.com',
       ),
       validator: (value) {
@@ -258,18 +257,18 @@ class _AuthScreenState extends State<AuthScreen> {
     return TextFormField(
       controller: _passwordController,
       obscureText: _obscurePassword,
-      style: TextStyle(color: LiquidTheme.textPrimary),
+      style: TextStyle(color: AppTheme.textPrimary),
       decoration: InputDecoration(
         labelText: 'Contraseña',
         prefixIcon: Icon(Icons.lock_outline_rounded,
-            color: LiquidTheme.primaryCyan),
+            color: AppTheme.primaryCyan),
         hintText: 'Mínimo 6 caracteres',
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword
                 ? Icons.visibility_off_outlined
                 : Icons.visibility_outlined,
-            color: LiquidTheme.textSecondary,
+            color: AppTheme.textSecondary,
           ),
           onPressed: () {
             setState(() {
@@ -294,12 +293,12 @@ class _AuthScreenState extends State<AuthScreen> {
     return TextFormField(
       controller: _confirmPasswordController,
       obscureText: _obscureConfirmPassword,
-      style: TextStyle(color: LiquidTheme.textPrimary),
+      style: TextStyle(color: AppTheme.textPrimary),
       decoration: InputDecoration(
         labelText: 'Confirmar Contraseña',
         prefixIcon: Icon(
           Icons.lock_reset_rounded,
-          color: LiquidTheme.primaryCyan,
+          color: AppTheme.primaryCyan,
         ),
         hintText: 'Repite tu contraseña',
         suffixIcon: IconButton(
@@ -307,7 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
             _obscureConfirmPassword
                 ? Icons.visibility_off_outlined
                 : Icons.visibility_outlined,
-            color: LiquidTheme.textSecondary,
+            color: AppTheme.textSecondary,
           ),
           onPressed: () {
             setState(() {
@@ -345,7 +344,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Text(
               '¿Has olvidado tu contraseña?',
               style: TextStyle(
-                color: LiquidTheme.primaryLiquid,
+                color: AppTheme.primaryLiquid,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -360,19 +359,19 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(child: Divider(color: LiquidTheme.glassBorderColor)),
+        Expanded(child: Divider(color: AppTheme.glassBorderColor)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
             'o continúa con',
             style: TextStyle(
-              color: LiquidTheme.textSecondary.withValues(alpha: 0.8),
+              color: AppTheme.textSecondary.withValues(alpha: 0.8),
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        Expanded(child: Divider(color: LiquidTheme.glassBorderColor)),
+        Expanded(child: Divider(color: AppTheme.glassBorderColor)),
       ],
     );
   }

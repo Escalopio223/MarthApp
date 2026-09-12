@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
 import 'core/constants/app_constants.dart';
-import 'core/theme/liquid_theme.dart';
+import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/controllers/auth_controller.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
@@ -60,7 +60,7 @@ class _MarthAppState extends State<MarthApp> {
 
   @override
   Widget build(BuildContext context) {
-    return LiquidThemeScope(
+    return AppThemeScope(
       controller: _themeController,
       child: AnimatedBuilder(
         animation: _themeController,

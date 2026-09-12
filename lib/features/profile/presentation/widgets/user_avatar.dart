@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/avatar_catalog.dart';
 import '../../domain/models/avatar_data.dart';
 import '../../domain/models/profile_model.dart';
@@ -70,7 +70,7 @@ class UserAvatar extends StatelessWidget {
         shape: BoxShape.circle,
         border: showBorder
             ? Border.all(
-                color: LiquidTheme.glassBorderColor.withValues(alpha: 0.8),
+                color: AppTheme.glassBorderColor.withValues(alpha: 0.8),
                 width: size > 60 ? 2.0 : 1.2,
               )
             : null,
@@ -99,9 +99,9 @@ class UserAvatar extends StatelessWidget {
               height: size * 0.32,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LiquidTheme.liquidPrimaryGradient,
+                gradient: AppTheme.liquidPrimaryGradient,
                 border: Border.all(
-                  color: LiquidTheme.surfaceDark,
+                  color: AppTheme.surfaceDark,
                   width: 2,
                 ),
                 boxShadow: [
@@ -151,7 +151,7 @@ class UserAvatar extends StatelessWidget {
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Container(
-          color: LiquidTheme.surfaceDark,
+          color: AppTheme.surfaceDark,
           child: Center(
             child: SizedBox(
               width: size * 0.4,
@@ -175,7 +175,7 @@ class UserAvatar extends StatelessWidget {
     final iconData = AvatarIconCatalog.getIcon(avatarData.iconKey);
     final bgColor = AvatarColorPalette.parseHex(
       avatarData.bgColorHex,
-      fallback: LiquidTheme.primaryCyan,
+      fallback: AppTheme.primaryCyan,
     );
 
     return Container(
@@ -212,7 +212,7 @@ class UserAvatar extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LiquidTheme.liquidPrimaryGradient,
+        gradient: AppTheme.liquidPrimaryGradient,
       ),
       child: Center(
         child: Text(
@@ -231,6 +231,6 @@ class UserAvatar extends StatelessWidget {
     if (avatarData.type == AvatarType.icon) {
       return AvatarColorPalette.parseHex(avatarData.bgColorHex);
     }
-    return LiquidTheme.primaryLiquid;
+    return AppTheme.primaryLiquid;
   }
 }

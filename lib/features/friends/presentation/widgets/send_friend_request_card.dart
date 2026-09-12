@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/liquid_theme.dart';
-import '../../../../core/widgets/glass_card.dart';
-import '../../../../core/widgets/liquid_button.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_button.dart';
 
 /// Tarjeta para enviar solicitudes de amistad o canjear códigos temporales (MARTH-XXXX)
 class SendFriendRequestCard extends StatefulWidget {
@@ -44,10 +44,9 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      blur: 20.0,
-      borderRadius: 24.0,
-      padding: const EdgeInsets.all(22.0),
+    return AppCard(
+      borderRadius: 18.0,
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -56,12 +55,12 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: LiquidTheme.primaryLiquid.withValues(alpha: 0.15),
+                  color: AppTheme.primaryAccent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.person_add_alt_1_rounded,
-                  color: LiquidTheme.primaryLiquid,
+                  color: AppTheme.primaryAccent,
                   size: 22,
                 ),
               ),
@@ -75,7 +74,7 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
-                        color: LiquidTheme.textPrimary,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -83,7 +82,7 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
                       'Introduce el código de invitación temporal de tu amigo (60s)',
                       style: TextStyle(
                         fontSize: 12,
-                        color: LiquidTheme.textSecondary,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
@@ -95,7 +94,7 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
           TextField(
             controller: _searchController,
             style: TextStyle(
-              color: LiquidTheme.textPrimary,
+              color: AppTheme.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 15,
               fontFamily: 'monospace',
@@ -107,7 +106,7 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
             decoration: InputDecoration(
               hintText: '8K2A',
               hintStyle: TextStyle(
-                color: LiquidTheme.textSecondary.withValues(alpha: 0.4),
+                color: AppTheme.textSecondary.withValues(alpha: 0.4),
                 fontFamily: 'monospace',
                 fontSize: 15,
                 letterSpacing: 1.5,
@@ -120,7 +119,7 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
                     Text(
                       'MARTH-',
                       style: TextStyle(
-                        color: LiquidTheme.primaryLiquid,
+                        color: AppTheme.primaryAccent,
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                         fontFamily: 'monospace',
@@ -135,7 +134,7 @@ class _SendFriendRequestCardState extends State<SendFriendRequestCard> {
             ),
           ),
           const SizedBox(height: 16),
-          LiquidButton(
+          AppButton(
             text: 'Enviar Solicitud',
             icon: Icons.send_rounded,
             height: 48,
