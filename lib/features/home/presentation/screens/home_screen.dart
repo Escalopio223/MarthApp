@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_background.dart';
+import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_container.dart';
 import '../../../../core/widgets/marth_app_logo.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
@@ -13,6 +14,8 @@ import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
 import '../../../environments/presentation/widgets/environment_selector_chip.dart';
+import '../../../leisure/presentation/controllers/leisure_controller.dart';
+import '../../../leisure/presentation/screens/leisure_screen.dart';
 import '../widgets/backend_status_card.dart';
 import '../widgets/home_greeting_card.dart';
 import '../widgets/home_quick_action_card.dart';
@@ -23,6 +26,7 @@ class HomeScreen extends StatefulWidget {
   final FriendsController? friendsController;
   final ProfileController? profileController;
   final EnvironmentController? environmentController;
+  final LeisureController? leisureController;
 
   const HomeScreen({
     super.key,
@@ -30,6 +34,7 @@ class HomeScreen extends StatefulWidget {
     this.friendsController,
     this.profileController,
     this.environmentController,
+    this.leisureController,
   });
 
   @override
@@ -40,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final FriendsController _friendsController;
   late final ProfileController _profileController;
   late final EnvironmentController _environmentController;
+  late final LeisureController _leisureController;
 
   @override
   void initState() {
@@ -54,6 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.environmentController ?? EnvironmentController();
     _environmentController.addListener(_onControllerUpdate);
 
+    _leisureController = widget.leisureController ?? LeisureController();
+    _leisureController.addListener(_onControllerUpdate);
+
     final user = widget.authController.user;
     if (user != null) {
       if (widget.friendsController == null) {
@@ -64,6 +73,14 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (widget.environmentController == null) {
         _environmentController.initialize(user.id);
+      }
+      if (widget.leisureController == null) {
+        final activeEnv = _environmentController.activeEnvironment;
+        _leisureController.initialize(
+          user.id,
+          environmentId: activeEnv?.id,
+          isPersonal: activeEnv?.isPersonal ?? true,
+        );
       }
     }
   }
@@ -77,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _friendsController.removeListener(_onControllerUpdate);
     _profileController.removeListener(_onControllerUpdate);
     _environmentController.removeListener(_onControllerUpdate);
+    _leisureController.removeListener(_onControllerUpdate);
     if (widget.friendsController == null) {
       _friendsController.dispose();
     }
@@ -85,6 +103,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (widget.environmentController == null) {
       _environmentController.dispose();
+    }
+    if (widget.leisureController == null) {
+      _leisureController.dispose();
     }
     super.dispose();
   }
@@ -110,6 +131,18 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => FriendsScreen(
           friendsController: _friendsController,
+          environmentController: _environmentController,
+        ),
+      ),
+    );
+  }
+
+  void _openLeisure(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LeisureScreen(
+          controller: _leisureController,
           environmentController: _environmentController,
         ),
       ),
@@ -158,7 +191,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   // Tarjeta Hero de bienvenida con el username real
                   HomeGreetingCard(username: activeUsername),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // Tarjeta destacada de Ocio & Cultura
+                  _buildLeisureCard(context),
+                  const SizedBox(height: 20),
 
                   // Fila de accesos rápidos
                   Row(
@@ -280,6 +317,126 @@ class _HomeScreenState extends State<HomeScreen> {
                 size: 38,
                 showGlow: true,
               ),
+      ),
+    );
+  }
+
+  Widget _buildLeisureCard(BuildContext context) {
+    final rouletteCount = _leisureController.rouletteCount;
+
+    return AppCard(
+      borderRadius: 22.0,
+      padding: const EdgeInsets.all(18.0),
+      onTap: () => _openLeisure(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryLiquid.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.movie_filter_rounded,
+                  color: AppTheme.primaryLiquid,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Ocio & Cultura',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        if (rouletteCount > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentCoral,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$rouletteCount en ruleta',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Películas, Series, Libros y Videojuegos',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 15,
+                color: AppTheme.textSecondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildLeisurePill('🎬 Cine'),
+              const SizedBox(width: 6),
+              _buildLeisurePill('📺 Series'),
+              const SizedBox(width: 6),
+              _buildLeisurePill('📚 Libros'),
+              const SizedBox(width: 6),
+              _buildLeisurePill('🎮 Juegos'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeisurePill(String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        decoration: BoxDecoration(
+          color: AppTheme.textSecondary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppTheme.cardBorderColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

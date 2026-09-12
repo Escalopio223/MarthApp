@@ -93,6 +93,42 @@ class TmdbService {
     }).toList();
   }
 
+  /// Búsqueda de películas por texto libre
+  Future<List<LeisureMediaDetails>> searchMovies(String query, {int page = 1}) async {
+    if (query.trim().isEmpty) return [];
+    final uri = _buildUri('/search/movie', {
+      'query': query,
+      'page': page.toString(),
+    });
+
+    final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+    if (response.statusCode != 200) {
+      throw HttpException('Error TMDB search/movie (${response.statusCode}): ${response.body}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final results = data['results'] as List? ?? [];
+    return results.map((item) => _parseMovieSummary(item as Map<String, dynamic>)).toList();
+  }
+
+  /// Búsqueda de series por texto libre
+  Future<List<LeisureMediaDetails>> searchTvShows(String query, {int page = 1}) async {
+    if (query.trim().isEmpty) return [];
+    final uri = _buildUri('/search/tv', {
+      'query': query,
+      'page': page.toString(),
+    });
+
+    final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+    if (response.statusCode != 200) {
+      throw HttpException('Error TMDB search/tv (${response.statusCode}): ${response.body}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final results = data['results'] as List? ?? [];
+    return results.map((item) => _parseTvSummary(item as Map<String, dynamic>)).toList();
+  }
+
   /// Detalle exhaustivo con sinopsis, director/creador, géneros y top de reparto
   Future<LeisureMediaDetails> getMediaDetails({
     required String mediaId,

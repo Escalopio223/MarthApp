@@ -28,6 +28,13 @@ abstract class ILeisureRepository {
     int page = 1,
   });
 
+  /// Busca títulos multimedia por texto libre según su tipo
+  Future<List<LeisureMediaDetails>> searchMedia({
+    required String query,
+    required LeisureMediaType type,
+    int page = 1,
+  });
+
   /// Obtiene el detalle exhaustivo de un medio utilizando estrategia de caché
   Future<LeisureMediaDetails> getMediaDetails({
     required String mediaId,

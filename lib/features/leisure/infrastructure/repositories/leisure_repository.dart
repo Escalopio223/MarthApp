@@ -20,7 +20,7 @@ import '../services/tmdb_service.dart';
 /// Orquesta TMDB v3, Open Library e IGDB junto con Supabase (progreso personal,
 /// listas de entorno, matches y caché relacional de 7 días).
 class LeisureRepository implements ILeisureRepository {
-  final SupabaseClient _supabase;
+  final SupabaseClient? _supabase;
   final TmdbService _tmdbService;
   final OpenLibraryService _openLibraryService;
   final IgdbService _igdbService;
@@ -30,13 +30,29 @@ class LeisureRepository implements ILeisureRepository {
     TmdbService? tmdbService,
     OpenLibraryService? openLibraryService,
     IgdbService? igdbService,
-  })  : _supabase = supabaseClient ?? Supabase.instance.client,
+  })  : _supabase = supabaseClient ?? _safeGetClient(),
         _tmdbService = tmdbService ?? TmdbService(),
         _openLibraryService = openLibraryService ?? OpenLibraryService(),
         _igdbService = igdbService ?? IgdbService(supabaseClient: supabaseClient);
 
+  static SupabaseClient? _safeGetClient() {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  SupabaseClient get _client {
+    final client = _supabase;
+    if (client == null) {
+      throw StateError('Supabase no está inicializado.');
+    }
+    return client;
+  }
+
   String get _currentUserId {
-    final user = _supabase.auth.currentUser;
+    final user = _client.auth.currentUser;
     if (user == null) {
       throw const AuthException('Usuario no autenticado al interactuar con LeisureRepository');
     }
@@ -69,6 +85,27 @@ class LeisureRepository implements ILeisureRepository {
       case LeisureMediaType.game:
         final offset = (page - 1) * 20;
         return _igdbService.getPopularGames(limit: 20, offset: offset);
+    }
+  }
+
+  @override
+  Future<List<LeisureMediaDetails>> searchMedia({
+    required String query,
+    required LeisureMediaType type,
+    int page = 1,
+  }) async {
+    final cleanQuery = query.trim();
+    if (cleanQuery.isEmpty) return [];
+
+    switch (type) {
+      case LeisureMediaType.movie:
+        return _tmdbService.searchMovies(cleanQuery, page: page);
+      case LeisureMediaType.tv:
+        return _tmdbService.searchTvShows(cleanQuery, page: page);
+      case LeisureMediaType.book:
+        return _openLibraryService.searchBooks(cleanQuery, page: page);
+      case LeisureMediaType.game:
+        return _igdbService.searchGames(cleanQuery);
     }
   }
 
@@ -192,7 +229,7 @@ class LeisureRepository implements ILeisureRepository {
     required String mediaId,
     required LeisureMediaType type,
   }) async {
-    final res = await _supabase
+    final res = await _client
         .from('leisure_user_items')
         .select()
         .eq('user_id', _currentUserId)
@@ -209,7 +246,7 @@ class LeisureRepository implements ILeisureRepository {
     LeisureMediaType? type,
     LeisureItemStatus? status,
   }) async {
-    var query = _supabase
+    var query = _client
         .from('leisure_user_items')
         .select()
         .eq('user_id', _currentUserId);
@@ -238,7 +275,7 @@ class LeisureRepository implements ILeisureRepository {
       'disliked_until': item.dislikedUntil?.toIso8601String(),
     };
 
-    final res = await _supabase
+    final res = await _client
         .from('leisure_user_items')
         .upsert(rowData, onConflict: 'user_id,media_id,media_type')
         .select()
@@ -252,7 +289,7 @@ class LeisureRepository implements ILeisureRepository {
     required String mediaId,
     required LeisureMediaType type,
   }) async {
-    await _supabase
+    await _client
         .from('leisure_user_items')
         .delete()
         .eq('user_id', _currentUserId)
@@ -268,7 +305,7 @@ class LeisureRepository implements ILeisureRepository {
   Future<List<LeisureSharedListModel>> getSharedLists({
     required String environmentId,
   }) async {
-    final res = await _supabase
+    final res = await _client
         .from('leisure_shared_lists')
         .select('*, leisure_shared_list_items(count)')
         .eq('environment_id', environmentId)
@@ -290,7 +327,7 @@ class LeisureRepository implements ILeisureRepository {
     required String title,
     String? description,
   }) async {
-    final res = await _supabase
+    final res = await _client
         .from('leisure_shared_lists')
         .insert({
           'environment_id': environmentId,
@@ -306,7 +343,7 @@ class LeisureRepository implements ILeisureRepository {
 
   @override
   Future<void> deleteSharedList({required String listId}) async {
-    await _supabase
+    await _client
         .from('leisure_shared_lists')
         .delete()
         .eq('id', listId);
@@ -316,7 +353,7 @@ class LeisureRepository implements ILeisureRepository {
   Future<List<LeisureSharedListItemModel>> getSharedListItems({
     required String listId,
   }) async {
-    final res = await _supabase
+    final res = await _client
         .from('leisure_shared_list_items')
         .select()
         .eq('list_id', listId)
@@ -336,7 +373,7 @@ class LeisureRepository implements ILeisureRepository {
     String? posterUrl,
     LeisureMediaDetails? detailsToCache,
   }) async {
-    final res = await _supabase
+    final res = await _client
         .from('leisure_shared_list_items')
         .insert({
           'list_id': listId,
@@ -359,7 +396,7 @@ class LeisureRepository implements ILeisureRepository {
 
   @override
   Future<void> removeSharedListItem({required String itemId}) async {
-    await _supabase
+    await _client
         .from('leisure_shared_list_items')
         .delete()
         .eq('id', itemId);
@@ -373,7 +410,7 @@ class LeisureRepository implements ILeisureRepository {
   Future<List<LeisureEnvironmentMatchModel>> getEnvironmentMatches({
     required String environmentId,
   }) async {
-    final res = await _supabase
+    final res = await _client
         .from('leisure_environment_matches')
         .select()
         .eq('environment_id', environmentId)
@@ -393,7 +430,7 @@ class LeisureRepository implements ILeisureRepository {
     required String matchedUserId,
   }) async {
     // Buscar si ya existe la coincidencia previa
-    final existing = await _supabase
+    final existing = await _client
         .from('leisure_environment_matches')
         .select()
         .eq('environment_id', environmentId)
@@ -407,7 +444,7 @@ class LeisureRepository implements ILeisureRepository {
 
       if (!currentUsers.contains(matchedUserId)) {
         currentUsers.add(matchedUserId);
-        final updateRes = await _supabase
+        final updateRes = await _client
             .from('leisure_environment_matches')
             .update({'matched_user_ids': currentUsers})
             .eq('id', matchModel.id)
@@ -419,7 +456,7 @@ class LeisureRepository implements ILeisureRepository {
     }
 
     // Crear nueva coincidencia
-    final insertRes = await _supabase
+    final insertRes = await _client
         .from('leisure_environment_matches')
         .insert({
           'environment_id': environmentId,
@@ -439,8 +476,11 @@ class LeisureRepository implements ILeisureRepository {
   // ===========================================================================
 
   Future<Map<String, dynamic>?> _getCachedPayload(String mediaId, LeisureMediaType type) async {
+    final supabase = _supabase;
+    if (supabase == null) return null;
+
     try {
-      final res = await _supabase
+      final res = await supabase
           .from('leisure_media_cache')
           .select('payload, cached_at')
           .eq('media_id', mediaId)
@@ -472,8 +512,11 @@ class LeisureRepository implements ILeisureRepository {
   }
 
   void _saveToCache(String mediaId, LeisureMediaType type, Map<String, dynamic> payload) {
+    final supabase = _supabase;
+    if (supabase == null) return;
+
     // Se ejecuta de forma asíncrona no bloqueante
-    _supabase.from('leisure_media_cache').upsert(
+    supabase.from('leisure_media_cache').upsert(
       {
         'media_id': mediaId,
         'media_type': type.toValue(),

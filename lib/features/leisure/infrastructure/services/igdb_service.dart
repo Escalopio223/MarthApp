@@ -7,12 +7,20 @@ import '../../domain/models/leisure_media_type.dart';
 /// Se comunica exclusivamente a través de la Supabase Edge Function `igdb-proxy`
 /// para no exponer Twitch Client ID ni Client Secret en el cliente Flutter.
 class IgdbService {
-  final FunctionsClient _functions;
+  final FunctionsClient? _functions;
 
   IgdbService({
     FunctionsClient? functions,
     SupabaseClient? supabaseClient,
-  }) : _functions = functions ?? (supabaseClient ?? Supabase.instance.client).functions;
+  }) : _functions = functions ?? (supabaseClient ?? _safeGetClient())?.functions;
+
+  static SupabaseClient? _safeGetClient() {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Construye la URL canónica de una portada o captura de IGDB
   static String? buildImageUrl(String? imageId, {String size = 't_cover_big'}) {
@@ -35,7 +43,10 @@ class IgdbService {
       offset $offset;
     ''';
 
-    final response = await _functions.invoke(
+    final functions = _functions;
+    if (functions == null) return [];
+
+    final response = await functions.invoke(
       'igdb-proxy',
       body: {
         'endpoint': '/games',
@@ -55,8 +66,48 @@ class IgdbService {
         .toList();
   }
 
+  /// Busca videojuegos por coincidencia de texto
+  Future<List<LeisureMediaDetails>> searchGames(String queryText, {int limit = 20}) async {
+    if (queryText.trim().isEmpty) return [];
+    final functions = _functions;
+    if (functions == null) return [];
+
+    final sanitizedQuery = queryText.replaceAll('"', '\\"');
+    final query = '''
+      search "$sanitizedQuery";
+      fields id, name, summary, rating, rating_count, total_rating, total_rating_count,
+             first_release_date, cover.image_id, genres.name, platforms.name,
+             screenshots.image_id, involved_companies.developer, involved_companies.company.name;
+      limit $limit;
+    ''';
+
+    final response = await functions.invoke(
+      'igdb-proxy',
+      body: {
+        'endpoint': '/games',
+        'query': query,
+      },
+    );
+
+    if (response.status != 200) {
+      throw Exception('Error IGDB searchGames (${response.status}): ${response.data}');
+    }
+
+    final data = response.data;
+    if (data is! List) return [];
+
+    return data
+        .map((item) => _parseGameJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Obtiene el detalle completo de un videojuego por su ID
   Future<LeisureMediaDetails> getGameDetails(String gameId) async {
+    final functions = _functions;
+    if (functions == null) {
+      throw StateError('Supabase Functions client no está inicializado.');
+    }
+
     final cleanId = int.tryParse(gameId) ?? 0;
     final query = '''
       fields id, name, summary, rating, rating_count, total_rating, total_rating_count,
@@ -66,7 +117,7 @@ class IgdbService {
       limit 1;
     ''';
 
-    final response = await _functions.invoke(
+    final response = await functions.invoke(
       'igdb-proxy',
       body: {
         'endpoint': '/games',
