@@ -19,6 +19,9 @@ class AppTheme {
   // 1. Tokens de Color Dinámicos
   // ===========================================================================
 
+  /// Modo actual (oscuro o claro)
+  static bool get isDark => current.isDark;
+
   /// Fondo principal (Canvas)
   static Color get darkBackground => current.bgCanvas;
 

@@ -30,11 +30,11 @@ double calculateContrastRatio(Color foreground, Color background) {
 }
 
 void main() {
-  group('WCAG AA Contrast Ratio Automated Tests for 6 Core Themes', () {
-    test('Exactly 6 core themes exist (3 dark, 3 light)', () {
-      expect(AppThemes.all.length, equals(6));
-      expect(AppThemes.darkThemes.length, equals(3));
-      expect(AppThemes.lightThemes.length, equals(3));
+  group('WCAG AA Contrast Ratio Automated Tests for 10 Core Themes', () {
+    test('Exactly 10 core themes exist (5 dark, 5 light)', () {
+      expect(AppThemes.all.length, equals(10));
+      expect(AppThemes.darkThemes.length, equals(5));
+      expect(AppThemes.lightThemes.length, equals(5));
     });
 
     for (final theme in AppThemes.all) {

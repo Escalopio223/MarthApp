@@ -13,10 +13,10 @@ void main() {
   });
 
   group('AppThemes Dynamic Multi-Theme Engine Tests', () {
-    test('Exactly 6 core themes exist (3 dark and 3 light)', () {
-      expect(AppThemes.all.length, equals(6));
-      expect(AppThemes.darkThemes.length, equals(3));
-      expect(AppThemes.lightThemes.length, equals(3));
+    test('Exactly 10 core themes exist (5 dark and 5 light)', () {
+      expect(AppThemes.all.length, equals(10));
+      expect(AppThemes.darkThemes.length, equals(5));
+      expect(AppThemes.lightThemes.length, equals(5));
     });
 
     test('Midnight Slate has base exact tokens', () {
@@ -94,6 +94,42 @@ void main() {
       expect(theme.accentSecondary, equals(const Color(0xFF374151)));
       expect(theme.textPrimary, equals(const Color(0xFF111827)));
       expect(theme.textSecondary, equals(const Color(0xFF4B5563)));
+      expect(theme.isDark, isFalse);
+    });
+
+    test('Nordic Frost has glacial teal and cyan tokens', () {
+      final theme = AppThemes.nordicFrost;
+      expect(theme.bgCanvas, equals(const Color(0xFF0B131E)));
+      expect(theme.bgSurface, equals(const Color(0xFF14202E)));
+      expect(theme.accentPrimary, equals(const Color(0xFF14B8A6)));
+      expect(theme.accentSecondary, equals(const Color(0xFF06B6D4)));
+      expect(theme.isDark, isTrue);
+    });
+
+    test('Sunset Dusk has warm espresso and rose tokens', () {
+      final theme = AppThemes.sunsetDusk;
+      expect(theme.bgCanvas, equals(const Color(0xFF161016)));
+      expect(theme.bgSurface, equals(const Color(0xFF241822)));
+      expect(theme.accentPrimary, equals(const Color(0xFFF97316)));
+      expect(theme.accentSecondary, equals(const Color(0xFFFB7185)));
+      expect(theme.isDark, isTrue);
+    });
+
+    test('Lavender Clay has pastel lilac and violet tokens', () {
+      final theme = AppThemes.lavenderClay;
+      expect(theme.bgCanvas, equals(const Color(0xFFF3EEFA)));
+      expect(theme.bgSurface, equals(const Color(0xFFFFFFFF)));
+      expect(theme.accentPrimary, equals(const Color(0xFF7C3AED)));
+      expect(theme.accentSecondary, equals(const Color(0xFF6366F1)));
+      expect(theme.isDark, isFalse);
+    });
+
+    test('Terracotta Dune has desert rust tokens', () {
+      final theme = AppThemes.terracottaDune;
+      expect(theme.bgCanvas, equals(const Color(0xFFFAF5EE)));
+      expect(theme.bgSurface, equals(const Color(0xFFFFFFFF)));
+      expect(theme.accentPrimary, equals(const Color(0xFFC2410C)));
+      expect(theme.accentSecondary, equals(const Color(0xFFEA580C)));
       expect(theme.isDark, isFalse);
     });
 

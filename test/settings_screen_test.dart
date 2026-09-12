@@ -97,13 +97,13 @@ void main() {
     await tester.tap(find.text('Apariencia y Temas'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Oscuros (3)'), findsOneWidget);
-    expect(find.text('Claros (3)'), findsOneWidget);
+    expect(find.text('Oscuros (5)'), findsOneWidget);
+    expect(find.text('Claros (5)'), findsOneWidget);
     expect(find.text('Midnight Slate'), findsAtLeastNWidgets(1));
 
     // Switch to light themes tab
-    await tester.ensureVisible(find.text('Claros (3)'));
-    await tester.tap(find.text('Claros (3)'));
+    await tester.ensureVisible(find.text('Claros (5)'));
+    await tester.tap(find.text('Claros (5)'));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Soft Clay'));

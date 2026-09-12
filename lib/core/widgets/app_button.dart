@@ -56,7 +56,7 @@ class _AppButtonState extends State<AppButton> {
           height: widget.height,
           transform: Matrix4.translationValues(
             0,
-            _isPressed ? 1.5 : 0,
+            _isPressed ? 2.0 : 0,
             0,
           ),
           decoration: BoxDecoration(
@@ -69,24 +69,30 @@ class _AppButtonState extends State<AppButton> {
                   )
                 : effectiveGradient,
             borderRadius: BorderRadius.circular(widget.borderRadius),
+            border: Border.all(
+              color: isEnabled
+                  ? Colors.white.withValues(alpha: _isPressed ? 0.12 : 0.22)
+                  : Colors.transparent,
+              width: 1.0,
+            ),
             boxShadow: !isEnabled
                 ? []
                 : (_isPressed
                     ? [
                         BoxShadow(
-                          color: AppTheme.shadowDark.withValues(alpha: 0.3),
-                          offset: const Offset(1, 2),
+                          color: AppTheme.shadowDark.withValues(alpha: 0.25),
+                          offset: const Offset(0, 2),
                           blurRadius: 4,
                         ),
                       ]
                     : [
                         BoxShadow(
-                          color: AppTheme.shadowDark.withValues(alpha: 0.35),
-                          offset: const Offset(0, 4),
+                          color: AppTheme.shadowDark.withValues(alpha: 0.38),
+                          offset: const Offset(0, 5),
                           blurRadius: 10,
                         ),
                         BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.25),
+                          color: Colors.white.withValues(alpha: 0.28),
                           offset: const Offset(0, -1),
                           blurRadius: 2,
                         ),

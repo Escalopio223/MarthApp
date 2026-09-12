@@ -26,13 +26,20 @@ class AppContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveBaseColor = baseColor ?? AppTheme.surfaceDark;
+    final effectiveContainerColor = isInset
+        ? (AppTheme.isDark
+            ? Color.alphaBlend(
+                Colors.black.withValues(alpha: 0.20), effectiveBaseColor)
+            : Color.alphaBlend(
+                AppTheme.shadowDark.withValues(alpha: 0.15), effectiveBaseColor))
+        : effectiveBaseColor;
 
     final container = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       padding: padding,
       decoration: BoxDecoration(
-        color: effectiveBaseColor,
+        color: effectiveContainerColor,
         gradient: isInset
             ? null
             : AppTheme.claySurfaceGradient(baseColor: effectiveBaseColor),

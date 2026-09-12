@@ -4,8 +4,8 @@ import '../../../../core/theme/app_theme_config.dart';
 import '../../../../core/theme/theme_controller.dart';
 import '../../../../core/widgets/app_card.dart';
 
-/// Tarjeta interactiva de configuración visual para seleccionar entre los 6 temas
-/// core de MarthApp (Oscuros, Claros y Monocromáticos de Alto Contraste).
+/// Tarjeta interactiva de configuración visual para seleccionar entre los 10 temas
+/// core de MarthApp (5 Oscuros y 5 Claros con relieve Claymórfico).
 class ThemeSelectorCard extends StatefulWidget {
   final ThemeController themeController;
   final bool initiallyExpanded;
@@ -177,7 +177,7 @@ class _ThemeSelectorCardState extends State<ThemeSelectorCard> {
           Expanded(
             child: _buildTabButton(
               index: 0,
-              label: 'Oscuros (3)',
+              label: 'Oscuros (${AppThemes.darkThemes.length})',
               icon: Icons.dark_mode_rounded,
             ),
           ),
@@ -185,7 +185,7 @@ class _ThemeSelectorCardState extends State<ThemeSelectorCard> {
           Expanded(
             child: _buildTabButton(
               index: 1,
-              label: 'Claros (3)',
+              label: 'Claros (${AppThemes.lightThemes.length})',
               icon: Icons.light_mode_rounded,
             ),
           ),
