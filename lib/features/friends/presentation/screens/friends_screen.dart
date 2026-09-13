@@ -17,11 +17,13 @@ import '../widgets/send_friend_request_card.dart';
 class FriendsScreen extends StatefulWidget {
   final FriendsController friendsController;
   final EnvironmentController? environmentController;
+  final bool asTab;
 
   const FriendsScreen({
     super.key,
     required this.friendsController,
     this.environmentController,
+    this.asTab = false,
   });
 
   @override
@@ -68,7 +70,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
+      appBar: widget.asTab ? null : AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(

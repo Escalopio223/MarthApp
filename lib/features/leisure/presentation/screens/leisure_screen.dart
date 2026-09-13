@@ -20,11 +20,13 @@ import '../widgets/leisure_shared_lists_sheet.dart';
 class LeisureScreen extends StatefulWidget {
   final LeisureController controller;
   final EnvironmentController? environmentController;
+  final bool asTab;
 
   const LeisureScreen({
     super.key,
     required this.controller,
     this.environmentController,
+    this.asTab = false,
   });
 
   @override
@@ -90,7 +92,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
+      appBar: widget.asTab ? null : AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -165,47 +167,57 @@ class _LeisureScreenState extends State<LeisureScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 8),
+              SizedBox(height: widget.asTab ? kToolbarHeight + 8 : 8),
 
               // Barra de búsqueda con Debounce (400ms)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: AppContainer(
-                  borderRadius: 16.0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                  baseColor: AppTheme.surfaceDark,
-                  child: Row(
-                    children: [
-                      Icon(Icons.search_rounded,
-                          color: AppTheme.textSecondary, size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchFieldController,
-                          style: TextStyle(
-                              color: AppTheme.textPrimary, fontSize: 14),
-                          decoration: InputDecoration(
-                            hintText:
-                                'Buscar ${controller.selectedType.label.toLowerCase()}...',
-                            hintStyle: TextStyle(
-                              color: AppTheme.textSecondary
-                                  .withValues(alpha: 0.7),
-                              fontSize: 14,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AppContainer(
+                        borderRadius: 16.0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                        baseColor: AppTheme.surfaceDark,
+                        child: Row(
+                          children: [
+                            Icon(Icons.search_rounded,
+                                color: AppTheme.textSecondary, size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchFieldController,
+                                style: TextStyle(
+                                    color: AppTheme.textPrimary, fontSize: 14),
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'Buscar ${controller.selectedType.label.toLowerCase()}...',
+                                  hintStyle: TextStyle(
+                                    color: AppTheme.textSecondary
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 14,
+                                  ),
+                                  border: InputBorder.none,
+                                ),
+                                onChanged: (val) =>
+                                    controller.onSearchQueryChanged(val),
+                              ),
                             ),
-                            border: InputBorder.none,
-                          ),
-                          onChanged: (val) =>
-                              controller.onSearchQueryChanged(val),
+                            if (controller.searchQuery.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                color: AppTheme.textSecondary,
+                                onPressed: _clearSearch,
+                              ),
+                          ],
                         ),
                       ),
-                      if (controller.searchQuery.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          color: AppTheme.textSecondary,
-                          onPressed: _clearSearch,
-                        ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildRouletteButton(context, controller),
+                    const SizedBox(width: 8),
+                    _buildSharedListsButton(context, controller),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
@@ -423,4 +435,62 @@ class _LeisureScreenState extends State<LeisureScreen> {
       return item != null && item.status != null;
     }).toList();
   }
+  Widget _buildRouletteButton(
+      BuildContext context, LeisureController controller) {
+    return AppContainer(
+      borderRadius: 16.0,
+      padding: EdgeInsets.zero,
+      baseColor: AppTheme.surfaceDark,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          IconButton(
+            tooltip: 'Ruleta de Ocio',
+            icon: const Icon(Icons.casino_rounded),
+            color: controller.rouletteCount > 0
+                ? AppTheme.accentCoral
+                : AppTheme.textSecondary,
+            onPressed: () => _showRouletteNotice(context),
+          ),
+          if (controller.rouletteCount > 0)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentCoral,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${controller.rouletteCount}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSharedListsButton(
+      BuildContext context, LeisureController controller) {
+    return AppContainer(
+      borderRadius: 16.0,
+      padding: EdgeInsets.zero,
+      baseColor: AppTheme.surfaceDark,
+      child: IconButton(
+        tooltip: 'Listas del entorno',
+        icon: const Icon(Icons.playlist_play_rounded),
+        color: AppTheme.textPrimary,
+        onPressed: () =>
+            LeisureSharedListsSheet.show(context, controller: controller),
+      ),
+    );
+  }
+
 }

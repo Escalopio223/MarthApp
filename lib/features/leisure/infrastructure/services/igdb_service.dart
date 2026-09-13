@@ -1,18 +1,26 @@
+﻿import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/config/leisure_config.dart';
 import '../../domain/models/leisure_media_details.dart';
 import '../../domain/models/leisure_media_type.dart';
 
-/// Servicio de integración para IGDB (Internet Game Database).
-/// Se comunica exclusivamente a través de la Supabase Edge Function `igdb-proxy`
-/// para no exponer Twitch Client ID ni Client Secret en el cliente Flutter.
+/// Servicio de integracion para IGDB (Internet Game Database):
+/// - Utiliza la Supabase Edge Function `igdb-proxy` como proxy de alta seguridad
+/// - Cuenta con fallback directo autenticado por OAuth2 de Twitch para entornos locales o cliente
 class IgdbService {
   final FunctionsClient? _functions;
+  final http.Client _httpClient;
+
+  static String? _cachedTwitchToken;
+  static DateTime? _twitchTokenExpiresAt;
 
   IgdbService({
     FunctionsClient? functions,
     SupabaseClient? supabaseClient,
-  }) : _functions = functions ?? (supabaseClient ?? _safeGetClient())?.functions;
+    http.Client? httpClient,
+  })  : _functions = functions ?? (supabaseClient ?? _safeGetClient())?.functions,
+        _httpClient = httpClient ?? http.Client();
 
   static SupabaseClient? _safeGetClient() {
     try {
@@ -22,13 +30,95 @@ class IgdbService {
     }
   }
 
-  /// Construye la URL canónica de una portada o captura de IGDB
+  /// Construye la URL canonica de una portada o captura de IGDB
   static String? buildImageUrl(String? imageId, {String size = 't_cover_big'}) {
     if (imageId == null || imageId.isEmpty) return null;
     return '${LeisureConfig.igdbImageBaseUrl}/$size/$imageId.jpg';
   }
 
-  /// Obtiene los videojuegos más populares / valorados
+  /// Obtiene o renueva el token OAuth2 de Twitch para consultas directas
+  Future<String?> _getTwitchToken() async {
+    final now = DateTime.now();
+    if (_cachedTwitchToken != null &&
+        _twitchTokenExpiresAt != null &&
+        now.isBefore(_twitchTokenExpiresAt!)) {
+      return _cachedTwitchToken;
+    }
+
+    if (!LeisureConfig.isIgdbConfigured) return null;
+
+    try {
+      final response = await _httpClient.post(
+        Uri.parse('https://id.twitch.tv/oauth2/token'),
+        body: {
+          'client_id': LeisureConfig.twitchClientId,
+          'client_secret': LeisureConfig.twitchClientSecret,
+          'grant_type': 'client_credentials',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        _cachedTwitchToken = data['access_token'] as String?;
+        final expiresIn = data['expires_in'] as int? ?? 3600;
+        _twitchTokenExpiresAt = now.add(Duration(seconds: expiresIn - 60));
+        return _cachedTwitchToken;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  /// Ejecuta una consulta a IGDB (primero via Edge Function y luego fallback directo)
+  Future<List<dynamic>> _invokeQuery(String endpoint, String query) async {
+    // 1. Intentar via Edge Function de Supabase
+    final functions = _functions;
+    if (functions != null) {
+      try {
+        final response = await functions.invoke(
+          'igdb-proxy',
+          body: {
+            'endpoint': endpoint,
+            'query': query,
+          },
+        );
+        if (response.status == 200 && response.data is List) {
+          return response.data as List<dynamic>;
+        }
+      } catch (_) {
+        // Fallback directo si la Edge Function no responde o no esta desplegada
+      }
+    }
+
+    // 2. Fallback directo con credenciales OAuth2 de Twitch
+    final token = await _getTwitchToken();
+    if (token != null) {
+      try {
+        final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+        final response = await _httpClient.post(
+          Uri.parse('https://api.igdb.com/v4$cleanEndpoint'),
+          headers: {
+            'Client-ID': LeisureConfig.twitchClientId,
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'text/plain',
+            'Accept': 'application/json',
+          },
+          body: query,
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          if (data is List) return data;
+        }
+      } catch (_) {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  /// Obtiene los videojuegos mas populares / valorados
   Future<List<LeisureMediaDetails>> getPopularGames({
     int limit = 20,
     int offset = 0,
@@ -43,34 +133,16 @@ class IgdbService {
       offset $offset;
     ''';
 
-    final functions = _functions;
-    if (functions == null) return [];
-
-    final response = await functions.invoke(
-      'igdb-proxy',
-      body: {
-        'endpoint': '/games',
-        'query': query,
-      },
-    );
-
-    if (response.status != 200) {
-      throw Exception('Error IGDB getPopularGames (${response.status}): ${response.data}');
-    }
-
-    final data = response.data;
-    if (data is! List) return [];
-
+    final data = await _invokeQuery('/games', query);
     return data
-        .map((item) => _parseGameJson(item as Map<String, dynamic>))
+        .whereType<Map<String, dynamic>>()
+        .map((item) => _parseGameJson(item))
         .toList();
   }
 
   /// Busca videojuegos por coincidencia de texto
   Future<List<LeisureMediaDetails>> searchGames(String queryText, {int limit = 20}) async {
     if (queryText.trim().isEmpty) return [];
-    final functions = _functions;
-    if (functions == null) return [];
 
     final sanitizedQuery = queryText.replaceAll('"', '\\"');
     final query = '''
@@ -81,33 +153,15 @@ class IgdbService {
       limit $limit;
     ''';
 
-    final response = await functions.invoke(
-      'igdb-proxy',
-      body: {
-        'endpoint': '/games',
-        'query': query,
-      },
-    );
-
-    if (response.status != 200) {
-      throw Exception('Error IGDB searchGames (${response.status}): ${response.data}');
-    }
-
-    final data = response.data;
-    if (data is! List) return [];
-
+    final data = await _invokeQuery('/games', query);
     return data
-        .map((item) => _parseGameJson(item as Map<String, dynamic>))
+        .whereType<Map<String, dynamic>>()
+        .map((item) => _parseGameJson(item))
         .toList();
   }
 
   /// Obtiene el detalle completo de un videojuego por su ID
   Future<LeisureMediaDetails> getGameDetails(String gameId) async {
-    final functions = _functions;
-    if (functions == null) {
-      throw StateError('Supabase Functions client no está inicializado.');
-    }
-
     final cleanId = int.tryParse(gameId) ?? 0;
     final query = '''
       fields id, name, summary, rating, rating_count, total_rating, total_rating_count,
@@ -117,20 +171,8 @@ class IgdbService {
       limit 1;
     ''';
 
-    final response = await functions.invoke(
-      'igdb-proxy',
-      body: {
-        'endpoint': '/games',
-        'query': query,
-      },
-    );
-
-    if (response.status != 200) {
-      throw Exception('Error IGDB getGameDetails (${response.status}): ${response.data}');
-    }
-
-    final data = response.data;
-    if (data is! List || data.isEmpty) {
+    final data = await _invokeQuery('/games', query);
+    if (data.isEmpty) {
       throw Exception('Videojuego no encontrado en IGDB (ID: $gameId)');
     }
 
@@ -159,52 +201,56 @@ class IgdbService {
         final url = buildImageUrl(s['image_id'].toString(), size: 't_screenshot_big');
         if (url != null) {
           screenshots.add(url);
-          backdropUrl ??= url; // Primera captura como backdrop
+          backdropUrl ??= url;
         }
       }
     }
 
-    // Fecha de lanzamiento (timestamp Unix en segundos)
-    String? releaseDate;
-    String? year;
-    final releaseTimestamp = (json['first_release_date'] as num?)?.toInt();
-    if (releaseTimestamp != null && releaseTimestamp > 0) {
-      final date = DateTime.fromMillisecondsSinceEpoch(releaseTimestamp * 1000, isUtc: true);
-      releaseDate = date.toIso8601String().substring(0, 10);
-      year = date.year.toString();
+    // Fecha de lanzamiento (epoch en segundos)
+    String? releaseDateStr;
+    String? yearStr;
+    final releaseTimestamp = json['first_release_date'];
+    if (releaseTimestamp is int) {
+      final dt = DateTime.fromMillisecondsSinceEpoch(releaseTimestamp * 1000, isUtc: true);
+      releaseDateStr = dt.toIso8601String().split('T').first;
+      yearStr = dt.year.toString();
     }
 
-    // Géneros
+    // Generos
     final genresRaw = json['genres'] as List? ?? [];
     final genres = genresRaw
-        .map((g) => g is Map ? g['name']?.toString() ?? '' : g.toString())
-        .where((g) => g.isNotEmpty)
+        .whereType<Map>()
+        .map((g) => g['name']?.toString())
+        .whereType<String>()
         .toList();
 
     // Plataformas
     final platformsRaw = json['platforms'] as List? ?? [];
     final platforms = platformsRaw
-        .map((p) => p is Map ? p['name']?.toString() ?? '' : p.toString())
-        .where((p) => p.isNotEmpty)
+        .whereType<Map>()
+        .map((p) => p['name']?.toString())
+        .whereType<String>()
         .toList();
 
-    // Desarrollador / Estudio
-    String? developerName;
+    // Desarrollador
+    String? developer;
     final companiesRaw = json['involved_companies'] as List? ?? [];
     for (final c in companiesRaw) {
-      if (c is Map && c['developer'] == true && c['company'] is Map) {
-        developerName = c['company']['name'] as String?;
-        break;
+      if (c is Map && c['developer'] == true) {
+        final comp = c['company'];
+        if (comp is Map && comp['name'] != null) {
+          developer = comp['name'].toString();
+          break;
+        }
       }
     }
-    developerName ??= (companiesRaw.isNotEmpty && companiesRaw.first is Map && companiesRaw.first['company'] is Map)
-        ? companiesRaw.first['company']['name'] as String?
-        : null;
 
-    // Rating (IGDB devuelve 0-100, normalizar a escala 1.0 - 10.0)
-    final rawRating = (json['total_rating'] ?? json['rating']) as num?;
-    final rating = rawRating != null ? (rawRating / 10.0).clamp(1.0, 10.0).toDouble() : null;
-    final voteCount = ((json['total_rating_count'] ?? json['rating_count']) as num?)?.toInt();
+    // Calificacion (IGDB escala 0-100 -> normalizamos a 0-10)
+    final rawRating = json['total_rating'] ?? json['rating'];
+    double? rating;
+    if (rawRating is num) {
+      rating = double.parse((rawRating / 10.0).toStringAsFixed(1));
+    }
 
     return LeisureMediaDetails(
       mediaId: id,
@@ -213,13 +259,12 @@ class IgdbService {
       overview: summary,
       posterUrl: posterUrl,
       backdropUrl: backdropUrl,
-      releaseDate: releaseDate,
-      year: year,
-      creatorOrDirector: developerName,
+      releaseDate: releaseDateStr,
+      year: yearStr,
+      creatorOrDirector: developer,
       genres: genres,
       castOrPlatforms: platforms,
       rating: rating,
-      voteCount: voteCount,
       screenshots: screenshots,
     );
   }

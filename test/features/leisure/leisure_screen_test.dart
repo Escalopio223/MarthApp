@@ -168,6 +168,8 @@ void main() {
 
     expect(find.text('Ocio & Cultura'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
+    expect(find.byTooltip('Ruleta de Ocio'), findsAtLeastNWidgets(1));
+    expect(find.byTooltip('Listas del entorno'), findsAtLeastNWidgets(1));
     expect(find.text('Películas'), findsOneWidget);
     expect(find.text('Series'), findsOneWidget);
     expect(find.text('Libros'), findsOneWidget);
@@ -194,12 +196,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify Ocio & Cultura card is present on HomeScreen
-    expect(find.text('Ocio & Cultura'), findsOneWidget);
-    expect(find.text('Películas, Series, Libros y Videojuegos'), findsOneWidget);
-
-    // Tap on Ocio & Cultura card
-    await tester.tap(find.text('Ocio & Cultura'));
+    // Tap on Ocio tab in MarthBottomNavBar
+    await tester.tap(find.text('Ocio'));
     await tester.pumpAndSettle();
 
     // LeisureScreen should be visible

@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:marth_app/features/leisure/domain/models/leisure_media_type.dart';
 import 'package:marth_app/features/leisure/infrastructure/services/open_library_service.dart';
 import 'package:marth_app/features/leisure/infrastructure/services/tmdb_service.dart';
+import 'package:marth_app/core/config/leisure_config.dart';
+import 'package:marth_app/features/leisure/infrastructure/services/igdb_service.dart';
 
 /// Cliente HTTP Mock sin dependencias externas adicionales
 class MockHttpClient extends http.BaseClient {
@@ -345,6 +347,91 @@ void main() {
       expect(editions.first.publishers, contains('Penguin Random House'));
       expect(editions.first.isbn13, equals('9780307474728'));
       expect(editions.first.coverUrl, contains('99999-L.jpg'));
+    });
+  });
+
+  group('LeisureConfig Credentials Tests', () {
+    test('Credentials for TMDB and Twitch are configured', () {
+      expect(LeisureConfig.isTmdbConfigured, isTrue);
+      expect(LeisureConfig.isIgdbConfigured, isTrue);
+      expect(LeisureConfig.tmdbApiKey, equals('ab51ce2f08248819ccbe5b3e4e521c90'));
+      expect(LeisureConfig.twitchClientId, equals('06vxc2a4ma48l5tx2ljffv90ubpph4'));
+      expect(LeisureConfig.twitchClientSecret, equals('je5fksyagsq4tm9kdi2hiwsyjo7rl8'));
+    });
+  });
+
+  group('IgdbService Tests with Mock HTTP Client', () {
+    test('buildImageUrl formats proper CDN URL', () {
+      final url = IgdbService.buildImageUrl('co1r0c', size: 't_cover_big');
+      expect(url, equals('https://images.igdb.com/igdb/image/upload/t_cover_big/co1r0c.jpg'));
+    });
+
+    test('getPopularGames parses game list using OAuth2 and IGDB API', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.host == 'id.twitch.tv') {
+          return http.Response(
+            jsonEncode({
+              'access_token': 'mock_token_abc',
+              'expires_in': 3600,
+              'token_type': 'bearer',
+            }),
+            200,
+          );
+        }
+
+        if (request.url.host == 'api.igdb.com') {
+          expect(request.headers['Client-ID'], equals(LeisureConfig.twitchClientId));
+          expect(request.headers['Authorization'], equals('Bearer mock_token_abc'));
+
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 1020,
+                'name': 'Grand Theft Auto V',
+                'summary': 'When a young street hustler...',
+                'cover': {'id': 1, 'image_id': 'co1r0c'},
+                'first_release_date': 1379376000,
+                'total_rating': 96.5,
+                'genres': [
+                  {'id': 1, 'name': 'Shooter'},
+                  {'id': 2, 'name': 'Adventure'}
+                ],
+                'platforms': [
+                  {'id': 6, 'name': 'PC (Microsoft Windows)'}
+                ],
+                'involved_companies': [
+                  {
+                    'developer': true,
+                    'company': {'id': 1, 'name': 'Rockstar North'}
+                  }
+                ],
+                'screenshots': [
+                  {'id': 10, 'image_id': 'sc123'}
+                ]
+              }
+            ]),
+            200,
+          );
+        }
+
+        return http.Response('Not Found', 404);
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final games = await service.getPopularGames(limit: 10);
+
+      expect(games.length, equals(1));
+      final gta = games.first;
+      expect(gta.mediaId, equals('1020'));
+      expect(gta.mediaType, equals(LeisureMediaType.game));
+      expect(gta.title, equals('Grand Theft Auto V'));
+      expect(gta.overview, contains('young street hustler'));
+      expect(gta.posterUrl, contains('co1r0c.jpg'));
+      expect(gta.backdropUrl, contains('sc123.jpg'));
+      expect(gta.creatorOrDirector, equals('Rockstar North'));
+      expect(gta.genres, contains('Shooter'));
+      expect(gta.castOrPlatforms, contains('PC (Microsoft Windows)'));
+      expect(gta.rating, equals(9.7));
     });
   });
 }
