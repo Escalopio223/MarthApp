@@ -97,9 +97,9 @@ begin
   on conflict (id) do update
   set updated_at = now();
 
-  -- Creación automática del entorno personal principal "Mi Espacio"
+  -- Creación automática del entorno personal principal "Mi espacio"
   insert into public.environments (name, is_personal, created_by, created_at)
-  values ('Mi Espacio', true, new.id, now())
+  values ('Mi espacio', true, new.id, now())
   returning id into v_env_id;
 
   insert into public.environment_members (environment_id, user_id, role, joined_at)
@@ -445,8 +445,13 @@ create table if not exists public.environments (
   name text not null,
   is_personal boolean not null default false,
   created_by uuid references auth.users(id) on delete cascade not null,
-  created_at timestamp with time zone default now() not null
+  created_at timestamp with time zone default now() not null,
+  icon text,
+  color text
 );
+
+alter table public.environments add column if not exists icon text;
+alter table public.environments add column if not exists color text;
 
 -- Tabla environment_members
 create table if not exists public.environment_members (
@@ -590,7 +595,11 @@ create policy "Eliminar invitaciones propias"
   using (auth.uid() = sender_id or auth.uid() = receiver_id);
 
 -- RPC 1: create_environment
-create or replace function public.create_environment(p_name text)
+create or replace function public.create_environment(
+  p_name text,
+  p_icon text default null,
+  p_color text default null
+)
 returns jsonb as $$
 declare
   v_user_id uuid := auth.uid();
@@ -606,8 +615,8 @@ begin
     raise exception 'El nombre del entorno debe tener al menos 3 caracteres';
   end if;
 
-  insert into public.environments (name, is_personal, created_by, created_at)
-  values (v_name_clean, false, v_user_id, now())
+  insert into public.environments (name, is_personal, created_by, created_at, icon, color)
+  values (v_name_clean, false, v_user_id, now(), p_icon, p_color)
   returning * into v_new_env;
 
   insert into public.environment_members (environment_id, user_id, role, joined_at)
@@ -619,7 +628,9 @@ begin
     'is_personal', v_new_env.is_personal,
     'created_by', v_new_env.created_by,
     'created_at', v_new_env.created_at,
-    'role', 'owner'
+    'role', 'owner',
+    'icon', v_new_env.icon,
+    'color', v_new_env.color
   );
 end;
 $$ language plpgsql security definer;
@@ -817,7 +828,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- RPC 6: Auto-Healing Atómico e Idempotente de Entorno Personal "Mi Espacio"
+-- RPC 6: Auto-Healing Atómico e Idempotente de Entorno Personal "Mi espacio"
 create or replace function public.ensure_personal_environment()
 returns jsonb as $$
 declare
@@ -837,7 +848,7 @@ begin
   -- 2. Si no existe, insertar de forma atómica con ON CONFLICT DO NOTHING
   if v_env.id is null then
     insert into public.environments (name, is_personal, created_by, created_at)
-    values ('Mi Espacio', true, v_user_id, now())
+    values ('Mi espacio', true, v_user_id, now())
     on conflict do nothing
     returning * into v_env;
 
@@ -929,6 +940,10 @@ create table if not exists public.leisure_shared_list_items (
   media_type public.leisure_media_type not null,
   title text not null,
   poster_url text,
+  year text,
+  rating numeric,
+  genres text[] default '{}',
+  custom_order integer default 0,
   added_by uuid not null references auth.users(id),
   created_at timestamp with time zone default now() not null,
   constraint uq_leisure_shared_item unique (list_id, media_id, media_type)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
@@ -12,7 +13,7 @@ import 'environment_invitation_tile.dart';
 import 'manage_environment_modal.dart';
 
 /// Vista principal enfocada y minimalista para la gestion integral de entornos (Workspaces):
-/// - Sin cajas de saludo, ni banner de Mi Espacio, ni acceso duplicado a ocio, ni backend card
+/// - Sin cajas de saludo, ni banner de Mi espacio, ni acceso duplicado a ocio, ni backend card
 /// - Bandeja interactiva para responder invitaciones pendientes
 /// - Selector y lista de espacios de trabajo con indicador visual del entorno activo
 /// - Accion rapida para crear un nuevo entorno
@@ -77,7 +78,7 @@ class EnvironmentsHomeView extends StatelessWidget {
 
               // 3. Accion de creacion rapida
               AppButton(
-                text: 'Crear Nuevo Entorno',
+                text: 'Crear nuevo entorno',
                 icon: Icons.add_rounded,
                 gradient: AppTheme.actionGradient,
                 onPressed: () => CreateEnvironmentModal.show(
@@ -167,7 +168,7 @@ class EnvironmentsHomeView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Tus Espacios de Trabajo',
+              'Tus espacios de trabajo',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -220,19 +221,18 @@ class EnvironmentsHomeView extends StatelessWidget {
                 subtitle: env.isPersonal
                     ? 'Espacio Personal Privado'
                     : '$roleStr • ${env.memberCount} participante(s)',
-                icon: env.isPersonal
-                    ? Icons.person_pin_rounded
-                    : Icons.groups_rounded,
+                icon: env.iconData,
+                customColor: env.colorValue,
                 isSelected: isSelected,
                 isPersonal: env.isPersonal,
                 onTap: () => environmentController.selectEnvironment(env),
                 onManage: !env.isPersonal
                     ? () => ManageEnvironmentModal.show(
-                          context,
-                          environment: env,
-                          environmentController: environmentController,
-                          friendsController: friendsController,
-                        )
+                        context,
+                        environment: env,
+                        environmentController: environmentController,
+                        friendsController: friendsController,
+                      )
                     : null,
               ),
             );
@@ -247,10 +247,13 @@ class EnvironmentsHomeView extends StatelessWidget {
     required IconData icon,
     required bool isSelected,
     required VoidCallback onTap,
+    Color? customColor,
     bool isPersonal = false,
     VoidCallback? onManage,
   }) {
-    final activeBorderColor = AppTheme.primaryLiquid;
+    final effectiveColor =
+        customColor ??
+        (isPersonal ? AppTheme.primaryCyan : AppTheme.primaryLiquid);
 
     return Material(
       color: Colors.transparent,
@@ -262,17 +265,17 @@ class EnvironmentsHomeView extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? AppTheme.primaryLiquid.withValues(alpha: 0.10)
+                ? effectiveColor.withValues(alpha: 0.12)
                 : AppTheme.surfaceDark,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? activeBorderColor : AppTheme.cardBorderColor,
+              color: isSelected ? effectiveColor : AppTheme.cardBorderColor,
               width: isSelected ? 1.4 : 0.8,
             ),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryLiquid.withValues(alpha: 0.18),
+                      color: effectiveColor.withValues(alpha: 0.22),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -285,22 +288,18 @@ class EnvironmentsHomeView extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppTheme.primaryLiquid.withValues(alpha: 0.2)
-                      : AppTheme.surfaceDark,
+                  color: effectiveColor.withValues(
+                    alpha: isSelected ? 0.24 : 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryLiquid.withValues(alpha: 0.4)
-                        : AppTheme.cardBorderColor,
+                    color: effectiveColor.withValues(
+                      alpha: isSelected ? 0.55 : 0.25,
+                    ),
                     width: 0.8,
                   ),
                 ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: isSelected ? AppTheme.primaryLiquid : AppTheme.textSecondary,
-                ),
+                child: Icon(icon, size: 20, color: effectiveColor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -311,9 +310,11 @@ class EnvironmentsHomeView extends StatelessWidget {
                       title,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w600,
                         color: isSelected
-                            ? AppTheme.primaryLiquid
+                            ? effectiveColor
                             : AppTheme.textPrimary,
                       ),
                       maxLines: 1,
@@ -344,7 +345,7 @@ class EnvironmentsHomeView extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 6.0),
                   child: Icon(
                     Icons.check_circle_rounded,
-                    color: AppTheme.primaryLiquid,
+                    color: effectiveColor,
                     size: 20,
                   ),
                 ),

@@ -129,17 +129,39 @@ class FakeLeisureRepo implements ILeisureRepository {
   Future<List<LeisureSharedListItemModel>> getSharedListItems({required String listId}) async => [];
 
   @override
-  Future<LeisureSharedListItemModel> addSharedListItem({required String listId, required String mediaId, required LeisureMediaType mediaType, required String title, String? posterUrl, LeisureMediaDetails? detailsToCache}) async {
+  Future<LeisureSharedListItemModel> addSharedListItem({
+    required String listId,
+    required String mediaId,
+    required LeisureMediaType mediaType,
+    required String title,
+    String? posterUrl,
+    String? year,
+    double? rating,
+    List<String>? genres,
+    int? customOrder,
+    LeisureMediaDetails? detailsToCache,
+  }) async {
     return LeisureSharedListItemModel(
       id: '1',
       listId: listId,
       mediaId: mediaId,
       mediaType: mediaType,
       title: title,
+      posterUrl: posterUrl,
+      year: year,
+      rating: rating,
+      genres: genres ?? const [],
+      customOrder: customOrder ?? 0,
       addedBy: 'u1',
       createdAt: DateTime.now(),
     );
   }
+
+  @override
+  Future<void> reorderSharedListItems({
+    required String listId,
+    required List<String> orderedItemIds,
+  }) async {}
 
   @override
   Future<void> removeSharedListItem({required String itemId}) async {}

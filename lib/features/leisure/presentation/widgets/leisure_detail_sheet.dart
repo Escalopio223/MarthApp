@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_container.dart';
@@ -8,6 +9,7 @@ import '../../domain/models/leisure_item_status.dart';
 import '../../domain/models/leisure_media_details.dart';
 import '../../domain/models/leisure_media_type.dart';
 import '../../domain/models/tv_season_details_dto.dart';
+import '../../infrastructure/services/open_library_service.dart';
 import '../controllers/leisure_controller.dart';
 import 'leisure_accordion.dart';
 import 'leisure_rating_slider.dart';
@@ -75,7 +77,21 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
       );
       if (mounted) {
         setState(() {
-          _media = detailed;
+          _media = detailed.copyWith(
+            year: (detailed.year != null && detailed.year!.isNotEmpty)
+                ? detailed.year
+                : _media.year,
+            releaseDate: (detailed.releaseDate != null && detailed.releaseDate!.isNotEmpty)
+                ? detailed.releaseDate
+                : _media.releaseDate,
+            rating: detailed.rating ?? _media.rating,
+            voteCount: detailed.voteCount ?? _media.voteCount,
+            creatorOrDirector: detailed.creatorOrDirector ?? _media.creatorOrDirector,
+            posterUrl: detailed.posterUrl ?? _media.posterUrl,
+            isFreeToPlay: detailed.isFreeToPlay ?? _media.isFreeToPlay,
+            gameStores: detailed.gameStores.isNotEmpty ? detailed.gameStores : _media.gameStores,
+            gameDuration: detailed.gameDuration ?? _media.gameDuration,
+          );
         });
       }
     } catch (_) {}
@@ -136,6 +152,91 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
     setState(() {});
   }
 
+  void _showQuickCreateListDialog(BuildContext parentCtx) {
+    final titleController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dlgCtx) {
+        bool isCreating = false;
+        return StatefulBuilder(
+          builder: (context, setDlgState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.surfaceDark,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                'Nueva lista y guardar',
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+              ),
+              content: TextField(
+                controller: titleController,
+                autofocus: true,
+                style: TextStyle(color: AppTheme.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Título de la lista',
+                  labelStyle: TextStyle(color: AppTheme.textSecondary),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dlgCtx),
+                  child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryLiquid,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: isCreating
+                      ? null
+                      : () async {
+                          final title = titleController.text.trim();
+                          if (title.isEmpty) return;
+                          final messenger = ScaffoldMessenger.of(context);
+                          setDlgState(() => isCreating = true);
+                          try {
+                            final list = await widget.controller.createSharedList(title, null);
+                            await widget.controller.addMediaToSharedList(list.id, _media);
+                            if (dlgCtx.mounted) {
+                              Navigator.pop(dlgCtx);
+                            }
+                            if (parentCtx.mounted) {
+                              Navigator.pop(parentCtx);
+                            }
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Guardado en la nueva lista "${list.title}"'),
+                                  backgroundColor: AppTheme.surfaceDark,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (dlgCtx.mounted) {
+                              setDlgState(() => isCreating = false);
+                            }
+                            if (mounted) {
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          }
+                        },
+                  child: isCreating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Crear y Guardar', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showAddToListDialog() {
     final sharedLists = widget.controller.sharedLists;
 
@@ -154,20 +255,30 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Guardar en lista del entorno',
-                style: TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Guardar en lista del entorno',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: AppTheme.textSecondary,
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               if (sharedLists.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
-                    'No hay listas en este entorno aún.',
+                    'No hay listas creadas en este entorno todavía.',
                     style: TextStyle(color: AppTheme.textSecondary),
                   ),
                 )
@@ -196,6 +307,12 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                     },
                   );
                 }),
+              const SizedBox(height: 8),
+              AppButton(
+                text: 'Crear nueva lista y guardar',
+                icon: Icons.add_circle_outline_rounded,
+                onPressed: () => _showQuickCreateListDialog(ctx),
+              ),
             ],
           ),
         );
@@ -208,7 +325,6 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
     final userItem = widget.controller.getUserItem(_media.mediaType, _media.mediaId);
     final isRouletteSelected =
         widget.controller.isRouletteSelected(_media.mediaType, _media.mediaId);
-    final isPersonal = widget.controller.isPersonalEnvironment;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.88,
@@ -330,6 +446,13 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                       const SizedBox(height: 20),
                     ],
 
+                    // Duración estimada y tiendas oficiales (Para Videojuegos)
+                    if (_media.mediaType == LeisureMediaType.game) ...[
+                      _buildGameDurationSection(),
+                      _buildGameStoresSection(),
+                      const SizedBox(height: 20),
+                    ],
+
                     // Sinopsis / Descripción
                     if (_media.overview != null && _media.overview!.isNotEmpty) ...[
                       Text(
@@ -352,13 +475,12 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                       const SizedBox(height: 20),
                     ],
 
-                    // Acordeón 1: Reparto y Créditos
-                    if (_media.castOrPlatforms.isNotEmpty) ...[
+                    // Acordeón 1: Reparto (Para Películas y Series)
+                    if (_media.mediaType != LeisureMediaType.game &&
+                        _media.castOrPlatforms.isNotEmpty) ...[
                       LeisureAccordion(
                         icon: Icons.people_alt_rounded,
-                        title: _media.mediaType == LeisureMediaType.game
-                            ? 'Plataformas y Compañías'
-                            : 'Reparto Principal',
+                        title: 'Reparto Principal',
                         badgeText: '${_media.castOrPlatforms.length}',
                         child: Wrap(
                           spacing: 8,
@@ -417,39 +539,13 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                       const SizedBox(height: 14),
                     ],
 
-                    // Botón para Añadir a Lista Compartida del Entorno
+                    // Botón para Añadir a Lista del Entorno (disponible en todos los entornos)
                     const SizedBox(height: 10),
-                    if (!isPersonal)
-                      AppButton(
-                        text: 'Guardar en lista del entorno',
-                        icon: Icons.bookmark_add_rounded,
-                        onPressed: _showAddToListDialog,
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceDark,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppTheme.cardBorderColor),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline_rounded,
-                                size: 18, color: AppTheme.textSecondary),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Para listas colaborativas, activa un entorno compartido en la cabecera.',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    AppButton(
+                      text: 'Guardar en lista del entorno',
+                      icon: Icons.bookmark_add_rounded,
+                      onPressed: _showAddToListDialog,
+                    ),
                   ],
                 ),
               ),
@@ -461,6 +557,10 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
   }
 
   Widget _buildHeaderSection() {
+    final displayYear = _media.year != null
+        ? (OpenLibraryService.extractYear(_media.year) ?? _media.year)
+        : null;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -504,9 +604,9 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  if (_media.year != null) ...[
+                  if (displayYear != null) ...[
                     Text(
-                      _media.year!,
+                      displayYear,
                       style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 12,
@@ -539,6 +639,92 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                         ],
                       ),
                     ),
+                  if (_media.mediaType == LeisureMediaType.game) ...[
+                    if (_media.isFreeToPlay == true) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentEmerald.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppTheme.accentEmerald.withValues(alpha: 0.45),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.all_inclusive_rounded,
+                                size: 12, color: AppTheme.accentEmerald),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Free to Play',
+                              style: TextStyle(
+                                color: AppTheme.accentEmerald,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (_media.isFreeToPlay == false) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceDark,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppTheme.cardBorderColor,
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          'De pago',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (_media.gameDuration?.mainStoryHours != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryLiquid.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppTheme.primaryLiquid.withValues(alpha: 0.45),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.timer_outlined,
+                                size: 12, color: AppTheme.primaryLiquid),
+                            const SizedBox(width: 3),
+                            Text(
+                              '~${_media.gameDuration!.mainStoryHours}h',
+                              style: TextStyle(
+                                color: AppTheme.primaryLiquid,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
@@ -571,6 +757,250 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
         ),
       ],
     );
+  }
+
+  Widget _buildGameDurationSection() {
+    final duration = _media.gameDuration;
+    if (duration == null || !duration.hasAny) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.timer_outlined, size: 16, color: AppTheme.primaryLiquid),
+            const SizedBox(width: 8),
+            Text(
+              'Duración estimada (Tiempo para pasárselo)',
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            if (duration.mainStoryHours != null && duration.mainStoryHours! > 0)
+              Expanded(
+                child: _buildDurationCard(
+                  label: 'Historia',
+                  hours: duration.mainStoryHours!,
+                  color: AppTheme.accentEmerald,
+                  icon: Icons.flag_rounded,
+                ),
+              ),
+            if (duration.mainExtraHours != null && duration.mainExtraHours! > 0) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildDurationCard(
+                  label: 'Historia + Extras',
+                  hours: duration.mainExtraHours!,
+                  color: AppTheme.primaryLiquid,
+                  icon: Icons.explore_rounded,
+                ),
+              ),
+            ],
+            if (duration.completionistHours != null && duration.completionistHours! > 0) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildDurationCard(
+                  label: '100% Completista',
+                  hours: duration.completionistHours!,
+                  color: Colors.amber,
+                  icon: Icons.emoji_events_rounded,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+
+  Widget _buildDurationCard({
+    required String label,
+    required int hours,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(height: 6),
+          Text(
+            '$hours h',
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGameStoresSection() {
+    final stores = _media.gameStores;
+    final isF2p = _media.isFreeToPlay;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              isF2p == true ? Icons.all_inclusive_rounded : Icons.storefront_rounded,
+              size: 16,
+              color: isF2p == true ? AppTheme.accentEmerald : AppTheme.primaryLiquid,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isF2p == true
+                  ? 'Consíguelo gratis en:'
+                  : (stores.isNotEmpty ? 'Disponible en tiendas oficiales:' : 'Disponibilidad'),
+              style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (stores.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: stores.map((store) {
+              return InkWell(
+                onTap: () async {
+                  final uri = Uri.tryParse(store.url);
+                  if (uri != null) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isF2p == true
+                          ? AppTheme.accentEmerald.withValues(alpha: 0.35)
+                          : AppTheme.cardBorderColor,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getStoreIcon(store.storeName),
+                        size: 15,
+                        color: _getStoreColor(store.storeName),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        store.storeName,
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Icon(
+                        Icons.open_in_new_rounded,
+                        size: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.cardBorderColor, width: 0.8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isF2p == null ? Icons.help_outline_rounded : Icons.info_outline_rounded,
+                  size: 16,
+                  color: AppTheme.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isF2p == null
+                        ? 'No hay información confirmada sobre el modelo de pago'
+                        : 'Juego de pago disponible en las tiendas habituales de tus plataformas.',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  IconData _getStoreIcon(String storeName) {
+    final s = storeName.toLowerCase();
+    if (s.contains('steam')) return Icons.sports_esports_rounded;
+    if (s.contains('nintendo')) return Icons.videogame_asset_rounded;
+    if (s.contains('playstation')) return Icons.gamepad_rounded;
+    if (s.contains('xbox')) return Icons.gamepad_outlined;
+    if (s.contains('epic')) return Icons.shopping_bag_outlined;
+    if (s.contains('gog')) return Icons.album_rounded;
+    if (s.contains('apple') || s.contains('app store')) return Icons.apple_rounded;
+    if (s.contains('google') || s.contains('play')) return Icons.play_arrow_rounded;
+    return Icons.storefront_rounded;
+  }
+
+  Color _getStoreColor(String storeName) {
+    final s = storeName.toLowerCase();
+    if (s.contains('steam')) return const Color(0xFF66C0F4);
+    if (s.contains('nintendo')) return const Color(0xFFE60012);
+    if (s.contains('playstation')) return const Color(0xFF0070D1);
+    if (s.contains('xbox')) return const Color(0xFF107C10);
+    if (s.contains('epic')) return Colors.white;
+    if (s.contains('gog')) return const Color(0xFFC070F0);
+    if (s.contains('apple')) return Colors.white;
+    if (s.contains('google')) return const Color(0xFF00E676);
+    return AppTheme.primaryLiquid;
   }
 
   Widget _buildStatusSelector(LeisureItemStatus? currentStatus) {
@@ -847,8 +1277,11 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Row(
+                const SizedBox(height: 3),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 2,
                   children: [
                     if (edition.publishers.isNotEmpty)
                       Text(
@@ -856,13 +1289,13 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                         style: TextStyle(
                           color: AppTheme.primaryLiquid,
                           fontSize: 11,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    if (edition.publishDate != null) ...[
-                      const SizedBox(width: 6),
-                      Text('•',
-                          style: TextStyle(color: AppTheme.textSecondary)),
-                      const SizedBox(width: 6),
+                    if (edition.publishDate != null && edition.publishDate!.isNotEmpty) ...[
+                      if (edition.publishers.isNotEmpty)
+                        Text('•',
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
                       Text(
                         edition.publishDate!,
                         style: TextStyle(
@@ -871,21 +1304,21 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                         ),
                       ),
                     ],
-                    if (edition.isbn13 != null && edition.isbn13!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text('•',
-                          style: TextStyle(color: AppTheme.textSecondary)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'ISBN: ${edition.isbn13}',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
+                if ((edition.isbn13 != null && edition.isbn13!.isNotEmpty) ||
+                    (edition.isbn10 != null && edition.isbn10!.isNotEmpty)) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    'ISBN: ${edition.isbn13 ?? edition.isbn10}',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary.withValues(alpha: 0.85),
+                      fontSize: 10,
+                      letterSpacing: 0.3,
+                    ),
+                    softWrap: true,
+                  ),
+                ],
               ],
             ),
           ),

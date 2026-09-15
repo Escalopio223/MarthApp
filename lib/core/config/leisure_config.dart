@@ -1,4 +1,4 @@
-﻿/// Configuracion centralizada para el modulo de Ocio (Leisure) en MarthApp.
+/// Configuracion centralizada para el modulo de Ocio (Leisure) en MarthApp.
 ///
 /// Contiene URLs base de proveedores multimedia (TMDB, Open Library, IGDB)
 /// y variables de entorno compiladas con `--dart-define`.
@@ -43,6 +43,15 @@ class LeisureConfig {
 
   /// URL base del CDN de imagenes oficiales de IGDB
   static const String igdbImageBaseUrl = 'https://images.igdb.com/igdb/image/upload';
+
+  /// API Key de RAWG Video Games Database (con soporte CORS nativo en navegadores)
+  static const String rawgApiKey = String.fromEnvironment(
+    'RAWG_API_KEY',
+    defaultValue: 'c542e67aec3a4340908f9de9e86038af',
+  );
+
+  /// URL base oficial de la API de RAWG
+  static const String rawgBaseUrl = 'https://api.rawg.io/api';
 
   /// Validador para determinar si la clave de TMDB esta configurada
   static bool get isTmdbConfigured =>

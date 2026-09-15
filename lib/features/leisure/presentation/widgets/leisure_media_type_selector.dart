@@ -4,7 +4,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_container.dart';
 import '../../domain/models/leisure_media_type.dart';
 
-/// Selector horizontal Claymórfico de tipo de medio (Películas, Series, Libros, Videojuegos)
+/// Selector Claymórfico de tipo de medio (Películas, Series, Libros, Videojuegos)
+/// Completamente anclado al ancho de pantalla (sin scroll horizontal) con escala adaptativa.
 class LeisureMediaTypeSelector extends StatelessWidget {
   final LeisureMediaType selectedType;
   final ValueChanged<LeisureMediaType> onTypeChanged;
@@ -17,23 +18,26 @@ class LeisureMediaTypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    final types = LeisureMediaType.values;
+
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
-        children: LeisureMediaType.values.map((type) {
-          final isSelected = type == selectedType;
-          return Padding(
-            padding: const EdgeInsets.only(right: 10.0),
-            child: _buildTypePill(context, type, isSelected),
-          );
-        }).toList(),
+        children: [
+          for (int i = 0; i < types.length; i++) ...[
+            if (i > 0) const SizedBox(width: 6.0),
+            Expanded(
+              child: _buildTypeSegment(context, types[i]),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildTypePill(
-      BuildContext context, LeisureMediaType type, bool isSelected) {
+  Widget _buildTypeSegment(BuildContext context, LeisureMediaType type) {
+    final isSelected = type == selectedType;
+
     IconData icon;
     switch (type) {
       case LeisureMediaType.movie:
@@ -51,8 +55,8 @@ class LeisureMediaTypeSelector extends StatelessWidget {
     }
 
     return AppContainer(
-      borderRadius: 16.0,
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+      borderRadius: 14.0,
+      padding: const EdgeInsets.symmetric(vertical: 9.0, horizontal: 4.0),
       baseColor: isSelected ? AppTheme.primaryLiquid : AppTheme.surfaceDark,
       onTap: () {
         if (!isSelected) {
@@ -60,24 +64,32 @@ class LeisureMediaTypeSelector extends StatelessWidget {
           onTypeChanged(type);
         }
       },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isSelected ? Colors.white : AppTheme.textSecondary,
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isSelected ? Colors.white : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                type.pluralLabel,
+                maxLines: 1,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppTheme.textPrimary,
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            type.pluralLabel,
-            style: TextStyle(
-              color: isSelected ? Colors.white : AppTheme.textPrimary,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

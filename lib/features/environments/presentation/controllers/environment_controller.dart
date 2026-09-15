@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../data/environment_service.dart';
 import '../../domain/models/environment_invitation_model.dart';
 import '../../domain/models/environment_member_model.dart';
@@ -25,7 +26,7 @@ class EnvironmentController extends ChangeNotifier {
   RealtimeChannel? _invitationsChannel;
 
   EnvironmentController({IEnvironmentRepository? environmentRepository})
-      : _environmentRepository = environmentRepository ?? EnvironmentService();
+    : _environmentRepository = environmentRepository ?? EnvironmentService();
 
   IEnvironmentRepository get repository => _environmentRepository;
 
@@ -75,7 +76,7 @@ class EnvironmentController extends ChangeNotifier {
     final list = await _environmentRepository.getEnvironments(userId);
     _environments = list;
 
-    // Regla de negocio: Selección por defecto obligatoria de "Mi Espacio" (is_personal == true)
+    // Regla de negocio: Selección por defecto obligatoria de "Mi espacio" (is_personal == true)
     EnvironmentModel? defaultPersonal;
     try {
       defaultPersonal = _environments.firstWhere((e) => e.isPersonal);
@@ -88,8 +89,9 @@ class EnvironmentController extends ChangeNotifier {
   }
 
   Future<void> _loadPendingInvitations(String userId) async {
-    _pendingInvitations =
-        await _environmentRepository.getPendingInvitations(userId);
+    _pendingInvitations = await _environmentRepository.getPendingInvitations(
+      userId,
+    );
   }
 
   void _setupRealtimeSubscription(String userId) {
@@ -97,8 +99,8 @@ class EnvironmentController extends ChangeNotifier {
       userId,
       () async {
         if (_currentUserId != null) {
-          _pendingInvitations =
-              await _environmentRepository.getPendingInvitations(_currentUserId!);
+          _pendingInvitations = await _environmentRepository
+              .getPendingInvitations(_currentUserId!);
           notifyListeners();
         }
       },
@@ -125,8 +127,12 @@ class EnvironmentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Crea un nuevo entorno de forma atómica mediante RPC
-  Future<bool> createEnvironment(String name) async {
+  /// Crea un nuevo entorno de forma atómica mediante RPC con personalización opcional de icono y color
+  Future<bool> createEnvironment(
+    String name, {
+    String? icon,
+    String? color,
+  }) async {
     final clean = name.trim();
     if (clean.length < 3) {
       _errorMessage = 'El nombre debe tener al menos 3 caracteres';
@@ -140,7 +146,11 @@ class EnvironmentController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final created = await _environmentRepository.createEnvironment(name: clean);
+      final created = await _environmentRepository.createEnvironment(
+        name: clean,
+        icon: icon,
+        color: color,
+      );
       if (created != null) {
         _environments.add(created);
         _activeEnvironment = created;
@@ -196,7 +206,9 @@ class EnvironmentController extends ChangeNotifier {
     if (_currentUserId == null) return false;
 
     // Validación de negocio: No se admiten invitaciones a espacios personales
-    final targetEnv = _environments.where((e) => e.id == environmentId).firstOrNull;
+    final targetEnv = _environments
+        .where((e) => e.id == environmentId)
+        .firstOrNull;
     if (targetEnv != null && targetEnv.isPersonal) {
       _errorMessage = 'El espacio personal es privado y no permite miembros';
       notifyListeners();
@@ -254,10 +266,14 @@ class EnvironmentController extends ChangeNotifier {
         _pendingInvitations.removeWhere((i) => i.id == invitationId);
         if (accept && _currentUserId != null) {
           // Refrescar lista de entornos tras unirse
-          final list = await _environmentRepository.getEnvironments(_currentUserId!);
+          final list = await _environmentRepository.getEnvironments(
+            _currentUserId!,
+          );
           _environments = list;
         }
-        _successMessage = accept ? '¡Te has unido al entorno!' : 'Invitación rechazada';
+        _successMessage = accept
+            ? '¡Te has unido al entorno!'
+            : 'Invitación rechazada';
         return true;
       }
       _errorMessage = 'No se pudo procesar la invitación';
@@ -372,7 +388,9 @@ class EnvironmentController extends ChangeNotifier {
   Future<void> refresh() async {
     if (_currentUserId == null) return;
     try {
-      final envs = await _environmentRepository.getEnvironments(_currentUserId!);
+      final envs = await _environmentRepository.getEnvironments(
+        _currentUserId!,
+      );
       _environments = envs;
 
       // Si el entorno activo actual ya no existe, reajustar al personal
@@ -382,8 +400,9 @@ class EnvironmentController extends ChangeNotifier {
         _isAllSelected = false;
       }
 
-      _pendingInvitations =
-          await _environmentRepository.getPendingInvitations(_currentUserId!);
+      _pendingInvitations = await _environmentRepository.getPendingInvitations(
+        _currentUserId!,
+      );
     } catch (e) {
       debugPrint('[EnvironmentController] Error en refresh: $e');
     } finally {

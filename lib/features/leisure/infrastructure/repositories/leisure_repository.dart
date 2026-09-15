@@ -353,15 +353,53 @@ class LeisureRepository implements ILeisureRepository {
   Future<List<LeisureSharedListItemModel>> getSharedListItems({
     required String listId,
   }) async {
-    final res = await _client
-        .from('leisure_shared_list_items')
-        .select()
-        .eq('list_id', listId)
-        .order('created_at', ascending: false);
+    dynamic res;
+    try {
+      res = await _client
+          .from('leisure_shared_list_items')
+          .select()
+          .eq('list_id', listId)
+          .order('custom_order', ascending: true)
+          .order('created_at', ascending: false);
+    } catch (_) {
+      res = await _client
+          .from('leisure_shared_list_items')
+          .select()
+          .eq('list_id', listId)
+          .order('created_at', ascending: false);
+    }
 
-    return (res as List)
+    final rawList = (res as List)
         .map((row) => LeisureSharedListItemModel.fromJson(row as Map<String, dynamic>))
         .toList();
+
+    // Enriquecer con caché si faltan metadatos clave (year, rating, genres)
+    final enriched = <LeisureSharedListItemModel>[];
+    for (final item in rawList) {
+      if (item.year != null && item.rating != null && item.genres.isNotEmpty) {
+        enriched.add(item);
+      } else {
+        final cached = await _getCachedPayload(item.mediaId, item.mediaType);
+        if (cached != null) {
+          final cachedYear = cached['year'] as String? ?? OpenLibraryService.extractYear(cached['release_date'] as String?);
+          final cachedRating = (cached['rating'] as num?)?.toDouble();
+          final rawGenres = cached['genres'];
+          final cachedGenres = rawGenres is List
+              ? rawGenres.map((e) => e.toString()).toList()
+              : const <String>[];
+
+          enriched.add(item.copyWith(
+            year: item.year ?? cachedYear,
+            rating: item.rating ?? cachedRating,
+            genres: item.genres.isNotEmpty ? item.genres : cachedGenres,
+          ));
+        } else {
+          enriched.add(item);
+        }
+      }
+    }
+
+    return enriched;
   }
 
   @override
@@ -371,27 +409,81 @@ class LeisureRepository implements ILeisureRepository {
     required LeisureMediaType mediaType,
     required String title,
     String? posterUrl,
+    String? year,
+    double? rating,
+    List<String>? genres,
+    int? customOrder,
     LeisureMediaDetails? detailsToCache,
   }) async {
-    final res = await _client
-        .from('leisure_shared_list_items')
-        .insert({
-          'list_id': listId,
-          'media_id': mediaId,
-          'media_type': mediaType.toValue(),
-          'title': title,
-          'poster_url': posterUrl,
-          'added_by': _currentUserId,
-        })
-        .select()
-        .single();
+    final effectiveYear = year ?? detailsToCache?.year;
+    final effectiveRating = rating ?? detailsToCache?.rating;
+    final effectiveGenres = genres ?? detailsToCache?.genres ?? const [];
+
+    Map<String, dynamic> res;
+    try {
+      // 1. Intentar insertar con las nuevas columnas extendidas
+      res = await _client
+          .from('leisure_shared_list_items')
+          .insert({
+            'list_id': listId,
+            'media_id': mediaId,
+            'media_type': mediaType.toValue(),
+            'title': title,
+            'poster_url': posterUrl,
+            'year': effectiveYear,
+            'rating': effectiveRating,
+            'genres': effectiveGenres,
+            'custom_order': customOrder ?? 0,
+            'added_by': _currentUserId,
+          })
+          .select()
+          .single();
+    } catch (_) {
+      // 2. Fallback resiliente: Si la tabla en Supabase aún no tiene aplicadas las nuevas columnas
+      res = await _client
+          .from('leisure_shared_list_items')
+          .insert({
+            'list_id': listId,
+            'media_id': mediaId,
+            'media_type': mediaType.toValue(),
+            'title': title,
+            'poster_url': posterUrl,
+            'added_by': _currentUserId,
+          })
+          .select()
+          .single();
+    }
 
     // Guardar en caché para que otros miembros del entorno puedan leerlo sin llamar a la API
     if (detailsToCache != null) {
       _saveToCache(mediaId, mediaType, detailsToCache.toJson());
     }
 
-    return LeisureSharedListItemModel.fromJson(res);
+    final parsed = LeisureSharedListItemModel.fromJson(res);
+    return parsed.copyWith(
+      year: parsed.year ?? effectiveYear,
+      rating: parsed.rating ?? effectiveRating,
+      genres: parsed.genres.isNotEmpty ? parsed.genres : effectiveGenres,
+      customOrder: parsed.customOrder != 0 ? parsed.customOrder : (customOrder ?? 0),
+    );
+  }
+
+  @override
+  Future<void> reorderSharedListItems({
+    required String listId,
+    required List<String> orderedItemIds,
+  }) async {
+    for (int i = 0; i < orderedItemIds.length; i++) {
+      try {
+        await _client
+            .from('leisure_shared_list_items')
+            .update({'custom_order': i})
+            .eq('id', orderedItemIds[i])
+            .eq('list_id', listId);
+      } catch (_) {
+        break;
+      }
+    }
   }
 
   @override

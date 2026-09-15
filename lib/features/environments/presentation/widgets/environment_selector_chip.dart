@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../controllers/environment_controller.dart';
@@ -26,15 +27,15 @@ class EnvironmentSelectorChip extends StatelessWidget {
         final isAll = environmentController.isAllSelected;
         final active = environmentController.activeEnvironment;
 
-        final displayName = isAll
-            ? 'Todos'
-            : (active?.name ?? 'Mi Espacio');
+        final displayName = isAll ? 'Todos' : (active?.name ?? 'Mi espacio');
 
         final iconData = isAll
             ? Icons.dashboard_customize_rounded
-            : (active?.isPersonal == true
-                ? Icons.person_pin_rounded
-                : Icons.groups_rounded);
+            : (active?.iconData ?? Icons.person_pin_rounded);
+
+        final themeColor = isAll
+            ? AppTheme.secondaryLilac
+            : (active?.colorValue ?? AppTheme.primaryCyan);
 
         return Material(
           color: Colors.transparent,
@@ -47,19 +48,12 @@ class EnvironmentSelectorChip extends StatelessWidget {
                 color: AppTheme.surfaceDark.withValues(alpha: 0.8),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isAll
-                      ? AppTheme.secondaryLilac.withValues(alpha: 0.6)
-                      : (active?.isPersonal == true
-                          ? AppTheme.primaryCyan.withValues(alpha: 0.6)
-                          : AppTheme.accentEmerald.withValues(alpha: 0.6)),
+                  color: themeColor.withValues(alpha: 0.7),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (isAll
-                            ? AppTheme.secondaryLilac
-                            : AppTheme.primaryCyan)
-                        .withValues(alpha: 0.15),
+                    color: themeColor.withValues(alpha: 0.20),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -68,15 +62,7 @@ class EnvironmentSelectorChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    iconData,
-                    size: 16,
-                    color: isAll
-                        ? AppTheme.secondaryLilac
-                        : (active?.isPersonal == true
-                            ? AppTheme.primaryCyan
-                            : AppTheme.accentEmerald),
-                  ),
+                  Icon(iconData, size: 16, color: themeColor),
                   const SizedBox(width: 6),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 110),

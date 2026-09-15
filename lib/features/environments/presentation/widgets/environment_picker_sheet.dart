@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
@@ -93,8 +94,11 @@ class EnvironmentPickerSheet extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded,
-                        color: AppTheme.textSecondary, size: 20),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: AppTheme.textSecondary,
+                      size: 20,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -120,8 +124,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
                 ),
                 child: EnvironmentSelectionList(
                   environments: environments,
-                  selectedEnvironmentId:
-                      !isAllSelected ? activeEnv?.id : null,
+                  selectedEnvironmentId: !isAllSelected ? activeEnv?.id : null,
                   onSelect: (env) {
                     controller.selectEnvironment(env);
                     onSelected();
@@ -141,7 +144,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
 
               // Botón de acción: Crear nuevo entorno
               AppButton(
-                text: 'Crear Nuevo Entorno',
+                text: 'Crear nuevo entorno',
                 icon: Icons.add_circle_outline_rounded,
                 gradient: AppTheme.liquidPrimaryGradient,
                 onPressed: () {
@@ -221,7 +224,9 @@ class EnvironmentPickerSheet extends StatelessWidget {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: iconColor.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
@@ -251,11 +256,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
                 ),
               ),
               if (isSelected)
-                Icon(
-                  Icons.check_circle_rounded,
-                  color: iconColor,
-                  size: 20,
-                ),
+                Icon(Icons.check_circle_rounded, color: iconColor, size: 20),
             ],
           ),
         ),

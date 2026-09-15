@@ -114,7 +114,17 @@ abstract class ILeisureRepository {
     required LeisureMediaType mediaType,
     required String title,
     String? posterUrl,
+    String? year,
+    double? rating,
+    List<String>? genres,
+    int? customOrder,
     LeisureMediaDetails? detailsToCache,
+  });
+
+  /// Actualiza el orden manual de los elementos en una lista compartida
+  Future<void> reorderSharedListItems({
+    required String listId,
+    required List<String> orderedItemIds,
   });
 
   /// Elimina un elemento de una lista compartida

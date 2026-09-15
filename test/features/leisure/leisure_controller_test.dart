@@ -81,7 +81,7 @@ class MockLeisureRepository implements ILeisureRepository {
 
   @override
   Future<List<LeisureSharedListModel>> getSharedLists({required String environmentId}) async {
-    return sharedLists;
+    return sharedLists.where((l) => l.environmentId == environmentId).toList();
   }
 
   @override
@@ -111,6 +111,10 @@ class MockLeisureRepository implements ILeisureRepository {
     required LeisureMediaType mediaType,
     required String title,
     String? posterUrl,
+    String? year,
+    double? rating,
+    List<String>? genres,
+    int? customOrder,
     LeisureMediaDetails? detailsToCache,
   }) async {
     return LeisureSharedListItemModel(
@@ -119,10 +123,21 @@ class MockLeisureRepository implements ILeisureRepository {
       mediaId: mediaId,
       mediaType: mediaType,
       title: title,
+      posterUrl: posterUrl,
+      year: year,
+      rating: rating,
+      genres: genres ?? const [],
+      customOrder: customOrder ?? 0,
       addedBy: 'u1',
       createdAt: DateTime.now(),
     );
   }
+
+  @override
+  Future<void> reorderSharedListItems({
+    required String listId,
+    required List<String> orderedItemIds,
+  }) async {}
 
   @override
   Future<void> removeSharedListItem({required String itemId}) async {}

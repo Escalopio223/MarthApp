@@ -4,7 +4,9 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../domain/models/leisure_item_status.dart';
 import '../../domain/models/leisure_media_details.dart';
+import '../../domain/models/leisure_media_type.dart';
 import '../../domain/models/leisure_user_item_model.dart';
+import '../../infrastructure/services/open_library_service.dart';
 
 /// Tarjeta táctil Claymórfica para títulos multimedia:
 /// - Imagen de portada con degradado inferior
@@ -193,6 +195,70 @@ class LeisureMediaCard extends StatelessWidget {
                       ),
                     ),
                   ),
+
+                // Badge F2P para videojuegos confirmados (Bottom Right)
+                if (media.mediaType == LeisureMediaType.game && media.isFreeToPlay == true)
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentEmerald.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        'F2P',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Badge de Duración (Inferior Izquierda para Videojuegos)
+                if (media.mediaType == LeisureMediaType.game &&
+                    media.gameDuration?.mainStoryHours != null)
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppTheme.primaryLiquid.withValues(alpha: 0.45),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.timer_outlined,
+                              size: 10, color: AppTheme.primaryLiquid),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${media.gameDuration!.mainStoryHours}h',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -219,7 +285,7 @@ class LeisureMediaCard extends StatelessWidget {
                   children: [
                     if (media.year != null)
                       Text(
-                        media.year!,
+                        OpenLibraryService.extractYear(media.year) ?? media.year!,
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 11,

@@ -8,6 +8,7 @@ import '../../../environments/presentation/controllers/environment_controller.da
 import '../../domain/models/leisure_media_details.dart';
 import '../controllers/leisure_controller.dart';
 import '../widgets/leisure_detail_sheet.dart';
+import '../widgets/leisure_dice_winner_dialog.dart';
 import '../widgets/leisure_media_card.dart';
 import '../widgets/leisure_media_type_selector.dart';
 import '../widgets/leisure_shared_lists_sheet.dart';
@@ -66,18 +67,30 @@ class _LeisureScreenState extends State<LeisureScreen> {
     widget.controller.clearSearch();
   }
 
-  void _showRouletteNotice(BuildContext context) {
-    final count = widget.controller.rouletteCount;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          count > 0
-              ? '$count título(s) listos para la Ruleta'
-              : 'Selecciona títulos tocando el icono de dado/ruleta para jugar.',
+  void _handleDiceRoll(BuildContext context) {
+    final controller = widget.controller;
+    if (controller.rouletteCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Selecciona títulos tocando el icono de dado en las tarjetas para tirar los dados.',
+          ),
+          backgroundColor: AppTheme.surfaceDark,
         ),
-        backgroundColor: AppTheme.surfaceDark,
-      ),
-    );
+      );
+      return;
+    }
+
+    // Ejecuta la tirada y limpia automáticamente la selección
+    final winner = controller.rollRoulette();
+    if (winner != null) {
+      HapticFeedback.mediumImpact();
+      LeisureDiceWinnerDialog.show(
+        context,
+        winner: winner,
+        controller: controller,
+      );
+    }
   }
 
   @override
@@ -125,7 +138,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
                 color: controller.rouletteCount > 0
                     ? AppTheme.accentCoral
                     : AppTheme.textSecondary,
-                onPressed: () => _showRouletteNotice(context),
+                onPressed: () => _handleDiceRoll(context),
               ),
               if (controller.rouletteCount > 0)
                 Positioned(
@@ -343,7 +356,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryLiquid),
-                onPressed: () => controller.loadCatalog(),
+                onPressed: () => controller.loadCatalog(forceRefresh: true),
                 child: const Text('Reintentar',
                     style: TextStyle(color: Colors.white)),
               ),
@@ -450,7 +463,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
             color: controller.rouletteCount > 0
                 ? AppTheme.accentCoral
                 : AppTheme.textSecondary,
-            onPressed: () => _showRouletteNotice(context),
+            onPressed: () => _handleDiceRoll(context),
           ),
           if (controller.rouletteCount > 0)
             Positioned(

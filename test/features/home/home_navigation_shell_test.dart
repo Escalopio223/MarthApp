@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/core/widgets/marth_app_logo.dart';
 import 'package:marth_app/features/auth/domain/repositories/auth_repository.dart';
@@ -65,7 +65,7 @@ class FakeEnvironmentRepo implements IEnvironmentRepository {
   final List<EnvironmentModel> _envs = [
     EnvironmentModel(
       id: 'env-personal',
-      name: 'Mi Espacio',
+      name: 'Mi espacio',
       isPersonal: true,
       createdBy: 'user_123',
       createdAt: DateTime.now(),
@@ -84,43 +84,72 @@ class FakeEnvironmentRepo implements IEnvironmentRepository {
   ];
 
   @override
-  Future<List<EnvironmentModel>> getEnvironments(String userId) async => List.from(_envs);
+  Future<List<EnvironmentModel>> getEnvironments(String userId) async =>
+      List.from(_envs);
 
   @override
   Future<EnvironmentModel?> ensurePersonalEnvironment() async => _envs.first;
 
   @override
-  Future<List<String>> getPendingInvitedUserIds(String environmentId) async => [];
+  Future<List<String>> getPendingInvitedUserIds(String environmentId) async =>
+      [];
 
   @override
-  Future<EnvironmentModel?> createEnvironment({required String name}) async => null;
+  Future<EnvironmentModel?> createEnvironment({
+    required String name,
+    String? icon,
+    String? color,
+  }) async => null;
 
   @override
   Future<bool> deleteEnvironment(String environmentId) async => true;
 
   @override
-  Future<List<EnvironmentMemberModel>> getEnvironmentMembers(String environmentId) async => [];
+  Future<List<EnvironmentMemberModel>> getEnvironmentMembers(
+    String environmentId,
+  ) async => [];
 
   @override
-  Future<bool> removeMember({required String environmentId, required String userId}) async => true;
+  Future<bool> removeMember({
+    required String environmentId,
+    required String userId,
+  }) async => true;
 
   @override
-  Future<bool> leaveEnvironment({required String environmentId, required String userId}) async => true;
+  Future<bool> leaveEnvironment({
+    required String environmentId,
+    required String userId,
+  }) async => true;
 
   @override
-  Future<List<EnvironmentInvitationModel>> getPendingInvitations(String userId) async => [];
+  Future<List<EnvironmentInvitationModel>> getPendingInvitations(
+    String userId,
+  ) async => [];
 
   @override
-  Future<bool> sendInvitation({required String environmentId, required String receiverId, required String senderId}) async => true;
+  Future<bool> sendInvitation({
+    required String environmentId,
+    required String receiverId,
+    required String senderId,
+  }) async => true;
 
   @override
-  Future<bool> respondInvitation({required String invitationId, required bool accept}) async => true;
+  Future<bool> respondInvitation({
+    required String invitationId,
+    required bool accept,
+  }) async => true;
 
   @override
-  Future<bool> migrateContent({required String sourceEnvironmentId, required String targetEnvironmentId}) async => true;
+  Future<bool> migrateContent({
+    required String sourceEnvironmentId,
+    required String targetEnvironmentId,
+  }) async => true;
 
   @override
-  RealtimeChannel? subscribeToInvitations(String userId, VoidCallback onUpdate) => null;
+  RealtimeChannel? subscribeToInvitations(
+    String userId,
+    VoidCallback onUpdate,
+  ) => null;
 
   @override
   Future<void> unsubscribe(RealtimeChannel? channel) async {}
@@ -128,52 +157,161 @@ class FakeEnvironmentRepo implements IEnvironmentRepository {
 
 class FakeLeisureRepo implements ILeisureRepository {
   @override
-  Future<List<LeisureMediaDetails>> getNowPlayingMovies({String region = 'ES', int page = 1}) async => [];
+  Future<List<LeisureMediaDetails>> getNowPlayingMovies({
+    String region = 'ES',
+    int page = 1,
+  }) async => [];
   @override
-  Future<List<LeisureMediaDetails>> getPopularMedia({required LeisureMediaType type, int page = 1}) async => [];
+  Future<List<LeisureMediaDetails>> getPopularMedia({
+    required LeisureMediaType type,
+    int page = 1,
+  }) async => [];
   @override
-  Future<List<LeisureMediaDetails>> searchMedia({required String query, required LeisureMediaType type, int page = 1}) async => [];
+  Future<List<LeisureMediaDetails>> searchMedia({
+    required String query,
+    required LeisureMediaType type,
+    int page = 1,
+  }) async => [];
   @override
-  Future<LeisureMediaDetails> getMediaDetails({required String mediaId, required LeisureMediaType type, bool forceRefresh = false}) async {
-    return const LeisureMediaDetails(mediaId: '1', mediaType: LeisureMediaType.movie, title: 'Test Movie');
+  Future<LeisureMediaDetails> getMediaDetails({
+    required String mediaId,
+    required LeisureMediaType type,
+    bool forceRefresh = false,
+  }) async {
+    return const LeisureMediaDetails(
+      mediaId: '1',
+      mediaType: LeisureMediaType.movie,
+      title: 'Test Movie',
+    );
   }
+
   @override
-  Future<List<StreamingProviderDto>> getWatchProviders({required String mediaId, required LeisureMediaType type, String region = 'ES'}) async => [];
+  Future<List<StreamingProviderDto>> getWatchProviders({
+    required String mediaId,
+    required LeisureMediaType type,
+    String region = 'ES',
+  }) async => [];
   @override
-  Future<TvSeasonDetailsDto> getTvSeasonDetails({required String seriesId, required int seasonNumber, bool forceRefresh = false}) async {
-    return TvSeasonDetailsDto(id: 1, seriesId: seriesId, seasonNumber: seasonNumber, name: 'Season 1', episodes: []);
+  Future<TvSeasonDetailsDto> getTvSeasonDetails({
+    required String seriesId,
+    required int seasonNumber,
+    bool forceRefresh = false,
+  }) async {
+    return TvSeasonDetailsDto(
+      id: 1,
+      seriesId: seriesId,
+      seasonNumber: seasonNumber,
+      name: 'Season 1',
+      episodes: [],
+    );
   }
+
   @override
-  Future<List<BookEditionDto>> getBookEditions({required String workId, bool forceRefresh = false}) async => [];
+  Future<List<BookEditionDto>> getBookEditions({
+    required String workId,
+    bool forceRefresh = false,
+  }) async => [];
   @override
-  Future<LeisureUserItemModel?> getUserItem({required String mediaId, required LeisureMediaType type}) async => null;
+  Future<LeisureUserItemModel?> getUserItem({
+    required String mediaId,
+    required LeisureMediaType type,
+  }) async => null;
   @override
-  Future<List<LeisureUserItemModel>> getUserItems({LeisureMediaType? type, LeisureItemStatus? status}) async => [];
+  Future<List<LeisureUserItemModel>> getUserItems({
+    LeisureMediaType? type,
+    LeisureItemStatus? status,
+  }) async => [];
   @override
-  Future<LeisureUserItemModel> saveUserItem(LeisureUserItemModel item) async => item;
+  Future<LeisureUserItemModel> saveUserItem(LeisureUserItemModel item) async =>
+      item;
   @override
-  Future<void> deleteUserItem({required String mediaId, required LeisureMediaType type}) async {}
+  Future<void> deleteUserItem({
+    required String mediaId,
+    required LeisureMediaType type,
+  }) async {}
   @override
-  Future<List<LeisureSharedListModel>> getSharedLists({required String environmentId}) async => [];
+  Future<List<LeisureSharedListModel>> getSharedLists({
+    required String environmentId,
+  }) async => [];
   @override
-  Future<LeisureSharedListModel> createSharedList({required String environmentId, required String title, String? description}) async {
-    return LeisureSharedListModel(id: '1', environmentId: environmentId, createdBy: 'u1', title: title, createdAt: DateTime.now());
+  Future<LeisureSharedListModel> createSharedList({
+    required String environmentId,
+    required String title,
+    String? description,
+  }) async {
+    return LeisureSharedListModel(
+      id: '1',
+      environmentId: environmentId,
+      createdBy: 'u1',
+      title: title,
+      createdAt: DateTime.now(),
+    );
   }
+
   @override
   Future<void> deleteSharedList({required String listId}) async {}
   @override
-  Future<List<LeisureSharedListItemModel>> getSharedListItems({required String listId}) async => [];
+  Future<List<LeisureSharedListItemModel>> getSharedListItems({
+    required String listId,
+  }) async => [];
   @override
-  Future<LeisureSharedListItemModel> addSharedListItem({required String listId, required String mediaId, required LeisureMediaType mediaType, required String title, String? posterUrl, LeisureMediaDetails? detailsToCache}) async {
-    return LeisureSharedListItemModel(id: '1', listId: listId, mediaId: mediaId, mediaType: mediaType, title: title, addedBy: 'u1', createdAt: DateTime.now());
+  Future<LeisureSharedListItemModel> addSharedListItem({
+    required String listId,
+    required String mediaId,
+    required LeisureMediaType mediaType,
+    required String title,
+    String? posterUrl,
+    String? year,
+    double? rating,
+    List<String>? genres,
+    int? customOrder,
+    LeisureMediaDetails? detailsToCache,
+  }) async {
+    return LeisureSharedListItemModel(
+      id: '1',
+      listId: listId,
+      mediaId: mediaId,
+      mediaType: mediaType,
+      title: title,
+      posterUrl: posterUrl,
+      year: year,
+      rating: rating,
+      genres: genres ?? const [],
+      customOrder: customOrder ?? 0,
+      addedBy: 'u1',
+      createdAt: DateTime.now(),
+    );
   }
+
+  @override
+  Future<void> reorderSharedListItems({
+    required String listId,
+    required List<String> orderedItemIds,
+  }) async {}
+
   @override
   Future<void> removeSharedListItem({required String itemId}) async {}
   @override
-  Future<List<LeisureEnvironmentMatchModel>> getEnvironmentMatches({required String environmentId}) async => [];
+  Future<List<LeisureEnvironmentMatchModel>> getEnvironmentMatches({
+    required String environmentId,
+  }) async => [];
   @override
-  Future<LeisureEnvironmentMatchModel> recordEnvironmentMatch({required String environmentId, required String mediaId, required LeisureMediaType mediaType, required String title, required String matchedUserId}) async {
-    return LeisureEnvironmentMatchModel(id: '1', environmentId: environmentId, mediaId: mediaId, mediaType: mediaType, title: title, matchedUserIds: [matchedUserId], createdAt: DateTime.now());
+  Future<LeisureEnvironmentMatchModel> recordEnvironmentMatch({
+    required String environmentId,
+    required String mediaId,
+    required LeisureMediaType mediaType,
+    required String title,
+    required String matchedUserId,
+  }) async {
+    return LeisureEnvironmentMatchModel(
+      id: '1',
+      environmentId: environmentId,
+      mediaId: mediaId,
+      mediaType: mediaType,
+      title: title,
+      matchedUserIds: [matchedUserId],
+      createdAt: DateTime.now(),
+    );
   }
 }
 
@@ -187,7 +325,9 @@ void main() {
 
     setUp(() async {
       authController = AuthController(authRepository: FakeAuthRepo());
-      environmentController = EnvironmentController(environmentRepository: FakeEnvironmentRepo());
+      environmentController = EnvironmentController(
+        environmentRepository: FakeEnvironmentRepo(),
+      );
       leisureController = LeisureController(repository: FakeLeisureRepo());
       friendsController = FriendsController();
       profileController = ProfileController();
@@ -209,31 +349,37 @@ void main() {
       );
     }
 
-    testWidgets('HomeScreen mounts EnvironmentsHomeView and does NOT mount LeisureScreen on startup (deferred rendering)', (tester) async {
-      await tester.pumpWidget(createTestApp(initialIndex: 0));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'HomeScreen mounts EnvironmentsHomeView and does NOT mount LeisureScreen on startup (deferred rendering)',
+      (tester) async {
+        await tester.pumpWidget(createTestApp(initialIndex: 0));
+        await tester.pumpAndSettle();
 
-      // EnvironmentsHomeView is mounted on Tab 0
-      expect(find.byType(EnvironmentsHomeView), findsOneWidget);
-      // LeisureScreen must NOT be mounted yet
-      expect(find.byType(LeisureScreen), findsNothing);
+        // EnvironmentsHomeView is mounted on Tab 0
+        expect(find.byType(EnvironmentsHomeView), findsOneWidget);
+        // LeisureScreen must NOT be mounted yet
+        expect(find.byType(LeisureScreen), findsNothing);
 
-      // Bottom nav bar must be visible with 2 tabs
-      expect(find.byType(MarthBottomNavBar), findsOneWidget);
-      expect(find.text('Entornos'), findsOneWidget);
-      expect(find.text('Ocio'), findsOneWidget);
-    });
+        // Bottom nav bar must be visible with 2 tabs
+        expect(find.byType(MarthBottomNavBar), findsOneWidget);
+        expect(find.text('Entornos'), findsOneWidget);
+        expect(find.text('Ocio'), findsOneWidget);
+      },
+    );
 
-    testWidgets('AppBar renders large logo, user avatar and EnvironmentSelectorChip in top menu', (tester) async {
-      await tester.pumpWidget(createTestApp(initialIndex: 0));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'AppBar renders large logo, user avatar and EnvironmentSelectorChip in top menu',
+      (tester) async {
+        await tester.pumpWidget(createTestApp(initialIndex: 0));
+        await tester.pumpAndSettle();
 
-      // EnvironmentSelectorChip is present in top AppBar
-      expect(find.byType(EnvironmentSelectorChip), findsOneWidget);
+        // EnvironmentSelectorChip is present in top AppBar
+        expect(find.byType(EnvironmentSelectorChip), findsOneWidget);
 
-      // Large logo badge is present
-      expect(find.byType(MarthAppLogo), findsOneWidget);
-    });
+        // Large logo badge is present
+        expect(find.byType(MarthAppLogo), findsOneWidget);
+      },
+    );
 
     testWidgets('Tapping Ocio tab mounts LeisureScreen', (tester) async {
       await tester.pumpWidget(createTestApp(initialIndex: 0));
@@ -247,7 +393,9 @@ void main() {
       expect(find.byType(LeisureScreen), findsOneWidget);
     });
 
-    testWidgets('Switching environment immediately updates LeisureController', (tester) async {
+    testWidgets('Switching environment immediately updates LeisureController', (
+      tester,
+    ) async {
       await tester.pumpWidget(createTestApp(initialIndex: 0));
       await tester.pumpAndSettle();
 
@@ -255,7 +403,9 @@ void main() {
       expect(leisureController.isPersonalEnvironment, isTrue);
 
       // Select collaborative environment
-      final collabEnv = environmentController.environments.firstWhere((e) => !e.isPersonal);
+      final collabEnv = environmentController.environments.firstWhere(
+        (e) => !e.isPersonal,
+      );
       environmentController.selectEnvironment(collabEnv);
       await tester.pumpAndSettle();
 

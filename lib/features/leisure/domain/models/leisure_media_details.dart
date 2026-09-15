@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'book_edition_dto.dart';
+import 'game_duration_dto.dart';
+import 'game_store_dto.dart';
 import 'leisure_media_type.dart';
 import 'streaming_provider_dto.dart';
 
@@ -25,6 +27,9 @@ class LeisureMediaDetails {
   final List<StreamingProviderDto> watchProviders;
   final List<BookEditionDto> editions;
   final List<String> screenshots;
+  final bool? isFreeToPlay;
+  final List<GameStoreDto> gameStores;
+  final GameDurationDto? gameDuration;
 
   const LeisureMediaDetails({
     required this.mediaId,
@@ -45,6 +50,9 @@ class LeisureMediaDetails {
     this.watchProviders = const [],
     this.editions = const [],
     this.screenshots = const [],
+    this.isFreeToPlay,
+    this.gameStores = const [],
+    this.gameDuration,
   });
 
   factory LeisureMediaDetails.fromJson(Map<String, dynamic> json) {
@@ -80,6 +88,18 @@ class LeisureMediaDetails {
         ? rawScreenshots.map((e) => e.toString()).toList()
         : <String>[];
 
+    final rawStores = json['game_stores'];
+    final List<GameStoreDto> gameStores = rawStores is List
+        ? rawStores
+            .map((e) => GameStoreDto.fromJson(e as Map<String, dynamic>))
+            .toList()
+        : <GameStoreDto>[];
+
+    final rawDuration = json['game_duration'] ?? json['gameDuration'];
+    final GameDurationDto? gameDuration = rawDuration is Map<String, dynamic>
+        ? GameDurationDto.fromJson(rawDuration)
+        : null;
+
     return LeisureMediaDetails(
       mediaId: json['media_id']?.toString() ?? '',
       mediaType: LeisureMediaType.fromValue(json['media_type'] as String?),
@@ -99,6 +119,9 @@ class LeisureMediaDetails {
       watchProviders: watchProviders,
       editions: editions,
       screenshots: screenshots,
+      isFreeToPlay: json['is_free_to_play'] as bool?,
+      gameStores: gameStores,
+      gameDuration: gameDuration,
     );
   }
 
@@ -122,6 +145,9 @@ class LeisureMediaDetails {
       'watch_providers': watchProviders.map((e) => e.toJson()).toList(),
       'editions': editions.map((e) => e.toJson()).toList(),
       'screenshots': screenshots,
+      'is_free_to_play': isFreeToPlay,
+      'game_stores': gameStores.map((e) => e.toJson()).toList(),
+      'game_duration': gameDuration?.toJson(),
     };
   }
 
@@ -144,6 +170,9 @@ class LeisureMediaDetails {
     List<StreamingProviderDto>? watchProviders,
     List<BookEditionDto>? editions,
     List<String>? screenshots,
+    bool? isFreeToPlay,
+    List<GameStoreDto>? gameStores,
+    GameDurationDto? gameDuration,
   }) {
     return LeisureMediaDetails(
       mediaId: mediaId ?? this.mediaId,
@@ -164,6 +193,9 @@ class LeisureMediaDetails {
       watchProviders: watchProviders ?? this.watchProviders,
       editions: editions ?? this.editions,
       screenshots: screenshots ?? this.screenshots,
+      isFreeToPlay: isFreeToPlay ?? this.isFreeToPlay,
+      gameStores: gameStores ?? this.gameStores,
+      gameDuration: gameDuration ?? this.gameDuration,
     );
   }
 

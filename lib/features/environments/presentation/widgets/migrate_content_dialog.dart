@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
@@ -138,7 +139,7 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                   const SizedBox(height: 10),
 
                   Text(
-                    'Antes de realizar esta acción en "${widget.environmentName}", puedes reasignar atómicamente todas tus listas y elementos creados a tu entorno personal "Mi Espacio" para no perderlos.',
+                    'Antes de realizar esta acción en "${widget.environmentName}", puedes reasignar atómicamente todas tus listas y elementos creados a tu entorno personal "Mi espacio" para no perderlos.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.textSecondary,
@@ -170,7 +171,7 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
 
                   // Botón 1: Migrar y continuar
                   AppButton(
-                    text: 'Migrar a "Mi Espacio" y Continuar',
+                    text: 'Migrar a "Mi espacio" y Continuar',
                     icon: Icons.drive_file_move_rounded,
                     isLoading: _isMigrating,
                     onPressed: isBusy ? null : _handleMigrate,
@@ -204,7 +205,10 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
                   TextButton(
                     onPressed: isBusy
                         ? null
-                        : () => Navigator.of(context, rootNavigator: true).pop(null),
+                        : () => Navigator.of(
+                            context,
+                            rootNavigator: true,
+                          ).pop(null),
                     child: Text(
                       'Cancelar',
                       style: TextStyle(

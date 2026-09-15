@@ -45,13 +45,13 @@ enum LeisureItemStatus {
   String get label {
     switch (this) {
       case LeisureItemStatus.watched:
-        return 'Visto / Completado';
+        return 'Visto';
       case LeisureItemStatus.toWatch:
-        return 'Pendiente';
+        return 'Por ver';
       case LeisureItemStatus.favorite:
         return 'Favorito';
       case LeisureItemStatus.watching:
-        return 'En progreso';
+        return 'Viendo';
     }
   }
 }

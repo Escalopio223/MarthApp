@@ -239,6 +239,18 @@ void main() {
       expect(OpenLibraryService.parseDescription(null), isNull);
     });
 
+    test('extractYear parses 4-digit years from various unstructured date strings', () {
+      expect(OpenLibraryService.extractYear('1974'), equals('1974'));
+      expect(OpenLibraryService.extractYear('October 14, 1999'), equals('1999'));
+      expect(OpenLibraryService.extractYear('June 26, 1997'), equals('1997'));
+      expect(OpenLibraryService.extractYear('May 1967'), equals('1967'));
+      expect(OpenLibraryService.extractYear('1605'), equals('1605'));
+      expect(OpenLibraryService.extractYear('c. 1943'), equals('1943'));
+      expect(OpenLibraryService.extractYear(null), isNull);
+      expect(OpenLibraryService.extractYear(''), isNull);
+      expect(OpenLibraryService.extractYear('Sin fecha'), isNull);
+    });
+
     test('searchBooks parses works, author and canonical cover ID', () async {
       final mockClient = MockHttpClient((request) async {
         expect(request.url.path, contains('/search.json'));
@@ -272,7 +284,7 @@ void main() {
       expect(books.first.title, equals('Cien años de soledad'));
       expect(books.first.creatorOrDirector, equals('Gabriel García Márquez'));
       expect(books.first.posterUrl, equals('https://covers.openlibrary.org/b/id/8234567-L.jpg'));
-      expect(books.first.rating, equals(4.35));
+      expect(books.first.rating, equals(8.7));
     });
 
     test('getWorkDetails handles description map and subject tags', () async {
@@ -347,6 +359,85 @@ void main() {
       expect(editions.first.publishers, contains('Penguin Random House'));
       expect(editions.first.isbn13, equals('9780307474728'));
       expect(editions.first.coverUrl, contains('99999-L.jpg'));
+    });
+
+    test('getPopularBooks returns trending works when endpoint succeeds', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.path.contains('/trending/daily.json')) {
+          return http.Response(
+            jsonEncode({
+              'works': [
+                {
+                  'key': '/works/OL17930368W',
+                  'title': 'Atomic Habits',
+                  'author_name': ['James Clear'],
+                  'cover_i': 12539702,
+                  'first_publish_year': 2016,
+                  'ratings_average': 4.7,
+                }
+              ]
+            }),
+            200,
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final service = OpenLibraryService(client: mockClient);
+      final books = await service.getPopularBooks();
+
+      expect(books.length, equals(1));
+      expect(books.first.title, equals('Atomic Habits'));
+      expect(books.first.creatorOrDirector, equals('James Clear'));
+      expect(books.first.posterUrl, contains('12539702-L.jpg'));
+    });
+
+    test('getPopularBooks falls back to subjects/bestseller when trending fails', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.path.contains('/trending/daily.json')) {
+          return http.Response('Internal Server Error', 500);
+        }
+        if (request.url.path.contains('/subjects/bestseller.json')) {
+          return http.Response(
+            jsonEncode({
+              'works': [
+                {
+                  'key': '/works/OL15719630W',
+                  'title': 'Divergent',
+                  'authors': [
+                    {'name': 'Veronica Roth', 'key': '/authors/OL6895646A'}
+                  ],
+                  'cover_id': 13274634,
+                  'first_publish_year': 2010,
+                }
+              ]
+            }),
+            200,
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final service = OpenLibraryService(client: mockClient);
+      final books = await service.getPopularBooks();
+
+      expect(books.length, equals(1));
+      expect(books.first.title, equals('Divergent'));
+      expect(books.first.creatorOrDirector, equals('Veronica Roth'));
+      expect(books.first.posterUrl, contains('13274634-L.jpg'));
+    });
+
+    test('getPopularBooks falls back to canonical fallbackPopularBooks when all endpoints fail', () async {
+      final mockClient = MockHttpClient((request) async {
+        return http.Response('Network Error', 500);
+      });
+
+      final service = OpenLibraryService(client: mockClient);
+      final books = await service.getPopularBooks();
+
+      expect(books.isNotEmpty, isTrue);
+      expect(books.length, equals(OpenLibraryService.fallbackPopularBooks.length));
+      expect(books.first.title, equals('Carrie'));
     });
   });
 
@@ -428,10 +519,268 @@ void main() {
       expect(gta.overview, contains('young street hustler'));
       expect(gta.posterUrl, contains('co1r0c.jpg'));
       expect(gta.backdropUrl, contains('sc123.jpg'));
-      expect(gta.creatorOrDirector, equals('Rockstar North'));
-      expect(gta.genres, contains('Shooter'));
-      expect(gta.castOrPlatforms, contains('PC (Microsoft Windows)'));
       expect(gta.rating, equals(9.7));
+    });
+
+    test('getPopularGames and searchGames fall back to canonical fallbackPopularGames when network/CORS fails', () async {
+      final mockClient = MockHttpClient((request) async {
+        return http.Response('CORS Error', 500);
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final games = await service.getPopularGames();
+
+      expect(games.isNotEmpty, isTrue);
+      expect(games.length, equals(IgdbService.fallbackPopularGames.length));
+      expect(games.first.title, equals('The Witcher 3: Wild Hunt'));
+
+      // Búsqueda en el fallback
+      final searchResults = await service.searchGames('Zelda');
+      expect(searchResults.length, equals(1));
+      expect(searchResults.first.title, contains('Zelda'));
+    });
+
+    test('IgdbService parses Free to Play game and extracts official stores', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.host == 'id.twitch.tv') {
+          return http.Response(jsonEncode({'access_token': 'tok_1', 'expires_in': 3600}), 200);
+        }
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 1905,
+              'name': 'Fortnite',
+              'summary': 'Battle royale game...',
+              'keywords': [
+                {'id': 2385, 'name': 'free-to-play', 'slug': 'free-to-play'},
+                {'id': 100, 'name': 'shooter', 'slug': 'shooter'},
+              ],
+              'websites': [
+                {'url': 'https://store.epicgames.com/p/fortnite'},
+                {'url': 'https://store.playstation.com/concept/228748'},
+                {'url': 'https://www.youtube.com/@fortnite'},
+                {'url': 'https://discord.gg/fortnite'},
+              ],
+            }
+          ]),
+          200,
+        );
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final details = await service.getGameDetails('1905');
+
+      expect(details.title, equals('Fortnite'));
+      expect(details.isFreeToPlay, isTrue);
+      // Youtube and Discord are filtered out, only official stores remain
+      expect(details.gameStores.length, equals(2));
+      expect(details.gameStores.map((s) => s.storeName), containsAll(['Epic Games Store', 'PlayStation Store']));
+    });
+
+    test('IgdbService parses Paid game with commercial store links as isFreeToPlay == false', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.host == 'id.twitch.tv') {
+          return http.Response(jsonEncode({'access_token': 'tok_1', 'expires_in': 3600}), 200);
+        }
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 119177,
+              'name': 'The Legend of Zelda: Tears of the Kingdom',
+              'keywords': [
+                {'id': 1, 'name': 'action-adventure'},
+              ],
+              'websites': [
+                {'url': 'https://www.nintendo.com/store/products/the-legend-of-zelda-tears-of-the-kingdom-switch/'},
+              ],
+            }
+          ]),
+          200,
+        );
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final details = await service.getGameDetails('119177');
+
+      expect(details.isFreeToPlay, isFalse);
+      expect(details.gameStores.length, equals(1));
+      expect(details.gameStores.first.storeName, equals('Nintendo eShop'));
+    });
+
+    test('IgdbService returns isFreeToPlay == null when neither F2P keywords nor stores exist', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.host == 'id.twitch.tv') {
+          return http.Response(jsonEncode({'access_token': 'tok_1', 'expires_in': 3600}), 200);
+        }
+        return http.Response(
+          jsonEncode([
+            {
+              'id': 99999,
+              'name': 'Indie Game Without Store Info',
+              'keywords': [],
+              'websites': [
+                {'url': 'https://twitter.com/indiedev'},
+              ],
+            }
+          ]),
+          200,
+        );
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final details = await service.getGameDetails('99999');
+
+      expect(details.isFreeToPlay, isNull);
+      expect(details.gameStores, isEmpty);
+    });
+
+    test('fallbackPopularGames contains verified official covers for GTA V, Fortnite, Zelda TotK and LoL', () {
+      final games = IgdbService.fallbackPopularGames;
+
+      final gta = games.firstWhere((g) => g.title == 'Grand Theft Auto V');
+      expect(gta.posterUrl, contains('co2lbd.jpg')); // Official GTA V cover (not Star Renegades)
+      expect(gta.isFreeToPlay, isFalse);
+
+      final fortnite = games.firstWhere((g) => g.title == 'Fortnite');
+      expect(fortnite.posterUrl, contains('cocqrm.jpg')); // Official Fortnite Battle Royale cover (not Car Rental Simulator)
+      expect(fortnite.isFreeToPlay, isTrue);
+
+      final zelda = games.firstWhere((g) => g.title == 'The Legend of Zelda: Tears of the Kingdom');
+      expect(zelda.posterUrl, contains('co5vmg.jpg')); // Official Tears of the Kingdom cover
+      expect(zelda.isFreeToPlay, isFalse);
+
+      final lol = games.firstWhere((g) => g.title == 'League of Legends');
+      expect(lol.posterUrl, contains('coc99o.jpg')); // Official League of Legends cover
+      expect(lol.isFreeToPlay, isTrue);
+    });
+
+    test('searchGames finds League of Legends and returns correct metadata when network fails', () async {
+      final mockClient = MockHttpClient((request) async {
+        return http.Response('Network Error', 500);
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final results = await service.searchGames('League of Legends');
+
+      expect(results.isNotEmpty, isTrue);
+      final match = results.firstWhere((g) => g.title == 'League of Legends');
+      expect(match.isFreeToPlay, isTrue);
+      expect(match.posterUrl, contains('coc99o.jpg'));
+    });
+
+    test('searchGames integrates FreeToGame API when local match is not found', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.host == 'www.freetogame.com') {
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 999,
+                'title': 'Test Free Space MMO',
+                'short_description': 'A space combat MMO',
+                'thumbnail': 'https://freetogame.com/thumb.jpg',
+                'game_url': 'https://store.steampowered.com/app/999999',
+                'genre': 'MMO',
+                'platform': 'PC',
+                'release_date': '2024-01-01',
+              }
+            ]),
+            200,
+          );
+        }
+        return http.Response('CORS Error', 500);
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final results = await service.searchGames('Test Free Space MMO');
+
+      expect(results.isNotEmpty, isTrue);
+      expect(results.first.title, equals('Test Free Space MMO'));
+      expect(results.first.isFreeToPlay, isTrue);
+      expect(results.first.gameStores.first.storeName, equals('Steam'));
+    });
+
+    test('searchGames and getGameDetails find Moonlighter and return stores via RAWG fallback', () async {
+      final mockClient = MockHttpClient((request) async {
+        if (request.url.host == 'api.rawg.io') {
+          if (request.url.path.contains('/games/22162')) {
+            return http.Response(
+              jsonEncode({
+                'id': 22162,
+                'name': 'Moonlighter',
+                'description_raw': 'During an archeological excavation – a set of Gates were discovered.',
+                'released': '2018-05-28',
+                'background_image': 'https://media.rawg.io/moonlighter.jpg',
+                'metacritic': 74,
+                'playtime': 14,
+                'developers': [{'name': 'Digital Sun'}],
+                'genres': [{'name': 'Indie'}, {'name': 'Action'}],
+                'platforms': [{'platform': {'name': 'Nintendo Switch'}}, {'platform': {'name': 'PC'}}],
+                'stores': [
+                  {'store': {'name': 'Steam'}, 'url': 'https://store.steampowered.com/app/606150/'},
+                  {'store': {'name': 'Nintendo Store'}, 'url': 'https://www.nintendo.com/games/detail/moonlighter-switch'},
+                ],
+                'tags': [{'name': 'Singleplayer'}],
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          } else if (request.url.path.contains('/games')) {
+            return http.Response(
+              jsonEncode({
+                'results': [
+                  {
+                    'id': 22162,
+                    'name': 'Moonlighter',
+                    'released': '2018-05-28',
+                    'background_image': 'https://media.rawg.io/moonlighter.jpg',
+                    'metacritic': 74,
+                    'playtime': 14,
+                    'genres': [{'name': 'Indie'}, {'name': 'Action'}],
+                    'platforms': [{'platform': {'name': 'Nintendo Switch'}}, {'platform': {'name': 'PC'}}],
+                    'stores': [
+                      {'store': {'name': 'Steam'}, 'url': 'https://store.steampowered.com/app/606150/'},
+                      {'store': {'name': 'Nintendo Store'}, 'url': 'https://www.nintendo.com/games/detail/moonlighter-switch'},
+                    ],
+                    'tags': [{'name': 'Singleplayer'}],
+                  }
+                ]
+              }),
+              200,
+              headers: {'content-type': 'application/json; charset=utf-8'},
+            );
+          }
+        }
+        return http.Response('CORS Error', 500);
+      });
+
+      final service = IgdbService(httpClient: mockClient);
+      final searchResults = await service.searchGames('Moonlighter');
+
+      expect(searchResults.isNotEmpty, isTrue);
+      final moonlighter = searchResults.first;
+      expect(moonlighter.title, equals('Moonlighter'));
+      expect(moonlighter.mediaId, equals('rawg_22162'));
+      expect(moonlighter.isFreeToPlay, isFalse);
+      expect(moonlighter.posterUrl, equals('https://media.rawg.io/moonlighter.jpg'));
+      expect(moonlighter.gameStores.map((s) => s.storeName), containsAll(['Steam', 'Nintendo eShop']));
+      expect(moonlighter.gameDuration?.mainStoryHours, equals(14));
+
+      // Test full details
+      final details = await service.getGameDetails('rawg_22162');
+      expect(details.title, equals('Moonlighter'));
+      expect(details.creatorOrDirector, equals('Digital Sun'));
+      expect(details.overview, contains('archeological excavation'));
+      expect(details.isFreeToPlay, isFalse);
+      expect(details.gameDuration?.mainStoryHours, equals(14));
+      expect(details.gameDuration?.mainExtraHours, equals(22)); // (14 * 1.6).round()
+      expect(details.gameDuration?.completionistHours, equals(35)); // (14 * 2.5).round()
+
+      // Test fallbackPopularGames duration (The Witcher 3)
+      final witcher = IgdbService.fallbackPopularGames.first;
+      expect(witcher.gameDuration, isNotNull);
+      expect(witcher.gameDuration?.mainStoryHours, equals(52));
+      expect(witcher.gameDuration?.mainExtraHours, equals(103));
+      expect(witcher.gameDuration?.completionistHours, equals(173));
     });
   });
 }

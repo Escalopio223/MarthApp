@@ -407,7 +407,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- RPC 6: Auto-Healing Atómico e Idempotente de Entorno Personal "Mi Espacio"
+-- RPC 6: Auto-Healing Atómico e Idempotente de Entorno Personal "Mi espacio"
 create or replace function public.ensure_personal_environment()
 returns jsonb as $$
 declare
@@ -427,7 +427,7 @@ begin
   -- 2. Si no existe, insertar de forma atómica con ON CONFLICT DO NOTHING
   if v_env.id is null then
     insert into public.environments (name, is_personal, created_by, created_at)
-    values ('Mi Espacio', true, v_user_id, now())
+    values ('Mi espacio', true, v_user_id, now())
     on conflict do nothing
     returning * into v_env;
 
@@ -457,7 +457,7 @@ end;
 $$ language plpgsql security definer;
 
 -- ------------------------------------------------------------------------------
--- 6. TRIGGER AUTOMÁTICO DE NUEVO USUARIO (Crea "Mi Espacio" personal)
+-- 6. TRIGGER AUTOMÁTICO DE NUEVO USUARIO (Crea "Mi espacio" personal)
 -- ------------------------------------------------------------------------------
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -479,9 +479,9 @@ begin
   on conflict (id) do update
   set updated_at = now();
 
-  -- Creación automática del entorno personal principal "Mi Espacio"
+  -- Creación automática del entorno personal principal "Mi espacio"
   insert into public.environments (name, is_personal, created_by, created_at)
-  values ('Mi Espacio', true, new.id, now())
+  values ('Mi espacio', true, new.id, now())
   returning id into v_env_id;
 
   insert into public.environment_members (environment_id, user_id, role, joined_at)
@@ -493,7 +493,7 @@ end;
 $$ language plpgsql security definer;
 
 -- ------------------------------------------------------------------------------
--- 7. SCRIPT DE BACKFILL (Garantiza "Mi Espacio" a usuarios existentes)
+-- 7. SCRIPT DE BACKFILL (Garantiza "Mi espacio" a usuarios existentes)
 -- ------------------------------------------------------------------------------
 do $$
 declare
@@ -506,7 +506,7 @@ begin
       where created_by = r.id and is_personal = true
     ) then
       insert into public.environments (name, is_personal, created_by, created_at)
-      values ('Mi Espacio', true, r.id, now())
+      values ('Mi espacio', true, r.id, now())
       returning id into v_new_env_id;
 
       insert into public.environment_members (environment_id, user_id, role, joined_at)

@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/features/leisure/domain/models/book_edition_dto.dart';
+import 'package:marth_app/features/leisure/domain/models/game_duration_dto.dart';
+import 'package:marth_app/features/leisure/domain/models/game_store_dto.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_environment_match_model.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_item_status.dart';
+import 'package:marth_app/features/leisure/domain/models/leisure_media_details.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_media_type.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_shared_list_item_model.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_shared_list_model.dart';
@@ -151,16 +154,33 @@ void main() {
         mediaType: LeisureMediaType.movie,
         title: 'El Viaje de Chihiro',
         posterUrl: 'https://image.tmdb.org/t/p/w500/chihiro.jpg',
+        year: '2001',
+        rating: 8.6,
+        genres: ['Animación', 'Fantasía'],
+        customOrder: 3,
         addedBy: 'user-1',
         createdAt: DateTime.now(),
       );
 
       final json = item.toJson();
-      final fromJson = LeisureSharedListItemModel.fromJson(json);
+      expect(json['year'], equals('2001'));
+      expect(json['rating'], equals(8.6));
+      expect(json['genres'], equals(['Animación', 'Fantasía']));
+      expect(json['custom_order'], equals(3));
 
+      final fromJson = LeisureSharedListItemModel.fromJson(json);
       expect(fromJson.title, equals('El Viaje de Chihiro'));
       expect(fromJson.mediaType, equals(LeisureMediaType.movie));
       expect(fromJson.posterUrl, isNotNull);
+      expect(fromJson.year, equals('2001'));
+      expect(fromJson.rating, equals(8.6));
+      expect(fromJson.genres, contains('Animación'));
+      expect(fromJson.customOrder, equals(3));
+
+      final copied = fromJson.copyWith(customOrder: 0, rating: 9.0);
+      expect(copied.customOrder, equals(0));
+      expect(copied.rating, equals(9.0));
+      expect(copied.year, equals('2001'));
     });
   });
 
@@ -237,6 +257,100 @@ void main() {
       expect(edition.publishers, contains('Sudamericana'));
       expect(edition.languages, contains('spa'));
       expect(edition.coverUrl, equals('https://covers.openlibrary.org/b/id/8234567-L.jpg'));
+    });
+
+    test('GameStoreDto roundtrip serialization and equality', () {
+      const store = GameStoreDto(
+        storeName: 'Nintendo eShop',
+        url: 'https://www.nintendo.com/store/products/zelda/',
+      );
+
+      final json = store.toJson();
+      expect(json['store_name'], equals('Nintendo eShop'));
+      expect(json['url'], equals('https://www.nintendo.com/store/products/zelda/'));
+
+      final restored = GameStoreDto.fromJson(json);
+      expect(restored, equals(store));
+      expect(restored.hashCode, equals(store.hashCode));
+      expect(restored.toString(), contains('Nintendo eShop'));
+    });
+
+    test('LeisureMediaDetails roundtrip preserves isFreeToPlay and gameStores', () {
+      const details = LeisureMediaDetails(
+        mediaId: 'game-123',
+        mediaType: LeisureMediaType.game,
+        title: 'Fortnite',
+        isFreeToPlay: true,
+        gameStores: [
+          GameStoreDto(storeName: 'Epic Games Store', url: 'https://store.epicgames.com/p/fortnite'),
+          GameStoreDto(storeName: 'PlayStation Store', url: 'https://store.playstation.com/concept/228748'),
+        ],
+      );
+
+      final json = details.toJson();
+      expect(json['is_free_to_play'], isTrue);
+      expect(json['game_stores'], isList);
+      expect((json['game_stores'] as List).length, equals(2));
+
+      final restored = LeisureMediaDetails.fromJson(json);
+      expect(restored.isFreeToPlay, isTrue);
+      expect(restored.gameStores.length, equals(2));
+      expect(restored.gameStores.first.storeName, equals('Epic Games Store'));
+
+      final paidCopy = restored.copyWith(isFreeToPlay: false, gameStores: []);
+      expect(paidCopy.isFreeToPlay, isFalse);
+      expect(paidCopy.gameStores, isEmpty);
+
+      const noInfo = LeisureMediaDetails(
+        mediaId: 'game-456',
+        mediaType: LeisureMediaType.game,
+        title: 'Retro Indie',
+      );
+      expect(noInfo.isFreeToPlay, isNull);
+      expect(noInfo.gameStores, isEmpty);
+      final noInfoJson = noInfo.toJson();
+      expect(noInfoJson['is_free_to_play'], isNull);
+      expect(noInfoJson['game_stores'], isEmpty);
+      final restoredNoInfo = LeisureMediaDetails.fromJson(noInfoJson);
+      expect(restoredNoInfo.isFreeToPlay, isNull);
+      expect(restoredNoInfo.gameStores, isEmpty);
+    });
+
+    test('GameDurationDto roundtrip serialization and equality', () {
+      const duration = GameDurationDto(
+        mainStoryHours: 52,
+        mainExtraHours: 103,
+        completionistHours: 173,
+      );
+
+      expect(duration.hasAny, isTrue);
+      final json = duration.toJson();
+      expect(json['main_story_hours'], equals(52));
+      expect(json['main_extra_hours'], equals(103));
+      expect(json['completionist_hours'], equals(173));
+
+      final restored = GameDurationDto.fromJson(json);
+      expect(restored, equals(duration));
+      expect(restored.hashCode, equals(duration.hashCode));
+      expect(restored.toString(), contains('52h'));
+
+      const empty = GameDurationDto();
+      expect(empty.hasAny, isFalse);
+
+      const detailsWithDuration = LeisureMediaDetails(
+        mediaId: 'game-1942',
+        mediaType: LeisureMediaType.game,
+        title: 'The Witcher 3: Wild Hunt',
+        gameDuration: duration,
+      );
+
+      final detailsJson = detailsWithDuration.toJson();
+      expect(detailsJson['game_duration'], isMap);
+      expect(detailsJson['game_duration']['main_story_hours'], equals(52));
+
+      final restoredDetails = LeisureMediaDetails.fromJson(detailsJson);
+      expect(restoredDetails.gameDuration, equals(duration));
+      expect(restoredDetails.gameDuration?.mainStoryHours, equals(52));
     });
   });
 }

@@ -15,6 +15,8 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
   bool migrateCalled = false;
 
   String? lastCreatedName;
+  String? lastCreatedIcon;
+  String? lastCreatedColor;
   String? lastDeletedId;
   String? lastSourceMigrate;
   String? lastTargetMigrate;
@@ -30,7 +32,7 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
     if (existing != null) return existing;
     final personal = EnvironmentModel(
       id: 'env_personal',
-      name: 'Mi Espacio',
+      name: 'Mi espacio',
       isPersonal: true,
       createdBy: 'u1',
       createdAt: DateTime.now(),
@@ -49,9 +51,15 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
   }
 
   @override
-  Future<EnvironmentModel?> createEnvironment({required String name}) async {
+  Future<EnvironmentModel?> createEnvironment({
+    required String name,
+    String? icon,
+    String? color,
+  }) async {
     createCalled = true;
     lastCreatedName = name;
+    lastCreatedIcon = icon;
+    lastCreatedColor = color;
     final newEnv = EnvironmentModel(
       id: 'env_new_${DateTime.now().millisecondsSinceEpoch}',
       name: name,
@@ -59,6 +67,8 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
       createdBy: 'u1',
       createdAt: DateTime.now(),
       role: 'owner',
+      icon: icon,
+      color: color,
     );
     environments.add(newEnv);
     return newEnv;
@@ -74,26 +84,32 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
 
   @override
   Future<List<EnvironmentMemberModel>> getEnvironmentMembers(
-      String environmentId) async {
+    String environmentId,
+  ) async {
     return [];
   }
 
   @override
-  Future<bool> removeMember(
-      {required String environmentId, required String userId}) async {
+  Future<bool> removeMember({
+    required String environmentId,
+    required String userId,
+  }) async {
     return true;
   }
 
   @override
-  Future<bool> leaveEnvironment(
-      {required String environmentId, required String userId}) async {
+  Future<bool> leaveEnvironment({
+    required String environmentId,
+    required String userId,
+  }) async {
     environments.removeWhere((e) => e.id == environmentId);
     return true;
   }
 
   @override
   Future<List<EnvironmentInvitationModel>> getPendingInvitations(
-      String userId) async {
+    String userId,
+  ) async {
     return List.from(invitations);
   }
 
@@ -114,14 +130,16 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
     respondCalled = true;
     invitations.removeWhere((i) => i.id == invitationId);
     if (accept) {
-      environments.add(EnvironmentModel(
-        id: 'env_accepted',
-        name: 'Entorno Aceptado',
-        isPersonal: false,
-        createdBy: 'u2',
-        createdAt: DateTime.now(),
-        role: 'member',
-      ));
+      environments.add(
+        EnvironmentModel(
+          id: 'env_accepted',
+          name: 'Entorno Aceptado',
+          isPersonal: false,
+          createdBy: 'u2',
+          createdAt: DateTime.now(),
+          role: 'member',
+        ),
+      );
     }
     return true;
   }
@@ -159,7 +177,7 @@ void main() {
       mockRepo.environments = [
         EnvironmentModel(
           id: 'env_personal',
-          name: 'Mi Espacio',
+          name: 'Mi espacio',
           isPersonal: true,
           createdBy: 'u1',
           createdAt: DateTime.now(),
@@ -194,20 +212,21 @@ void main() {
       controller.dispose();
     });
 
-    test('initializes and selects personal environment "Mi Espacio" by default',
-        () async {
-      await controller.initialize('u1');
+    test(
+      'initializes and selects personal environment "Mi espacio" by default',
+      () async {
+        await controller.initialize('u1');
 
-      expect(controller.environments.length, equals(2));
-      expect(controller.activeEnvironment, isNotNull);
-      expect(controller.activeEnvironment?.isPersonal, isTrue);
-      expect(controller.activeEnvironment?.name, equals('Mi Espacio'));
-      expect(controller.isAllSelected, isFalse);
-      expect(controller.pendingInvitationsCount, equals(1));
-    });
+        expect(controller.environments.length, equals(2));
+        expect(controller.activeEnvironment, isNotNull);
+        expect(controller.activeEnvironment?.isPersonal, isTrue);
+        expect(controller.activeEnvironment?.name, equals('Mi espacio'));
+        expect(controller.isAllSelected, isFalse);
+        expect(controller.pendingInvitationsCount, equals(1));
+      },
+    );
 
-    test('selectEnvironment toggles active workspace and sets isAllSelected to false',
-        () async {
+    test('selectEnvironment toggles active workspace and sets isAllSelected to false', () async {
       await controller.initialize('u1');
 
       final collabEnv = controller.environments[1];
@@ -217,41 +236,46 @@ void main() {
       expect(controller.isAllSelected, isFalse);
     });
 
-    test('selectAllEnvironments activates "Todos" global pseudo-environment',
-        () async {
-      await controller.initialize('u1');
+    test(
+      'selectAllEnvironments activates "Todos" global pseudo-environment',
+      () async {
+        await controller.initialize('u1');
 
-      controller.selectAllEnvironments();
+        controller.selectAllEnvironments();
 
-      expect(controller.isAllSelected, isTrue);
-      expect(controller.activeEnvironment, isNull);
-    });
+        expect(controller.isAllSelected, isTrue);
+        expect(controller.activeEnvironment, isNull);
+      },
+    );
 
-    test('createEnvironment creates workspace atomically and makes it active',
-        () async {
-      await controller.initialize('u1');
+    test(
+      'createEnvironment creates workspace atomically and makes it active',
+      () async {
+        await controller.initialize('u1');
 
-      final ok = await controller.createEnvironment('Nuevo Viaje');
-      expect(ok, isTrue);
-      expect(mockRepo.createCalled, isTrue);
-      expect(mockRepo.lastCreatedName, equals('Nuevo Viaje'));
-      expect(controller.activeEnvironment?.name, equals('Nuevo Viaje'));
-      expect(controller.isAllSelected, isFalse);
-      expect(controller.environments.length, equals(3));
-    });
+        final ok = await controller.createEnvironment('Nuevo Viaje');
+        expect(ok, isTrue);
+        expect(mockRepo.createCalled, isTrue);
+        expect(mockRepo.lastCreatedName, equals('Nuevo Viaje'));
+        expect(controller.activeEnvironment?.name, equals('Nuevo Viaje'));
+        expect(controller.isAllSelected, isFalse);
+        expect(controller.environments.length, equals(3));
+      },
+    );
 
-    test('createEnvironment rejects names with less than 3 characters',
-        () async {
-      await controller.initialize('u1');
+    test(
+      'createEnvironment rejects names with less than 3 characters',
+      () async {
+        await controller.initialize('u1');
 
-      final ok = await controller.createEnvironment('ab');
-      expect(ok, isFalse);
-      expect(mockRepo.createCalled, isFalse);
-      expect(controller.errorMessage, contains('al menos 3 caracteres'));
-    });
+        final ok = await controller.createEnvironment('ab');
+        expect(ok, isFalse);
+        expect(mockRepo.createCalled, isFalse);
+        expect(controller.errorMessage, contains('al menos 3 caracteres'));
+      },
+    );
 
-    test('deleteEnvironment removes workspace and falls back to personal space if active',
-        () async {
+    test('deleteEnvironment removes workspace and falls back to personal space if active', () async {
       await controller.initialize('u1');
 
       // Select collaborative environment
@@ -265,26 +289,31 @@ void main() {
       expect(mockRepo.lastDeletedId, equals('env_collab'));
       expect(controller.environments.any((e) => e.id == 'env_collab'), isFalse);
 
-      // Falls back to Mi Espacio
+      // Falls back to Mi espacio
       expect(controller.activeEnvironment?.id, equals('env_personal'));
       expect(controller.isAllSelected, isFalse);
     });
 
-    test('respondInvitation accepts invite and updates environments list',
-        () async {
-      await controller.initialize('u1');
-      expect(controller.pendingInvitationsCount, equals(1));
+    test(
+      'respondInvitation accepts invite and updates environments list',
+      () async {
+        await controller.initialize('u1');
+        expect(controller.pendingInvitationsCount, equals(1));
 
-      final ok = await controller.respondInvitation(
-        invitationId: 'inv_1',
-        accept: true,
-      );
+        final ok = await controller.respondInvitation(
+          invitationId: 'inv_1',
+          accept: true,
+        );
 
-      expect(ok, isTrue);
-      expect(mockRepo.respondCalled, isTrue);
-      expect(controller.pendingInvitationsCount, equals(0));
-      expect(controller.environments.any((e) => e.id == 'env_accepted'), isTrue);
-    });
+        expect(ok, isTrue);
+        expect(mockRepo.respondCalled, isTrue);
+        expect(controller.pendingInvitationsCount, equals(0));
+        expect(
+          controller.environments.any((e) => e.id == 'env_accepted'),
+          isTrue,
+        );
+      },
+    );
 
     test('migrateAllContent delegates atomic RPC migration', () async {
       await controller.initialize('u1');
@@ -300,49 +329,58 @@ void main() {
       expect(mockRepo.lastTargetMigrate, equals('env_personal'));
     });
 
-    test('inviteFriend strictly rejects inviting anyone to a personal environment',
-        () async {
-      await controller.initialize('u1');
+    test(
+      'inviteFriend strictly rejects inviting anyone to a personal environment',
+      () async {
+        await controller.initialize('u1');
 
-      final ok = await controller.inviteFriend(
-        environmentId: 'env_personal',
-        friendId: 'f99',
-      );
+        final ok = await controller.inviteFriend(
+          environmentId: 'env_personal',
+          friendId: 'f99',
+        );
 
-      expect(ok, isFalse);
-      expect(controller.errorMessage, contains('espacio personal es privado'));
-    });
+        expect(ok, isFalse);
+        expect(
+          controller.errorMessage,
+          contains('espacio personal es privado'),
+        );
+      },
+    );
 
-    test('inviteFriend sends invitation successfully to collaborative environment',
-        () async {
-      await controller.initialize('u1');
+    test(
+      'inviteFriend sends invitation successfully to collaborative environment',
+      () async {
+        await controller.initialize('u1');
 
-      final ok = await controller.inviteFriend(
-        environmentId: 'env_collab',
-        friendId: 'f99',
-      );
-
-      expect(ok, isTrue);
-      expect(controller.successMessage, contains('enviada con éxito'));
-    });
-
-    test('getPendingInvitedUserIds retrieves pending user ids for environment',
-        () async {
-      mockRepo.invitations.add(
-        EnvironmentInvitationModel(
-          id: 'inv_test_pending',
+        final ok = await controller.inviteFriend(
           environmentId: 'env_collab',
-          environmentName: 'Entorno Colaborativo',
-          senderId: 'u1',
-          senderUsername: 'Usuario',
-          receiverId: 'friend_123',
-          status: 'pending',
-          createdAt: DateTime.now(),
-        ),
-      );
+          friendId: 'f99',
+        );
 
-      final ids = await controller.getPendingInvitedUserIds('env_collab');
-      expect(ids, contains('friend_123'));
-    });
+        expect(ok, isTrue);
+        expect(controller.successMessage, contains('enviada con éxito'));
+      },
+    );
+
+    test(
+      'getPendingInvitedUserIds retrieves pending user ids for environment',
+      () async {
+        mockRepo.invitations.add(
+          EnvironmentInvitationModel(
+            id: 'inv_test_pending',
+            environmentId: 'env_collab',
+            environmentName: 'Entorno Colaborativo',
+            senderId: 'u1',
+            senderUsername: 'Usuario',
+            receiverId: 'friend_123',
+            status: 'pending',
+            createdAt: DateTime.now(),
+          ),
+        );
+
+        final ids = await controller.getPendingInvitedUserIds('env_collab');
+        expect(ids, contains('friend_123'));
+      },
+    );
   });
 }

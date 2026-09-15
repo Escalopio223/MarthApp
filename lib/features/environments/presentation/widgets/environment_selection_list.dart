@@ -46,13 +46,8 @@ class EnvironmentSelectionList extends StatelessWidget {
         final env = environments[index];
         final isSelected = selectedEnvironmentId == env.id;
 
-        final iconData = env.isPersonal
-            ? Icons.person_pin_rounded
-            : Icons.groups_rounded;
-
-        final iconColor = env.isPersonal
-            ? AppTheme.primaryCyan
-            : AppTheme.accentEmerald;
+        final iconData = env.iconData;
+        final iconColor = env.colorValue;
 
         final badgeText = env.isPersonal
             ? 'Personal'

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/theme/app_theme.dart';
 
-/// Componente presentacional puro para la visualización del espacio personal protegido ("Mi Espacio")
+/// Componente presentacional puro para la visualización del espacio personal protegido ("Mi espacio")
 class PersonalEnvironmentView extends StatelessWidget {
   const PersonalEnvironmentView({super.key});
 
@@ -12,9 +13,7 @@ class PersonalEnvironmentView extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.primaryCyan.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppTheme.primaryCyan.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppTheme.primaryCyan.withValues(alpha: 0.3)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

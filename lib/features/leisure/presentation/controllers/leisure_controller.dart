@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../../domain/models/book_edition_dto.dart';
 import '../../domain/models/leisure_environment_match_model.dart';
 import '../../domain/models/leisure_item_status.dart';
+import '../../domain/models/leisure_list_sort_option.dart';
 import '../../domain/models/leisure_media_details.dart';
 import '../../domain/models/leisure_media_type.dart';
 import '../../domain/models/leisure_shared_list_item_model.dart';
@@ -41,8 +43,8 @@ class LeisureController extends ChangeNotifier {
   // Mapa reactivo indexado por 'mediaType_mediaId' para lookup O(1)
   final Map<String, LeisureUserItemModel> _userItems = {};
 
-  // Conjunto de identificadores 'mediaType_mediaId' añadidos a la ruleta
-  final Set<String> _rouletteMediaKeys = {};
+  // Mapa de elementos añadidos a la ruleta indexados por 'mediaType_mediaId'
+  final Map<String, LeisureMediaDetails> _rouletteItems = {};
 
   // Listas compartidas del entorno y matches
   List<LeisureSharedListModel> _sharedLists = [];
@@ -68,7 +70,8 @@ class LeisureController extends ChangeNotifier {
   List<LeisureSharedListModel> get sharedLists => List.unmodifiable(_sharedLists);
   List<LeisureEnvironmentMatchModel> get environmentMatches =>
       List.unmodifiable(_environmentMatches);
-  int get rouletteCount => _rouletteMediaKeys.length;
+  int get rouletteCount => _rouletteItems.length;
+  List<LeisureMediaDetails> get rouletteItems => _rouletteItems.values.toList();
 
   /// Clave canónica compuesta para lookup en mapas
   static String makeKey(LeisureMediaType type, String mediaId) =>
@@ -81,7 +84,7 @@ class LeisureController extends ChangeNotifier {
 
   /// Verifica si un medio está seleccionado para la ruleta
   bool isRouletteSelected(LeisureMediaType type, String mediaId) {
-    return _rouletteMediaKeys.contains(makeKey(type, mediaId));
+    return _rouletteItems.containsKey(makeKey(type, mediaId));
   }
 
   /// Inicializa el controlador con el usuario y entorno activo
@@ -97,9 +100,9 @@ class LeisureController extends ChangeNotifier {
     await Future.wait([
       loadUserItems(),
       loadCatalog(),
-      if (!isPersonal && environmentId != null) ...[
+      if (environmentId != null) ...[
         loadSharedLists(),
-        loadEnvironmentMatches(),
+        if (!isPersonal) loadEnvironmentMatches(),
       ],
     ]);
   }
@@ -113,10 +116,10 @@ class LeisureController extends ChangeNotifier {
     _environmentMatches = [];
     notifyListeners();
 
-    if (!isPersonal && environmentId != null) {
+    if (environmentId != null) {
       await Future.wait([
         loadSharedLists(),
-        loadEnvironmentMatches(),
+        if (!isPersonal) loadEnvironmentMatches(),
       ]);
     }
   }
@@ -140,8 +143,20 @@ class LeisureController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Caché en memoria de catálogos cargados por medio para navegación instantánea
+  final Map<LeisureMediaType, List<LeisureMediaDetails>> _cachedCatalogs = {};
+
   /// Carga el catálogo principal según el tipo seleccionado
-  Future<void> loadCatalog() async {
+  Future<void> loadCatalog({bool forceRefresh = false}) async {
+    if (!forceRefresh &&
+        _cachedCatalogs.containsKey(_selectedType) &&
+        _cachedCatalogs[_selectedType]!.isNotEmpty) {
+      _catalogItems = _cachedCatalogs[_selectedType]!;
+      _errorMessage = null;
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -152,6 +167,7 @@ class LeisureController extends ChangeNotifier {
       } else {
         _catalogItems = await _repository.getPopularMedia(type: _selectedType);
       }
+      _cachedCatalogs[_selectedType] = _catalogItems;
     } catch (e) {
       _errorMessage = 'Error al cargar el catálogo de ${_selectedType.label}: $e';
     } finally {
@@ -313,14 +329,34 @@ class LeisureController extends ChangeNotifier {
   /// Añade o quita un elemento del conjunto de ruleta
   bool toggleRouletteItem(LeisureMediaDetails media) {
     final key = makeKey(media.mediaType, media.mediaId);
-    final wasSelected = _rouletteMediaKeys.contains(key);
+    final wasSelected = _rouletteItems.containsKey(key);
     if (wasSelected) {
-      _rouletteMediaKeys.remove(key);
+      _rouletteItems.remove(key);
     } else {
-      _rouletteMediaKeys.add(key);
+      _rouletteItems[key] = media;
     }
     notifyListeners();
     return !wasSelected;
+  }
+
+  /// Limpia manualmente todos los elementos seleccionados para los dados
+  void clearRoulette() {
+    if (_rouletteItems.isNotEmpty) {
+      _rouletteItems.clear();
+      notifyListeners();
+    }
+  }
+
+  /// Realiza la tirada del dado seleccionando un ganador al azar
+  /// y limpia automáticamente los elementos seleccionados.
+  LeisureMediaDetails? rollRoulette() {
+    if (_rouletteItems.isEmpty) return null;
+    final items = _rouletteItems.values.toList();
+    final randomIndex = Random().nextInt(items.length);
+    final winner = items[randomIndex];
+    _rouletteItems.clear();
+    notifyListeners();
+    return winner;
   }
 
   // ===========================================================================
@@ -328,18 +364,34 @@ class LeisureController extends ChangeNotifier {
   // ===========================================================================
 
   Future<void> loadSharedLists() async {
-    if (_isPersonalEnvironment || _currentEnvironmentId == null) return;
+    if (_currentEnvironmentId == null) return;
     try {
-      _sharedLists = await _repository.getSharedLists(
+      final lists = await _repository.getSharedLists(
         environmentId: _currentEnvironmentId!,
       );
+      _sharedLists = List<LeisureSharedListModel>.from(lists);
       notifyListeners();
     } catch (e) {
       debugPrint('Error al cargar listas compartidas del entorno: $e');
     }
   }
 
-  Future<List<LeisureSharedListItemModel>> getSharedListItems(String listId) async {
+  List<LeisureSharedListItemModel> getCachedListItems(String listId) {
+    return _sharedListItemsMap[listId] ?? const [];
+  }
+
+  bool hasCachedListItems(String listId) {
+    return _sharedListItemsMap.containsKey(listId);
+  }
+
+  Future<List<LeisureSharedListItemModel>> getSharedListItems(
+    String listId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && _sharedListItemsMap.containsKey(listId)) {
+      return _sharedListItemsMap[listId]!;
+    }
+
     try {
       final items = await _repository.getSharedListItems(listId: listId);
       _sharedListItemsMap[listId] = items;
@@ -352,8 +404,8 @@ class LeisureController extends ChangeNotifier {
   }
 
   Future<LeisureSharedListModel> createSharedList(String title, String? description) async {
-    if (_isPersonalEnvironment || _currentEnvironmentId == null) {
-      throw Exception('Las listas compartidas requieren un entorno colaborativo');
+    if (_currentEnvironmentId == null) {
+      throw Exception('Selecciona un entorno para crear una lista');
     }
 
     final created = await _repository.createSharedList(
@@ -361,23 +413,206 @@ class LeisureController extends ChangeNotifier {
       title: title,
       description: description,
     );
-    _sharedLists = [created, ..._sharedLists];
+    _sharedLists = [created, ..._sharedLists.where((l) => l.id != created.id)];
     notifyListeners();
     return created;
   }
 
+  final Map<String, LeisureListSortOption> _listSortOptions = {};
+  final Map<String, String?> _listGenreFilters = {};
+  final Map<String, String> _listSearchQueries = {};
+
+  LeisureListSortOption getListSortOption(String listId) {
+    return _listSortOptions[listId] ?? LeisureListSortOption.manual;
+  }
+
+  void setListSortOption(String listId, LeisureListSortOption option) {
+    _listSortOptions[listId] = option;
+    notifyListeners();
+  }
+
+  String? getListGenreFilter(String listId) {
+    return _listGenreFilters[listId];
+  }
+
+  void setListGenreFilter(String listId, String? genre) {
+    _listGenreFilters[listId] = genre;
+    notifyListeners();
+  }
+
+  String getListSearchQuery(String listId) {
+    return _listSearchQueries[listId] ?? '';
+  }
+
+  void setListSearchQuery(String listId, String query) {
+    _listSearchQueries[listId] = query;
+    notifyListeners();
+  }
+
+  void clearListFilters(String listId) {
+    _listGenreFilters[listId] = null;
+    _listSearchQueries[listId] = '';
+    notifyListeners();
+  }
+
+  List<String> getAvailableGenresForList(String listId) {
+    final items = _sharedListItemsMap[listId] ?? [];
+    final set = <String>{};
+    for (final item in items) {
+      for (final g in item.genres) {
+        if (g.trim().isNotEmpty) {
+          set.add(g.trim());
+        }
+      }
+    }
+    final list = set.toList();
+    list.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return list;
+  }
+
+  List<LeisureSharedListItemModel> getFilteredAndSortedItems(String listId) {
+    var items = List<LeisureSharedListItemModel>.from(_sharedListItemsMap[listId] ?? []);
+
+    // 1. Filtrado por género
+    final genre = _listGenreFilters[listId];
+    if (genre != null && genre.isNotEmpty) {
+      items = items.where((item) =>
+          item.genres.any((g) => g.trim().toLowerCase() == genre.trim().toLowerCase())
+      ).toList();
+    }
+
+    // 2. Filtrado por buscador rápido
+    final query = (_listSearchQueries[listId] ?? '').trim().toLowerCase();
+    if (query.isNotEmpty) {
+      items = items.where((item) =>
+          item.title.toLowerCase().contains(query)
+      ).toList();
+    }
+
+    // 3. Ordenación
+    final sort = getListSortOption(listId);
+    switch (sort) {
+      case LeisureListSortOption.manual:
+        items.sort((a, b) {
+          final comp = a.customOrder.compareTo(b.customOrder);
+          if (comp != 0) return comp;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        break;
+      case LeisureListSortOption.ratingDesc:
+        items.sort((a, b) {
+          if (a.rating == null && b.rating == null) return 0;
+          if (a.rating == null) return 1;
+          if (b.rating == null) return -1;
+          return b.rating!.compareTo(a.rating!);
+        });
+        break;
+      case LeisureListSortOption.ratingAsc:
+        items.sort((a, b) {
+          if (a.rating == null && b.rating == null) return 0;
+          if (a.rating == null) return 1;
+          if (b.rating == null) return -1;
+          return a.rating!.compareTo(b.rating!);
+        });
+        break;
+      case LeisureListSortOption.yearDesc:
+        items.sort((a, b) {
+          final yearA = int.tryParse(a.year ?? '');
+          final yearB = int.tryParse(b.year ?? '');
+          if (yearA == null && yearB == null) return 0;
+          if (yearA == null) return 1;
+          if (yearB == null) return -1;
+          return yearB.compareTo(yearA);
+        });
+        break;
+      case LeisureListSortOption.yearAsc:
+        items.sort((a, b) {
+          final yearA = int.tryParse(a.year ?? '');
+          final yearB = int.tryParse(b.year ?? '');
+          if (yearA == null && yearB == null) return 0;
+          if (yearA == null) return 1;
+          if (yearB == null) return -1;
+          return yearA.compareTo(yearB);
+        });
+        break;
+      case LeisureListSortOption.dateAddedDesc:
+        items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case LeisureListSortOption.titleAsc:
+        items.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+    }
+
+    return items;
+  }
+
+  Future<void> reorderSharedListItems(String listId, int oldIndex, int newIndex) async {
+    final current = List<LeisureSharedListItemModel>.from(_sharedListItemsMap[listId] ?? []);
+    if (oldIndex < 0 || oldIndex >= current.length) return;
+
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    if (newIndex < 0 || newIndex >= current.length) return;
+
+    // Cambiar automáticamente a orden manual al arrastrar
+    _listSortOptions[listId] = LeisureListSortOption.manual;
+
+    final movedItem = current.removeAt(oldIndex);
+    current.insert(newIndex, movedItem);
+
+    // Reasignar índices de orden secuencial
+    final updatedList = <LeisureSharedListItemModel>[];
+    for (int i = 0; i < current.length; i++) {
+      updatedList.add(current[i].copyWith(customOrder: i));
+    }
+
+    _sharedListItemsMap[listId] = updatedList;
+    notifyListeners();
+
+    try {
+      await _repository.reorderSharedListItems(
+        listId: listId,
+        orderedItemIds: updatedList.map((e) => e.id).toList(),
+      );
+    } catch (e) {
+      debugPrint('Aviso al persistir reordenación en repositorio: $e');
+    }
+  }
+
   Future<void> addMediaToSharedList(String listId, LeisureMediaDetails media) async {
+    final current = _sharedListItemsMap[listId] ?? [];
     final item = await _repository.addSharedListItem(
       listId: listId,
       mediaId: media.mediaId,
       mediaType: media.mediaType,
       title: media.title,
       posterUrl: media.posterUrl,
+      year: media.year,
+      rating: media.rating,
+      genres: media.genres,
+      customOrder: current.length,
       detailsToCache: media,
     );
 
-    final current = _sharedListItemsMap[listId] ?? [];
     _sharedListItemsMap[listId] = [...current, item];
+
+    // Actualizar el contador de ítems en la lista correspondiente
+    _sharedLists = _sharedLists.map((l) {
+      if (l.id == listId) {
+        return LeisureSharedListModel(
+          id: l.id,
+          environmentId: l.environmentId,
+          createdBy: l.createdBy,
+          title: l.title,
+          description: l.description,
+          itemsCount: l.itemsCount + 1,
+          createdAt: l.createdAt,
+        );
+      }
+      return l;
+    }).toList();
+
     notifyListeners();
   }
 
@@ -385,6 +620,23 @@ class LeisureController extends ChangeNotifier {
     await _repository.removeSharedListItem(itemId: itemId);
     final current = _sharedListItemsMap[listId] ?? [];
     _sharedListItemsMap[listId] = current.where((i) => i.id != itemId).toList();
+
+    // Decrementar el contador de ítems en la lista correspondiente
+    _sharedLists = _sharedLists.map((l) {
+      if (l.id == listId) {
+        return LeisureSharedListModel(
+          id: l.id,
+          environmentId: l.environmentId,
+          createdBy: l.createdBy,
+          title: l.title,
+          description: l.description,
+          itemsCount: (l.itemsCount - 1).clamp(0, 999999),
+          createdAt: l.createdAt,
+        );
+      }
+      return l;
+    }).toList();
+
     notifyListeners();
   }
 

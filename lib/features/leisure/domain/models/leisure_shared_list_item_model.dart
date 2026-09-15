@@ -10,6 +10,10 @@ class LeisureSharedListItemModel {
   final LeisureMediaType mediaType;
   final String title;
   final String? posterUrl;
+  final String? year;
+  final double? rating;
+  final List<String> genres;
+  final int customOrder;
   final String addedBy;
   final DateTime createdAt;
 
@@ -20,11 +24,20 @@ class LeisureSharedListItemModel {
     required this.mediaType,
     required this.title,
     this.posterUrl,
+    this.year,
+    this.rating,
+    this.genres = const [],
+    this.customOrder = 0,
     required this.addedBy,
     required this.createdAt,
   });
 
   factory LeisureSharedListItemModel.fromJson(Map<String, dynamic> json) {
+    final rawGenres = json['genres'];
+    final genres = rawGenres is List
+        ? rawGenres.map((e) => e.toString()).toList()
+        : const <String>[];
+
     return LeisureSharedListItemModel(
       id: json['id'] as String? ?? '',
       listId: json['list_id'] as String? ?? '',
@@ -32,6 +45,10 @@ class LeisureSharedListItemModel {
       mediaType: LeisureMediaType.fromValue(json['media_type'] as String?),
       title: json['title'] as String? ?? 'Sin título',
       posterUrl: json['poster_url'] as String?,
+      year: json['year'] as String?,
+      rating: (json['rating'] as num?)?.toDouble(),
+      genres: genres,
+      customOrder: (json['custom_order'] as num?)?.toInt() ?? 0,
       addedBy: json['added_by'] as String? ?? '',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
@@ -47,6 +64,10 @@ class LeisureSharedListItemModel {
       'media_type': mediaType.toValue(),
       'title': title,
       'poster_url': posterUrl,
+      'year': year,
+      'rating': rating,
+      'genres': genres,
+      'custom_order': customOrder,
       'added_by': addedBy,
       'created_at': createdAt.toIso8601String(),
     };
@@ -59,6 +80,10 @@ class LeisureSharedListItemModel {
     LeisureMediaType? mediaType,
     String? title,
     String? posterUrl,
+    String? year,
+    double? rating,
+    List<String>? genres,
+    int? customOrder,
     String? addedBy,
     DateTime? createdAt,
   }) {
@@ -69,6 +94,10 @@ class LeisureSharedListItemModel {
       mediaType: mediaType ?? this.mediaType,
       title: title ?? this.title,
       posterUrl: posterUrl ?? this.posterUrl,
+      year: year ?? this.year,
+      rating: rating ?? this.rating,
+      genres: genres ?? this.genres,
+      customOrder: customOrder ?? this.customOrder,
       addedBy: addedBy ?? this.addedBy,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -86,5 +115,5 @@ class LeisureSharedListItemModel {
 
   @override
   String toString() =>
-      'LeisureSharedListItemModel(id: $id, listId: $listId, mediaId: $mediaId, title: $title)';
+      'LeisureSharedListItemModel(id: $id, listId: $listId, mediaId: $mediaId, title: $title, year: $year, rating: $rating, customOrder: $customOrder)';
 }

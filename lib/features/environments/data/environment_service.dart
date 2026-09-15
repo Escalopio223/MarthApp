@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../domain/models/environment_invitation_model.dart';
 import '../domain/models/environment_member_model.dart';
 import '../domain/models/environment_model.dart';
@@ -10,7 +11,7 @@ class EnvironmentService implements IEnvironmentRepository {
   final SupabaseClient? _supabase;
 
   EnvironmentService({SupabaseClient? client})
-      : _supabase = client ?? _safeGetClient();
+    : _supabase = client ?? _safeGetClient();
 
   static SupabaseClient? _safeGetClient() {
     try {
@@ -51,7 +52,7 @@ class EnvironmentService implements IEnvironmentRepository {
         return EnvironmentModel.fromJson(map, userRole: role);
       }).toList();
 
-      // Auto-healing: si el usuario no tiene "Mi Espacio" personal, delegar 100% en RPC atómica
+      // Auto-healing: si el usuario no tiene "Mi espacio" personal, delegar 100% en RPC atómica
       if (!envs.any((e) => e.isPersonal)) {
         final personalEnv = await ensurePersonalEnvironment();
         if (personalEnv != null) {
@@ -61,7 +62,9 @@ class EnvironmentService implements IEnvironmentRepository {
 
       return envs;
     } catch (e) {
-      debugPrint('[EnvironmentService] Error al obtener entornos ($userId): $e');
+      debugPrint(
+        '[EnvironmentService] Error al obtener entornos ($userId): $e',
+      );
       // Intento de auto-healing si falló la consulta o la tabla no tenía al usuario
       try {
         final personalEnv = await ensurePersonalEnvironment();
@@ -81,7 +84,9 @@ class EnvironmentService implements IEnvironmentRepository {
       }
       return null;
     } catch (e) {
-      debugPrint('[EnvironmentService] Error al auto-recuperar entorno personal: $e');
+      debugPrint(
+        '[EnvironmentService] Error al auto-recuperar entorno personal: $e',
+      );
       return null;
     }
   }
@@ -96,20 +101,58 @@ class EnvironmentService implements IEnvironmentRepository {
           .eq('status', 'pending');
 
       final list = res as List<dynamic>;
-      return list.map((item) => (item as Map)['receiver_id'] as String).toList();
+      return list
+          .map((item) => (item as Map)['receiver_id'] as String)
+          .toList();
     } catch (e) {
-      debugPrint('[EnvironmentService] Error al obtener invitaciones pendientes de $environmentId: $e');
+      debugPrint(
+        '[EnvironmentService] Error al obtener invitaciones pendientes de $environmentId: $e',
+      );
       return [];
     }
   }
 
   @override
-  Future<EnvironmentModel?> createEnvironment({required String name}) async {
+  Future<EnvironmentModel?> createEnvironment({
+    required String name,
+    String? icon,
+    String? color,
+  }) async {
     try {
-      final res = await _client.rpc(
-        'create_environment',
-        params: {'p_name': name.trim()},
-      );
+      final cleanName = name.trim();
+      final rpcParams = <String, dynamic>{'p_name': cleanName};
+      if (icon != null) rpcParams['p_icon'] = icon;
+      if (color != null) rpcParams['p_color'] = color;
+
+      dynamic res;
+      try {
+        res = await _client.rpc('create_environment', params: rpcParams);
+      } catch (rpcErr) {
+        debugPrint(
+          '[EnvironmentService] RPC extendido falló, reintentando básico: $rpcErr',
+        );
+        // Fallback resiliente: llamada RPC básica y actualización de metadatos
+        res = await _client.rpc(
+          'create_environment',
+          params: {'p_name': cleanName},
+        );
+        if (res != null && (icon != null || color != null)) {
+          final map = Map<String, dynamic>.from(res as Map);
+          final envId = map['id']?.toString();
+          if (envId != null) {
+            final updateData = <String, dynamic>{};
+            if (icon != null) updateData['icon'] = icon;
+            if (color != null) updateData['color'] = color;
+            await _client
+                .from('environments')
+                .update(updateData)
+                .eq('id', envId);
+            map['icon'] = icon;
+            map['color'] = color;
+            return EnvironmentModel.fromJson(map, userRole: 'owner');
+          }
+        }
+      }
 
       if (res != null) {
         final map = Map<String, dynamic>.from(res as Map);
@@ -137,7 +180,9 @@ class EnvironmentService implements IEnvironmentRepository {
   }
 
   @override
-  Future<List<EnvironmentMemberModel>> getEnvironmentMembers(String environmentId) async {
+  Future<List<EnvironmentMemberModel>> getEnvironmentMembers(
+    String environmentId,
+  ) async {
     try {
       final res = await _client.rpc(
         'get_environment_members',
@@ -146,18 +191,27 @@ class EnvironmentService implements IEnvironmentRepository {
 
       if (res is List) {
         return res
-            .map((item) => EnvironmentMemberModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .map(
+              (item) => EnvironmentMemberModel.fromJson(
+                Map<String, dynamic>.from(item as Map),
+              ),
+            )
             .toList();
       }
       return [];
     } catch (e) {
-      debugPrint('[EnvironmentService] Error al obtener miembros de $environmentId: $e');
+      debugPrint(
+        '[EnvironmentService] Error al obtener miembros de $environmentId: $e',
+      );
       return [];
     }
   }
 
   @override
-  Future<bool> removeMember({required String environmentId, required String userId}) async {
+  Future<bool> removeMember({
+    required String environmentId,
+    required String userId,
+  }) async {
     try {
       await _client
           .from('environment_members')
@@ -172,7 +226,10 @@ class EnvironmentService implements IEnvironmentRepository {
   }
 
   @override
-  Future<bool> leaveEnvironment({required String environmentId, required String userId}) async {
+  Future<bool> leaveEnvironment({
+    required String environmentId,
+    required String userId,
+  }) async {
     try {
       await _client
           .from('environment_members')
@@ -187,11 +244,15 @@ class EnvironmentService implements IEnvironmentRepository {
   }
 
   @override
-  Future<List<EnvironmentInvitationModel>> getPendingInvitations(String userId) async {
+  Future<List<EnvironmentInvitationModel>> getPendingInvitations(
+    String userId,
+  ) async {
     try {
       final res = await _client
           .from('environment_invitations')
-          .select('*, environments(name), sender_profile:profiles!environment_invitations_sender_id_fkey(username)')
+          .select(
+            '*, environments(name), sender_profile:profiles!environment_invitations_sender_id_fkey(username)',
+          )
           .eq('receiver_id', userId)
           .eq('status', 'pending')
           .order('created_at', ascending: false);
@@ -213,10 +274,16 @@ class EnvironmentService implements IEnvironmentRepository {
 
         final List<dynamic> list = fallback as List<dynamic>;
         return list
-            .map((item) => EnvironmentInvitationModel.fromJson(Map<String, dynamic>.from(item as Map)))
+            .map(
+              (item) => EnvironmentInvitationModel.fromJson(
+                Map<String, dynamic>.from(item as Map),
+              ),
+            )
             .toList();
       } catch (fallbackErr) {
-        debugPrint('[EnvironmentService] Error al obtener invitaciones ($userId): $fallbackErr');
+        debugPrint(
+          '[EnvironmentService] Error al obtener invitaciones ($userId): $fallbackErr',
+        );
         return [];
       }
     }
@@ -237,7 +304,9 @@ class EnvironmentService implements IEnvironmentRepository {
       });
       return true;
     } catch (e) {
-      debugPrint('[EnvironmentService] Error al enviar invitación a entorno: $e');
+      debugPrint(
+        '[EnvironmentService] Error al enviar invitación a entorno: $e',
+      );
       rethrow;
     }
   }
@@ -261,7 +330,9 @@ class EnvironmentService implements IEnvironmentRepository {
       }
       return true;
     } catch (e) {
-      debugPrint('[EnvironmentService] Error al responder invitación ($invitationId): $e');
+      debugPrint(
+        '[EnvironmentService] Error al responder invitación ($invitationId): $e',
+      );
       return false;
     }
   }
@@ -311,7 +382,9 @@ class EnvironmentService implements IEnvironmentRepository {
 
       return channel;
     } catch (e) {
-      debugPrint('[EnvironmentService] Error al suscribir a Realtime de invitaciones: $e');
+      debugPrint(
+        '[EnvironmentService] Error al suscribir a Realtime de invitaciones: $e',
+      );
       return null;
     }
   }
@@ -322,7 +395,9 @@ class EnvironmentService implements IEnvironmentRepository {
       try {
         await _client.removeChannel(channel);
       } catch (e) {
-        debugPrint('[EnvironmentService] Error al desuscribir canal de invitaciones: $e');
+        debugPrint(
+          '[EnvironmentService] Error al desuscribir canal de invitaciones: $e',
+        );
       }
     }
   }
