@@ -164,7 +164,96 @@ void main() {
       expect(providers.length, equals(2));
       expect(providers.first.providerName, equals('Netflix'));
       expect(providers.first.logoUrl, contains('t2yyOv40HZeVlLjYsCsPHnWLk4W.jpg'));
+      expect(providers.first.type, equals('flatrate'));
       expect(providers.last.providerName, equals('Disney Plus'));
+    });
+
+    test('getWatchProviders handles US region, Hulu and direct watchLink', () async {
+      final mockClient = MockHttpClient((request) async {
+        expect(request.url.path, contains('/tv/1234/watch/providers'));
+
+        return http.Response(
+          jsonEncode({
+            'id': 1234,
+            'results': {
+              'US': {
+                'link': 'https://www.themoviedb.org/tv/1234/watch?locale=en-US',
+                'flatrate': [
+                  {
+                    'provider_id': 15,
+                    'provider_name': 'Hulu',
+                    'logo_path': '/zxrVdFjIjLqkfnwyghn2WZhGD3d.jpg',
+                    'display_priority': 1,
+                  }
+                ],
+                'free': [
+                  {
+                    'provider_id': 300,
+                    'provider_name': 'Pluto TV',
+                    'logo_path': '/pluto.jpg',
+                    'display_priority': 5,
+                  }
+                ]
+              }
+            }
+          }),
+          200,
+        );
+      });
+
+      final service = TmdbService(client: mockClient, apiKey: 'test_key');
+      final providers = await service.getWatchProviders(
+        mediaId: '1234',
+        type: LeisureMediaType.tv,
+        region: 'US',
+      );
+
+      expect(providers.length, equals(2));
+      expect(providers.first.providerName, equals('Hulu'));
+      expect(providers.first.type, equals('flatrate'));
+      expect(providers.first.watchLink, contains('themoviedb.org'));
+      expect(providers.last.providerName, equals('Pluto TV'));
+      expect(providers.last.type, equals('free'));
+      expect(providers.last.typeLabel, equals('Gratuito'));
+    });
+
+    test('getMediaByProvider queries discover endpoint with watch providers', () async {
+      final mockClient = MockHttpClient((request) async {
+        expect(request.url.path, contains('/discover/movie'));
+        expect(request.url.queryParameters['with_watch_providers'], equals('8')); // Netflix
+        expect(request.url.queryParameters['watch_region'], equals('ES'));
+
+        return http.Response(
+          jsonEncode({
+            'page': 1,
+            'results': [
+              {
+                'id': 999,
+                'title': 'Película de Netflix',
+                'overview': 'Exclusiva en Netflix',
+                'poster_path': '/netflix_movie.jpg',
+                'release_date': '2024-01-01',
+                'vote_average': 8.0,
+                'vote_count': 500,
+              }
+            ]
+          }),
+          200,
+        );
+      });
+
+      final service = TmdbService(client: mockClient, apiKey: 'test_key');
+      final items = await service.getMediaByProvider(
+        type: LeisureMediaType.movie,
+        providerId: 8,
+        region: 'ES',
+      );
+
+      expect(items.length, equals(1));
+      expect(items.first.title, equals('Película de Netflix'));
+      expect(items.first.watchProviders.length, equals(1));
+      expect(items.first.watchProviders.first.providerName, equals('Netflix'));
+      expect(items.first.watchProviders.first.providerId, equals(8));
     });
 
     test('getTvSeasonsAndEpisodes parses season breakdown', () async {

@@ -110,6 +110,24 @@ class LeisureRepository implements ILeisureRepository {
   }
 
   @override
+  Future<List<LeisureMediaDetails>> getMediaByProvider({
+    required LeisureMediaType type,
+    required int providerId,
+    String region = 'ES',
+    int page = 1,
+  }) async {
+    if (type != LeisureMediaType.movie && type != LeisureMediaType.tv) {
+      return [];
+    }
+    return _tmdbService.getMediaByProvider(
+      type: type,
+      providerId: providerId,
+      region: region,
+      page: page,
+    );
+  }
+
+  @override
   Future<LeisureMediaDetails> getMediaDetails({
     required String mediaId,
     required LeisureMediaType type,
@@ -376,8 +394,11 @@ class LeisureRepository implements ILeisureRepository {
     // Enriquecer con caché si faltan metadatos clave (year, rating, genres)
     final enriched = <LeisureSharedListItemModel>[];
     for (final item in rawList) {
+      final bool? computedF2p = item.mediaType == LeisureMediaType.game ? item.isF2p : null;
       if (item.year != null && item.rating != null && item.genres.isNotEmpty) {
-        enriched.add(item);
+        enriched.add(item.copyWith(
+          isFreeToPlay: item.isFreeToPlay ?? computedF2p,
+        ));
       } else {
         final cached = await _getCachedPayload(item.mediaId, item.mediaType);
         if (cached != null) {
@@ -387,14 +408,18 @@ class LeisureRepository implements ILeisureRepository {
           final cachedGenres = rawGenres is List
               ? rawGenres.map((e) => e.toString()).toList()
               : const <String>[];
+          final cachedF2p = cached['is_free_to_play'] as bool?;
 
           enriched.add(item.copyWith(
             year: item.year ?? cachedYear,
             rating: item.rating ?? cachedRating,
             genres: item.genres.isNotEmpty ? item.genres : cachedGenres,
+            isFreeToPlay: item.isFreeToPlay ?? cachedF2p ?? computedF2p,
           ));
         } else {
-          enriched.add(item);
+          enriched.add(item.copyWith(
+            isFreeToPlay: item.isFreeToPlay ?? computedF2p,
+          ));
         }
       }
     }
@@ -413,11 +438,13 @@ class LeisureRepository implements ILeisureRepository {
     double? rating,
     List<String>? genres,
     int? customOrder,
+    bool? isFreeToPlay,
     LeisureMediaDetails? detailsToCache,
   }) async {
     final effectiveYear = year ?? detailsToCache?.year;
     final effectiveRating = rating ?? detailsToCache?.rating;
     final effectiveGenres = genres ?? detailsToCache?.genres ?? const [];
+    final effectiveF2p = isFreeToPlay ?? detailsToCache?.isFreeToPlay;
 
     Map<String, dynamic> res;
     try {
@@ -434,6 +461,7 @@ class LeisureRepository implements ILeisureRepository {
             'rating': effectiveRating,
             'genres': effectiveGenres,
             'custom_order': customOrder ?? 0,
+            'is_free_to_play': ?effectiveF2p,
             'added_by': _currentUserId,
           })
           .select()

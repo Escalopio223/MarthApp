@@ -39,6 +39,16 @@ class MockLeisureRepository implements ILeisureRepository {
   }
 
   @override
+  Future<List<LeisureMediaDetails>> getMediaByProvider({
+    required LeisureMediaType type,
+    required int providerId,
+    String region = 'ES',
+    int page = 1,
+  }) async {
+    return nowPlayingMovies;
+  }
+
+  @override
   Future<LeisureMediaDetails> getMediaDetails({required String mediaId, required LeisureMediaType type, bool forceRefresh = false}) async {
     return LeisureMediaDetails(mediaId: mediaId, mediaType: type, title: 'Detalle $mediaId');
   }
@@ -116,6 +126,7 @@ class MockLeisureRepository implements ILeisureRepository {
     List<String>? genres,
     int? customOrder,
     LeisureMediaDetails? detailsToCache,
+    bool? isFreeToPlay,
   }) async {
     return LeisureSharedListItemModel(
       id: 'item_123',
@@ -128,6 +139,7 @@ class MockLeisureRepository implements ILeisureRepository {
       rating: rating,
       genres: genres ?? const [],
       customOrder: customOrder ?? 0,
+      isFreeToPlay: isFreeToPlay,
       addedBy: 'u1',
       createdAt: DateTime.now(),
     );
@@ -260,5 +272,37 @@ void main() {
     expect(removed, isFalse);
     expect(controller.rouletteCount, 1);
     expect(controller.isRouletteSelected(LeisureMediaType.movie, '1'), isFalse);
+  });
+
+  test('LeisureController streaming provider and region selection updates state and loads filtered catalog', () async {
+    mockRepo.nowPlayingMovies = [
+      const LeisureMediaDetails(
+        mediaId: 'netflix-1',
+        mediaType: LeisureMediaType.movie,
+        title: 'Stranger Movie',
+        watchProviders: [
+          StreamingProviderDto(providerId: 8, providerName: 'Netflix', logoPath: '/n.jpg'),
+        ],
+      ),
+    ];
+
+    expect(controller.selectedProviderId, isNull);
+    expect(controller.selectedRegion, equals('ES'));
+
+    // Select Netflix (ID 8)
+    controller.setSelectedProvider(8);
+    expect(controller.selectedProviderId, equals(8));
+
+    await Future.delayed(const Duration(milliseconds: 50));
+    expect(controller.catalogItems.length, equals(1));
+    expect(controller.catalogItems.first.title, equals('Stranger Movie'));
+
+    // Change region to US
+    controller.setSelectedRegion('US');
+    expect(controller.selectedRegion, equals('US'));
+
+    // Switching to Books resets selectedProviderId
+    await controller.setMediaType(LeisureMediaType.book);
+    expect(controller.selectedProviderId, isNull);
   });
 }

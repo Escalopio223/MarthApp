@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'book_edition_dto.dart';
 import 'game_duration_dto.dart';
 import 'game_store_dto.dart';
+import 'leisure_game_f2p_helper.dart';
 import 'leisure_media_type.dart';
 import 'streaming_provider_dto.dart';
 
@@ -54,6 +55,17 @@ class LeisureMediaDetails {
     this.gameStores = const [],
     this.gameDuration,
   });
+
+  /// Determina si este medio es un videojuego Free to Play de forma certera
+  bool get isF2p {
+    if (mediaType != LeisureMediaType.game) return false;
+    return LeisureGameF2pHelper.isF2p(
+      isFreeToPlay: isFreeToPlay,
+      title: title,
+      genres: genres,
+      overview: overview,
+    );
+  }
 
   factory LeisureMediaDetails.fromJson(Map<String, dynamic> json) {
     final rawGenres = json['genres'];

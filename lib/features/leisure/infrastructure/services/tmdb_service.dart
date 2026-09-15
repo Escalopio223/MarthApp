@@ -206,7 +206,7 @@ class TmdbService {
     );
   }
 
-  /// Plataformas de streaming con suscripción ('flatrate') disponibles en España
+  /// Plataformas de streaming disponibles (Suscripción, Gratuito o Con anuncios)
   Future<List<StreamingProviderDto>> getWatchProviders({
     required String mediaId,
     required LeisureMediaType type,
@@ -232,11 +232,90 @@ class TmdbService {
 
     if (regionData == null) return [];
 
-    final flatrate = regionData['flatrate'] as List? ?? [];
+    final watchLink = regionData['link'] as String?;
+    final providers = <StreamingProviderDto>[];
+    final seenIds = <int>{};
 
-    return flatrate
-        .map((p) => StreamingProviderDto.fromJson(p as Map<String, dynamic>))
-        .toList();
+    void addProviders(List? list, String type) {
+      if (list == null) return;
+      for (final item in list) {
+        if (item is Map<String, dynamic>) {
+          final id = (item['provider_id'] as num?)?.toInt() ?? 0;
+          if (id > 0 && !seenIds.contains(id)) {
+            seenIds.add(id);
+            providers.add(StreamingProviderDto.fromJson(
+              item,
+              type: type,
+              watchLink: watchLink,
+            ));
+          }
+        }
+      }
+    }
+
+    // 1. Suscripción mensual / flatrate (ej. Netflix, Disney+, Prime, Max)
+    addProviders(regionData['flatrate'] as List?, 'flatrate');
+    // 2. Gratuito sin suscripción
+    addProviders(regionData['free'] as List?, 'free');
+    // 3. Con anuncios (ej. Pluto TV)
+    addProviders(regionData['ads'] as List?, 'ads');
+
+    // Si no hay flatrate ni free, incluir opción de alquiler/compra como fallback
+    if (providers.isEmpty) {
+      addProviders(regionData['rent'] as List?, 'rent');
+      addProviders(regionData['buy'] as List?, 'buy');
+    }
+
+    return providers;
+  }
+
+  /// Películas o series filtradas por plataforma de streaming usando /discover
+  Future<List<LeisureMediaDetails>> getMediaByProvider({
+    required LeisureMediaType type,
+    required int providerId,
+    String region = 'ES',
+    int page = 1,
+  }) async {
+    assert(
+      type == LeisureMediaType.movie || type == LeisureMediaType.tv,
+      'TMDB solo soporta movie y tv',
+    );
+
+    final endpoint = type == LeisureMediaType.movie ? '/discover/movie' : '/discover/tv';
+    final uri = _buildUri(endpoint, {
+      'watch_region': region,
+      'with_watch_providers': providerId.toString(),
+      'sort_by': 'popularity.desc',
+      'page': page.toString(),
+    });
+
+    final response = await _client
+        .get(uri)
+        .timeout(const Duration(seconds: 12));
+
+    if (response.statusCode != 200) {
+      throw HttpException('Error TMDB discover ($endpoint, provider $providerId): ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final results = data['results'] as List? ?? [];
+
+    final matchedProvider = StreamingProviderDto.popularProviders.firstWhere(
+      (p) => p.providerId == providerId,
+      orElse: () => StreamingProviderDto(
+        providerId: providerId,
+        providerName: 'Streaming',
+        logoPath: '',
+      ),
+    );
+
+    return results.map((item) {
+      final map = item as Map<String, dynamic>;
+      final parsed = type == LeisureMediaType.movie
+          ? _parseMovieSummary(map)
+          : _parseTvSummary(map);
+      return parsed.copyWith(watchProviders: [matchedProvider]);
+    }).toList();
   }
 
   /// Desglose de episodios de una temporada de serie

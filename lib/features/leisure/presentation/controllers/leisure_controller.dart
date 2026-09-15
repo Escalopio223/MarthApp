@@ -10,6 +10,7 @@ import '../../domain/models/leisure_media_type.dart';
 import '../../domain/models/leisure_shared_list_item_model.dart';
 import '../../domain/models/leisure_shared_list_model.dart';
 import '../../domain/models/leisure_user_item_model.dart';
+import '../../domain/models/streaming_provider_dto.dart';
 import '../../domain/models/tv_season_details_dto.dart';
 import '../../domain/repositories/i_leisure_repository.dart';
 import '../../infrastructure/repositories/leisure_repository.dart';
@@ -40,6 +41,10 @@ class LeisureController extends ChangeNotifier {
   List<LeisureMediaDetails> _catalogItems = [];
   List<LeisureMediaDetails> _searchResults = [];
 
+  // Filtro por proveedor de streaming (null = todos) y región
+  int? _selectedProviderId;
+  String _selectedRegion = 'ES';
+
   // Mapa reactivo indexado por 'mediaType_mediaId' para lookup O(1)
   final Map<String, LeisureUserItemModel> _userItems = {};
 
@@ -60,6 +65,8 @@ class LeisureController extends ChangeNotifier {
   bool get isPersonalEnvironment => _isPersonalEnvironment;
   LeisureMediaType get selectedType => _selectedType;
   int get selectedSubFilter => _selectedSubFilter;
+  int? get selectedProviderId => _selectedProviderId;
+  String get selectedRegion => _selectedRegion;
   bool get isLoading => _isLoading;
   bool get isSearching => _isSearching;
   String? get errorMessage => _errorMessage;
@@ -111,9 +118,6 @@ class LeisureController extends ChangeNotifier {
   Future<void> setEnvironment(String? environmentId, {bool isPersonal = true}) async {
     _currentEnvironmentId = environmentId;
     _isPersonalEnvironment = isPersonal;
-    _sharedLists = [];
-    _sharedListItemsMap.clear();
-    _environmentMatches = [];
     notifyListeners();
 
     if (environmentId != null) {
@@ -128,6 +132,9 @@ class LeisureController extends ChangeNotifier {
   Future<void> setMediaType(LeisureMediaType type) async {
     if (_selectedType == type) return;
     _selectedType = type;
+    if (type != LeisureMediaType.movie && type != LeisureMediaType.tv) {
+      _selectedProviderId = null;
+    }
     _searchQuery = '';
     _searchResults = [];
     _debounceTimer?.cancel();
@@ -143,15 +150,31 @@ class LeisureController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Caché en memoria de catálogos cargados por medio para navegación instantánea
-  final Map<LeisureMediaType, List<LeisureMediaDetails>> _cachedCatalogs = {};
+  /// Alterna o selecciona una plataforma de streaming específica (null para 'Todas')
+  void setSelectedProvider(int? providerId) {
+    if (_selectedProviderId == providerId) return;
+    _selectedProviderId = providerId;
+    loadCatalog(forceRefresh: true);
+  }
 
-  /// Carga el catálogo principal según el tipo seleccionado
+  /// Cambia la región geográfica de streaming (ej. 'ES', 'US', 'MX')
+  void setSelectedRegion(String region) {
+    if (_selectedRegion == region) return;
+    _selectedRegion = region;
+    loadCatalog(forceRefresh: true);
+  }
+
+  // Caché en memoria de catálogos cargados por medio y filtros
+  final Map<String, List<LeisureMediaDetails>> _cachedCatalogs = {};
+
+  /// Carga el catálogo principal según el tipo y proveedor seleccionado
   Future<void> loadCatalog({bool forceRefresh = false}) async {
+    final cacheKey =
+        '${_selectedType.toValue()}_${_selectedRegion}_${_selectedProviderId ?? "all"}';
     if (!forceRefresh &&
-        _cachedCatalogs.containsKey(_selectedType) &&
-        _cachedCatalogs[_selectedType]!.isNotEmpty) {
-      _catalogItems = _cachedCatalogs[_selectedType]!;
+        _cachedCatalogs.containsKey(cacheKey) &&
+        _cachedCatalogs[cacheKey]!.isNotEmpty) {
+      _catalogItems = _cachedCatalogs[cacheKey]!;
       _errorMessage = null;
       notifyListeners();
       return;
@@ -162,12 +185,19 @@ class LeisureController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (_selectedType == LeisureMediaType.movie) {
-        _catalogItems = await _repository.getNowPlayingMovies(region: 'ES');
+      if (_selectedProviderId != null &&
+          (_selectedType == LeisureMediaType.movie || _selectedType == LeisureMediaType.tv)) {
+        _catalogItems = await _repository.getMediaByProvider(
+          type: _selectedType,
+          providerId: _selectedProviderId!,
+          region: _selectedRegion,
+        );
+      } else if (_selectedType == LeisureMediaType.movie) {
+        _catalogItems = await _repository.getNowPlayingMovies(region: _selectedRegion);
       } else {
         _catalogItems = await _repository.getPopularMedia(type: _selectedType);
       }
-      _cachedCatalogs[_selectedType] = _catalogItems;
+      _cachedCatalogs[cacheKey] = _catalogItems;
     } catch (e) {
       _errorMessage = 'Error al cargar el catálogo de ${_selectedType.label}: $e';
     } finally {
@@ -421,6 +451,7 @@ class LeisureController extends ChangeNotifier {
   final Map<String, LeisureListSortOption> _listSortOptions = {};
   final Map<String, String?> _listGenreFilters = {};
   final Map<String, String> _listSearchQueries = {};
+  final Map<String, bool> _listF2pFilters = {};
 
   LeisureListSortOption getListSortOption(String listId) {
     return _listSortOptions[listId] ?? LeisureListSortOption.manual;
@@ -440,6 +471,20 @@ class LeisureController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool getListF2pFilter(String listId) {
+    return _listF2pFilters[listId] ?? false;
+  }
+
+  void setListF2pFilter(String listId, bool f2pOnly) {
+    _listF2pFilters[listId] = f2pOnly;
+    notifyListeners();
+  }
+
+  bool hasGamesInList(String listId) {
+    final items = _sharedListItemsMap[listId] ?? [];
+    return items.any((i) => i.mediaType == LeisureMediaType.game);
+  }
+
   String getListSearchQuery(String listId) {
     return _listSearchQueries[listId] ?? '';
   }
@@ -452,6 +497,7 @@ class LeisureController extends ChangeNotifier {
   void clearListFilters(String listId) {
     _listGenreFilters[listId] = null;
     _listSearchQueries[listId] = '';
+    _listF2pFilters[listId] = false;
     notifyListeners();
   }
 
@@ -481,7 +527,13 @@ class LeisureController extends ChangeNotifier {
       ).toList();
     }
 
-    // 2. Filtrado por buscador rápido
+    // 2. Filtrado por Free to Play (Videojuegos)
+    final f2pOnly = _listF2pFilters[listId] ?? false;
+    if (f2pOnly) {
+      items = items.where((item) => item.isF2p).toList();
+    }
+
+    // 3. Filtrado por buscador rápido
     final query = (_listSearchQueries[listId] ?? '').trim().toLowerCase();
     if (query.isNotEmpty) {
       items = items.where((item) =>
@@ -592,6 +644,7 @@ class LeisureController extends ChangeNotifier {
       rating: media.rating,
       genres: media.genres,
       customOrder: current.length,
+      isFreeToPlay: media.isFreeToPlay,
       detailsToCache: media,
     );
 
@@ -673,6 +726,19 @@ class LeisureController extends ChangeNotifier {
 
   Future<List<BookEditionDto>> getBookEditions(String workId) {
     return _repository.getBookEditions(workId: workId);
+  }
+
+  /// Obtiene las plataformas de streaming disponibles para un medio en la región dada
+  Future<List<StreamingProviderDto>> getWatchProviders(
+    String mediaId,
+    LeisureMediaType type, {
+    String? region,
+  }) {
+    return _repository.getWatchProviders(
+      mediaId: mediaId,
+      type: type,
+      region: region ?? _selectedRegion,
+    );
   }
 
   @override

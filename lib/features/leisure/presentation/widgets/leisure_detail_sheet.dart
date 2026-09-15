@@ -62,10 +62,16 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
   List<BookEditionDto>? _bookEditions;
   bool _isLoadingEditions = false;
 
+  // Estado para plataformas de streaming
+  bool _isLoadingDetails = true;
+  String _selectedRegion = 'ES';
+  bool _isLoadingProviders = false;
+
   @override
   void initState() {
     super.initState();
     _media = widget.initialMedia;
+    _selectedRegion = widget.controller.selectedRegion;
     _fetchFullDetails();
   }
 
@@ -92,9 +98,36 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
             gameStores: detailed.gameStores.isNotEmpty ? detailed.gameStores : _media.gameStores,
             gameDuration: detailed.gameDuration ?? _media.gameDuration,
           );
+          _isLoadingDetails = false;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingDetails = false);
+    }
+  }
+
+  Future<void> _changeRegion(String newRegion) async {
+    if (_selectedRegion == newRegion || _isLoadingProviders) return;
+    setState(() {
+      _selectedRegion = newRegion;
+      _isLoadingProviders = true;
+    });
+
+    try {
+      final providers = await widget.controller.getWatchProviders(
+        _media.mediaId,
+        _media.mediaType,
+        region: newRegion,
+      );
+      if (mounted) {
+        setState(() {
+          _media = _media.copyWith(watchProviders: providers);
+          _isLoadingProviders = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingProviders = false);
+    }
   }
 
   Future<void> _loadSeasonDetails(int seasonNum) async {
@@ -440,9 +473,10 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Fila de Proveedores de Streaming en España
-                    if (_media.watchProviders.isNotEmpty) ...[
-                      _buildStreamingProviders(),
+                    // Sección de Disponibilidad en Streaming (Dónde Ver)
+                    if (_media.mediaType == LeisureMediaType.movie ||
+                        _media.mediaType == LeisureMediaType.tv) ...[
+                      _buildStreamingProvidersSection(),
                       const SizedBox(height: 20),
                     ],
 
@@ -640,7 +674,7 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                       ),
                     ),
                   if (_media.mediaType == LeisureMediaType.game) ...[
-                    if (_media.isFreeToPlay == true) ...[
+                    if (_media.isF2p) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -866,7 +900,7 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
 
   Widget _buildGameStoresSection() {
     final stores = _media.gameStores;
-    final isF2p = _media.isFreeToPlay;
+    final isF2p = _media.isF2p;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -874,13 +908,13 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
         Row(
           children: [
             Icon(
-              isF2p == true ? Icons.all_inclusive_rounded : Icons.storefront_rounded,
+              isF2p ? Icons.all_inclusive_rounded : Icons.storefront_rounded,
               size: 16,
-              color: isF2p == true ? AppTheme.accentEmerald : AppTheme.primaryLiquid,
+              color: isF2p ? AppTheme.accentEmerald : AppTheme.primaryLiquid,
             ),
             const SizedBox(width: 8),
             Text(
-              isF2p == true
+              isF2p
                   ? 'Consíguelo gratis en:'
                   : (stores.isNotEmpty ? 'Disponible en tiendas oficiales:' : 'Disponibilidad'),
               style: TextStyle(
@@ -901,20 +935,21 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                 onTap: () async {
                   final uri = Uri.tryParse(store.url);
                   if (uri != null) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    try {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
                   }
                 },
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceDark,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: isF2p == true
-                          ? AppTheme.accentEmerald.withValues(alpha: 0.35)
+                      color: isF2p
+                          ? AppTheme.accentEmerald.withValues(alpha: 0.3)
                           : AppTheme.cardBorderColor,
-                      width: 1,
                     ),
                   ),
                   child: Row(
@@ -922,7 +957,7 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                     children: [
                       Icon(
                         _getStoreIcon(store.storeName),
-                        size: 15,
+                        size: 14,
                         color: _getStoreColor(store.storeName),
                       ),
                       const SizedBox(width: 6),
@@ -934,10 +969,10 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: 4),
                       Icon(
                         Icons.open_in_new_rounded,
-                        size: 12,
+                        size: 11,
                         color: AppTheme.textSecondary,
                       ),
                     ],
@@ -945,8 +980,8 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                 ),
               );
             }).toList(),
-          )
-        else
+          ),
+        if (stores.isEmpty)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -957,15 +992,15 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
             child: Row(
               children: [
                 Icon(
-                  isF2p == null ? Icons.help_outline_rounded : Icons.info_outline_rounded,
+                  isF2p ? Icons.all_inclusive_rounded : Icons.info_outline_rounded,
                   size: 16,
-                  color: AppTheme.textSecondary,
+                  color: isF2p ? AppTheme.accentEmerald : AppTheme.textSecondary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    isF2p == null
-                        ? 'No hay información confirmada sobre el modelo de pago'
+                    isF2p
+                        ? 'Juego gratuito disponible en las plataformas y tiendas oficiales correspondientes.'
                         : 'Juego de pago disponible en las tiendas habituales de tus plataformas.',
                     style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                   ),
@@ -1063,65 +1098,240 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
     );
   }
 
-  Widget _buildStreamingProviders() {
+  Widget _buildStreamingProvidersSection() {
+    final hasProviders = _media.watchProviders.isNotEmpty;
+    final isLoading = _isLoadingDetails || _isLoadingProviders;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.live_tv_rounded,
-                size: 18, color: AppTheme.primaryLiquid),
-            const SizedBox(width: 6),
-            Text(
-              'Disponible en España (Suscripción)',
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                Icon(Icons.live_tv_rounded,
+                    size: 18, color: AppTheme.primaryLiquid),
+                const SizedBox(width: 8),
+                Text(
+                  'Dónde Ver',
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            // Selector de Región (España, EE.UU., México, etc.)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildRegionChip('ES', '🇪🇸 ES'),
+                const SizedBox(width: 4),
+                _buildRegionChip('US', '🇺🇸 US'),
+                const SizedBox(width: 4),
+                _buildRegionChip('MX', '🇲🇽 MX'),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: _media.watchProviders.map((provider) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Column(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        color: AppTheme.surfaceDark,
-                        child: provider.logoPath.isNotEmpty
-                            ? Image.network(
-                                provider.logoUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) =>
-                                    const Icon(Icons.play_circle_outline_rounded),
-                              )
-                            : const Icon(Icons.play_circle_outline_rounded),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      provider.providerName,
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+        const SizedBox(height: 10),
+        if (isLoading)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.cardBorderColor.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primaryLiquid,
+                  ),
                 ),
-              );
-            }).toList(),
+                const SizedBox(width: 10),
+                Text(
+                  'Consultando plataformas de streaming...',
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (!hasProviders)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.cardBorderColor.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.tv_off_rounded,
+                  size: 20,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No disponible en suscripción en $_selectedRegion actualmente. Prueba seleccionando otra región arriba.',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _media.watchProviders.map((provider) {
+                final hasLink = provider.watchLink != null &&
+                    provider.watchLink!.isNotEmpty;
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: GestureDetector(
+                    onTap: hasLink
+                        ? () async {
+                            HapticFeedback.lightImpact();
+                            final uri = Uri.parse(provider.watchLink!);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri,
+                                  mode: LaunchMode.externalApplication);
+                            }
+                          }
+                        : null,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.cardBorderColor.withValues(alpha: 0.6),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              color: Colors.black26,
+                              child: provider.logoPath.isNotEmpty
+                                  ? Image.network(
+                                      provider.logoUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(
+                                        Icons.play_circle_outline_rounded,
+                                        size: 20,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.play_circle_outline_rounded,
+                                      size: 20,
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                provider.providerName,
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                provider.typeLabel,
+                                style: TextStyle(
+                                  color: AppTheme.primaryLiquid,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (hasLink) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.open_in_new_rounded,
+                              size: 13,
+                              color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRegionChip(String code, String label) {
+    final isSelected = _selectedRegion == code;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _changeRegion(code);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryLiquid.withValues(alpha: 0.22)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primaryLiquid
+                : AppTheme.cardBorderColor.withValues(alpha: 0.5),
+            width: isSelected ? 1.2 : 0.8,
           ),
         ),
-      ],
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? AppTheme.primaryLiquid : AppTheme.textSecondary,
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 

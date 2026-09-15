@@ -591,6 +591,8 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
     final selectedGenre = widget.controller.getListGenreFilter(listId);
     final availableGenres = widget.controller.getAvailableGenresForList(listId);
     final currentSearch = widget.controller.getListSearchQuery(listId);
+    final hasGames = widget.controller.hasGamesInList(listId);
+    final isF2pSelected = widget.controller.getListF2pFilter(listId);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -678,8 +680,8 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
           ],
         ),
 
-        // Filtro horizontal por géneros
-        if (availableGenres.isNotEmpty) ...[
+        // Filtro horizontal por géneros y F2P
+        if (availableGenres.isNotEmpty || hasGames) ...[
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -689,19 +691,51 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
                   padding: const EdgeInsets.only(right: 6),
                   child: FilterChip(
                     label: Text('Todos (${allItems.length})'),
-                    selected: selectedGenre == null,
+                    selected: selectedGenre == null && !isF2pSelected,
                     selectedColor: AppTheme.primaryLiquid,
                     backgroundColor: AppTheme.surfaceDark,
                     labelStyle: TextStyle(
-                      color: selectedGenre == null ? Colors.white : AppTheme.textSecondary,
+                      color: (selectedGenre == null && !isF2pSelected)
+                          ? Colors.white
+                          : AppTheme.textSecondary,
                       fontSize: 10,
-                      fontWeight: selectedGenre == null ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: (selectedGenre == null && !isF2pSelected)
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     visualDensity: VisualDensity.compact,
-                    onSelected: (_) => widget.controller.setListGenreFilter(listId, null),
+                    onSelected: (_) {
+                      widget.controller.setListGenreFilter(listId, null);
+                      widget.controller.setListF2pFilter(listId, false);
+                    },
                   ),
                 ),
+                if (hasGames)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      avatar: Icon(
+                        Icons.sports_esports_rounded,
+                        size: 13,
+                        color: isF2pSelected ? Colors.white : AppTheme.accentEmerald,
+                      ),
+                      label: const Text('Free to Play (F2P)'),
+                      selected: isF2pSelected,
+                      selectedColor: AppTheme.accentEmerald,
+                      backgroundColor: AppTheme.surfaceDark,
+                      labelStyle: TextStyle(
+                        color: isF2pSelected ? Colors.white : AppTheme.textSecondary,
+                        fontSize: 10,
+                        fontWeight: isF2pSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (sel) {
+                        widget.controller.setListF2pFilter(listId, sel);
+                      },
+                    ),
+                  ),
                 ...availableGenres.map((g) {
                   final isSelected = selectedGenre?.toLowerCase() == g.toLowerCase();
                   return Padding(
@@ -730,7 +764,7 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
         ],
 
         // Información de elementos filtrados
-        if (selectedGenre != null || currentSearch.isNotEmpty) ...[
+        if (selectedGenre != null || currentSearch.isNotEmpty || isF2pSelected) ...[
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -741,8 +775,7 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
               ),
               GestureDetector(
                 onTap: () {
-                  widget.controller.setListGenreFilter(listId, null);
-                  widget.controller.setListSearchQuery(listId, '');
+                  widget.controller.clearListFilters(listId);
                 },
                 child: Text(
                   'Limpiar filtros',
@@ -868,6 +901,7 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
                   year: item.year,
                   rating: item.rating,
                   genres: item.genres,
+                  isFreeToPlay: item.isF2p,
                 );
                 LeisureDetailSheet.show(
                   context,
@@ -933,6 +967,38 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
                                   color: Colors.amber,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (item.isF2p) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentEmerald.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppTheme.accentEmerald.withValues(alpha: 0.4),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.bolt_rounded,
+                                  size: 10, color: AppTheme.accentEmerald),
+                              const SizedBox(width: 2),
+                              Text(
+                                'F2P',
+                                style: TextStyle(
+                                  color: AppTheme.accentEmerald,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],

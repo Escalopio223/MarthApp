@@ -35,6 +35,14 @@ abstract class ILeisureRepository {
     int page = 1,
   });
 
+  /// Obtiene películas o series filtradas por plataforma de streaming
+  Future<List<LeisureMediaDetails>> getMediaByProvider({
+    required LeisureMediaType type,
+    required int providerId,
+    String region = 'ES',
+    int page = 1,
+  });
+
   /// Obtiene el detalle exhaustivo de un medio utilizando estrategia de caché
   Future<LeisureMediaDetails> getMediaDetails({
     required String mediaId,
@@ -118,6 +126,7 @@ abstract class ILeisureRepository {
     double? rating,
     List<String>? genres,
     int? customOrder,
+    bool? isFreeToPlay,
     LeisureMediaDetails? detailsToCache,
   });
 

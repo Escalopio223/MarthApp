@@ -6,11 +6,13 @@ import '../../../../core/widgets/app_container.dart';
 import '../../../../core/widgets/marth_app_logo.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
 import '../../domain/models/leisure_media_details.dart';
+import '../../domain/models/leisure_media_type.dart';
 import '../controllers/leisure_controller.dart';
 import '../widgets/leisure_detail_sheet.dart';
 import '../widgets/leisure_dice_winner_dialog.dart';
 import '../widgets/leisure_media_card.dart';
 import '../widgets/leisure_media_type_selector.dart';
+import '../widgets/leisure_provider_filter_bar.dart';
 import '../widgets/leisure_shared_lists_sheet.dart';
 
 /// Pantalla principal interactiva del módulo de Ocio (Leisure):
@@ -243,7 +245,18 @@ class _LeisureScreenState extends State<LeisureScreen> {
                   controller.setMediaType(type);
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+
+              // Filtro de Plataformas de Streaming (Para Películas y Series)
+              if (!isSearching &&
+                  (controller.selectedType == LeisureMediaType.movie ||
+                      controller.selectedType == LeisureMediaType.tv)) ...[
+                LeisureProviderFilterBar(
+                  selectedProviderId: controller.selectedProviderId,
+                  onProviderSelected: (pId) => controller.setSelectedProvider(pId),
+                ),
+                const SizedBox(height: 10),
+              ],
 
               // Sub-pestañas: Catálogo vs Mis Guardados (oculto durante búsqueda)
               if (!isSearching) ...[

@@ -197,7 +197,7 @@ class LeisureMediaCard extends StatelessWidget {
                   ),
 
                 // Badge F2P para videojuegos confirmados (Bottom Right)
-                if (media.mediaType == LeisureMediaType.game && media.isFreeToPlay == true)
+                if (media.isF2p)
                   Positioned(
                     bottom: 8,
                     right: 8,
@@ -223,6 +223,14 @@ class LeisureMediaCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ),
+
+                // Badges de Plataformas de Streaming (Inferior Derecha para Películas y Series)
+                if (media.watchProviders.isNotEmpty)
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: _buildProviderBadgesOverlay(),
                   ),
 
                 // Badge de Duración (Inferior Izquierda para Videojuegos)
@@ -350,6 +358,72 @@ class LeisureMediaCard extends StatelessWidget {
           size: 40,
           color: AppTheme.textSecondary.withValues(alpha: 0.4),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProviderBadgesOverlay() {
+    final providers = media.watchProviders;
+    if (providers.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.25),
+          width: 0.7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ...providers.take(2).map((p) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1.5),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: p.logoPath.isNotEmpty
+                    ? Image.network(
+                        p.logoUrl,
+                        width: 14,
+                        height: 14,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.play_circle_fill_rounded,
+                          size: 13,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.play_circle_fill_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+              ),
+            );
+          }),
+          if (providers.length > 2)
+            Padding(
+              padding: const EdgeInsets.only(left: 2, right: 1),
+              child: Text(
+                '+${providers.length - 2}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

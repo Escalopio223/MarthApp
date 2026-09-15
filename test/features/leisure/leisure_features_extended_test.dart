@@ -41,6 +41,14 @@ class MockLeisureRepository implements ILeisureRepository {
   }) async => [];
 
   @override
+  Future<List<LeisureMediaDetails>> getMediaByProvider({
+    required LeisureMediaType type,
+    required int providerId,
+    String region = 'ES',
+    int page = 1,
+  }) async => [];
+
+  @override
   Future<LeisureMediaDetails> getMediaDetails({
     required String mediaId,
     required LeisureMediaType type,
@@ -151,6 +159,7 @@ class MockLeisureRepository implements ILeisureRepository {
     List<String>? genres,
     int? customOrder,
     LeisureMediaDetails? detailsToCache,
+    bool? isFreeToPlay,
   }) async {
     final item = LeisureSharedListItemModel(
       id: 'item_${DateTime.now().millisecondsSinceEpoch}_$mediaId',
@@ -163,6 +172,7 @@ class MockLeisureRepository implements ILeisureRepository {
       rating: rating,
       genres: genres ?? const [],
       customOrder: customOrder ?? 0,
+      isFreeToPlay: isFreeToPlay,
       addedBy: 'user_1',
       createdAt: DateTime.now(),
     );
@@ -519,6 +529,77 @@ void main() {
       expect(find.text('Deadpool & Wolverine'), findsOneWidget);
       expect(find.byIcon(Icons.delete_outline_rounded), findsOneWidget);
     });
+
+    testWidgets('Renders F2P filter chip and badge for games and filters properly', (tester) async {
+      final repo = MockLeisureRepository();
+      final controller = LeisureController(repository: repo);
+      await controller.initialize(
+        'user_1',
+        environmentId: 'env_1',
+        isPersonal: true,
+      );
+
+      // Crear lista con videojuegos
+      final list = await controller.createSharedList('Lista Juegos', 'Gaming');
+      await controller.addMediaToSharedList(
+        list.id,
+        const LeisureMediaDetails(
+          mediaId: 'g_fortnite',
+          mediaType: LeisureMediaType.game,
+          title: 'Fortnite',
+          isFreeToPlay: true,
+          rating: 8.0,
+        ),
+      );
+      await controller.addMediaToSharedList(
+        list.id,
+        const LeisureMediaDetails(
+          mediaId: 'g_elden_ring',
+          mediaType: LeisureMediaType.game,
+          title: 'Elden Ring',
+          isFreeToPlay: false,
+          rating: 9.6,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: LeisureSharedListsSheet(controller: controller)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Desplegar la lista
+      await tester.tap(find.text('Lista Juegos'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Verificar que aparece el chip Free to Play (F2P)
+      expect(find.text('Free to Play (F2P)'), findsOneWidget);
+      // Verificar que aparece la insignia F2P
+      expect(find.text('F2P'), findsOneWidget);
+
+      // Ambos juegos están visibles inicialmente
+      expect(find.text('Fortnite'), findsOneWidget);
+      expect(find.text('Elden Ring'), findsOneWidget);
+
+      // Pulsar chip de filtro F2P
+      await tester.tap(find.text('Free to Play (F2P)'));
+      await tester.pumpAndSettle();
+
+      // Solo Fortnite debe estar visible ahora
+      expect(find.text('Fortnite'), findsOneWidget);
+      expect(find.text('Elden Ring'), findsNothing);
+      expect(find.text('Mostrando 1 de 2 elemento(s)'), findsOneWidget);
+
+      // Limpiar filtros pulsando el botón Limpiar filtros
+      await tester.tap(find.text('Limpiar filtros'));
+      await tester.pumpAndSettle();
+
+      // Ambos juegos vuelven a estar visibles
+      expect(find.text('Fortnite'), findsOneWidget);
+      expect(find.text('Elden Ring'), findsOneWidget);
+    });
   });
 
   group('Shared Lists Sorting and Filtering Tests', () {
@@ -654,6 +735,133 @@ void main() {
       expect(items[0].title, equals('Dune: Parte Dos'));
       expect(items[1].title, equals('Interstellar'));
       expect(items[2].title, equals('El Padrino'));
+    });
+
+    test('Free to Play filter isolates F2P video games and ignores paid games & other media', () async {
+      final gameList = await controller.createSharedList('Lista Gaming', 'Videojuegos y pelis');
+
+      // Cine (no es videojuego)
+      await controller.addMediaToSharedList(
+        gameList.id,
+        const LeisureMediaDetails(
+          mediaId: 'm_avatar',
+          mediaType: LeisureMediaType.movie,
+          title: 'Avatar',
+          genres: ['Acción', 'Sci-Fi'],
+        ),
+      );
+
+      // Videojuego F2P con isFreeToPlay = true
+      await controller.addMediaToSharedList(
+        gameList.id,
+        const LeisureMediaDetails(
+          mediaId: 'g_fortnite',
+          mediaType: LeisureMediaType.game,
+          title: 'Fortnite',
+          isFreeToPlay: true,
+          genres: ['Shooter', 'Battle Royale'],
+        ),
+      );
+
+      // Videojuego F2P detectado por género 'Free to Play'
+      await controller.addMediaToSharedList(
+        gameList.id,
+        const LeisureMediaDetails(
+          mediaId: 'g_genshin',
+          mediaType: LeisureMediaType.game,
+          title: 'Genshin Impact',
+          genres: ['RPG', 'Free to Play'],
+        ),
+      );
+
+      // Videojuego de pago (isFreeToPlay = false)
+      await controller.addMediaToSharedList(
+        gameList.id,
+        const LeisureMediaDetails(
+          mediaId: 'g_cyberpunk',
+          mediaType: LeisureMediaType.game,
+          title: 'Cyberpunk 2077',
+          isFreeToPlay: false,
+          genres: ['RPG', 'Sci-Fi'],
+        ),
+      );
+
+      // hasGamesInList debe ser true
+      expect(controller.hasGamesInList(gameList.id), isTrue);
+      expect(controller.hasGamesInList(testList.id), isFalse); // testList solo tiene películas
+
+      // Todos los ítems (4)
+      var items = controller.getFilteredAndSortedItems(gameList.id);
+      expect(items.length, equals(4));
+
+      // Activar filtro F2P
+      controller.setListF2pFilter(gameList.id, true);
+      expect(controller.getListF2pFilter(gameList.id), isTrue);
+
+      items = controller.getFilteredAndSortedItems(gameList.id);
+      expect(items.length, equals(2));
+      expect(items.map((i) => i.title), containsAll(['Fortnite', 'Genshin Impact']));
+      expect(items.map((i) => i.title), isNot(contains('Cyberpunk 2077')));
+      expect(items.map((i) => i.title), isNot(contains('Avatar')));
+
+      // Desactivar filtro F2P
+      controller.setListF2pFilter(gameList.id, false);
+      items = controller.getFilteredAndSortedItems(gameList.id);
+      expect(items.length, equals(4));
+
+      // Comprobar que clearListFilters también limpia el filtro F2P
+      controller.setListF2pFilter(gameList.id, true);
+      expect(controller.getListF2pFilter(gameList.id), isTrue);
+      controller.clearListFilters(gameList.id);
+      expect(controller.getListF2pFilter(gameList.id), isFalse);
+      expect(controller.getFilteredAndSortedItems(gameList.id).length, equals(4));
+    });
+
+    test('Fortnite and known F2P games appear in F2P filter even if isFreeToPlay is null or false and genres lack F2P tags', () async {
+      final gameList = await controller.createSharedList('Lista F2P Especial', 'Test de resiliencia F2P');
+
+      // Fortnite guardado con isFreeToPlay: null y géneros normales
+      await controller.addMediaToSharedList(
+        gameList.id,
+        const LeisureMediaDetails(
+          mediaId: '1905',
+          mediaType: LeisureMediaType.game,
+          title: 'Fortnite',
+          isFreeToPlay: null,
+          genres: ['Shooter', 'Battle Royale'],
+        ),
+      );
+
+      // League of Legends con isFreeToPlay: false erróneo y sin tag F2P
+      await controller.addMediaToSharedList(
+        gameList.id,
+        const LeisureMediaDetails(
+          mediaId: '115',
+          mediaType: LeisureMediaType.game,
+          title: 'League of Legends',
+          isFreeToPlay: false,
+          genres: ['MOBA', 'Estrategia'],
+        ),
+      );
+
+      // Juego de pago real
+      await controller.addMediaToSharedList(
+        gameList.id,
+        const LeisureMediaDetails(
+          mediaId: '119388',
+          mediaType: LeisureMediaType.game,
+          title: 'The Legend of Zelda: Tears of the Kingdom',
+          isFreeToPlay: false,
+          genres: ['Aventura'],
+        ),
+      );
+
+      controller.setListF2pFilter(gameList.id, true);
+      final items = controller.getFilteredAndSortedItems(gameList.id);
+
+      expect(items.length, equals(2));
+      expect(items.map((i) => i.title), containsAll(['Fortnite', 'League of Legends']));
+      expect(items.map((i) => i.title), isNot(contains('The Legend of Zelda: Tears of the Kingdom')));
     });
   });
 }

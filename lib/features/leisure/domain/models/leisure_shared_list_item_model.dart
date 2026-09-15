@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'leisure_game_f2p_helper.dart';
 import 'leisure_media_type.dart';
 
 /// Modelo inmutable representativo de un elemento contenido en una lista compartida
@@ -14,6 +15,7 @@ class LeisureSharedListItemModel {
   final double? rating;
   final List<String> genres;
   final int customOrder;
+  final bool? isFreeToPlay;
   final String addedBy;
   final DateTime createdAt;
 
@@ -28,9 +30,20 @@ class LeisureSharedListItemModel {
     this.rating,
     this.genres = const [],
     this.customOrder = 0,
+    this.isFreeToPlay,
     required this.addedBy,
     required this.createdAt,
   });
+
+  /// Determina si este elemento es un videojuego Free to Play de forma certera
+  bool get isF2p {
+    if (mediaType != LeisureMediaType.game) return false;
+    return LeisureGameF2pHelper.isF2p(
+      isFreeToPlay: isFreeToPlay,
+      title: title,
+      genres: genres,
+    );
+  }
 
   factory LeisureSharedListItemModel.fromJson(Map<String, dynamic> json) {
     final rawGenres = json['genres'];
@@ -49,6 +62,7 @@ class LeisureSharedListItemModel {
       rating: (json['rating'] as num?)?.toDouble(),
       genres: genres,
       customOrder: (json['custom_order'] as num?)?.toInt() ?? 0,
+      isFreeToPlay: json['is_free_to_play'] as bool?,
       addedBy: json['added_by'] as String? ?? '',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
@@ -68,6 +82,7 @@ class LeisureSharedListItemModel {
       'rating': rating,
       'genres': genres,
       'custom_order': customOrder,
+      if (isFreeToPlay != null) 'is_free_to_play': isFreeToPlay,
       'added_by': addedBy,
       'created_at': createdAt.toIso8601String(),
     };
@@ -84,6 +99,7 @@ class LeisureSharedListItemModel {
     double? rating,
     List<String>? genres,
     int? customOrder,
+    bool? isFreeToPlay,
     String? addedBy,
     DateTime? createdAt,
   }) {
@@ -98,6 +114,7 @@ class LeisureSharedListItemModel {
       rating: rating ?? this.rating,
       genres: genres ?? this.genres,
       customOrder: customOrder ?? this.customOrder,
+      isFreeToPlay: isFreeToPlay ?? this.isFreeToPlay,
       addedBy: addedBy ?? this.addedBy,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -115,5 +132,5 @@ class LeisureSharedListItemModel {
 
   @override
   String toString() =>
-      'LeisureSharedListItemModel(id: $id, listId: $listId, mediaId: $mediaId, title: $title, year: $year, rating: $rating, customOrder: $customOrder)';
+      'LeisureSharedListItemModel(id: $id, listId: $listId, mediaId: $mediaId, title: $title, year: $year, rating: $rating, customOrder: $customOrder, isFreeToPlay: $isFreeToPlay)';
 }

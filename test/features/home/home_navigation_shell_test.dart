@@ -173,6 +173,13 @@ class FakeLeisureRepo implements ILeisureRepository {
     int page = 1,
   }) async => [];
   @override
+  Future<List<LeisureMediaDetails>> getMediaByProvider({
+    required LeisureMediaType type,
+    required int providerId,
+    String region = 'ES',
+    int page = 1,
+  }) async => [];
+  @override
   Future<LeisureMediaDetails> getMediaDetails({
     required String mediaId,
     required LeisureMediaType type,

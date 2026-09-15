@@ -75,6 +75,14 @@ class FakeLeisureRepo implements ILeisureRepository {
   }
 
   @override
+  Future<List<LeisureMediaDetails>> getMediaByProvider({
+    required LeisureMediaType type,
+    required int providerId,
+    String region = 'ES',
+    int page = 1,
+  }) async => movies;
+
+  @override
   Future<LeisureMediaDetails> getMediaDetails({required String mediaId, required LeisureMediaType type, bool forceRefresh = false}) async {
     return movies.first;
   }
@@ -140,6 +148,7 @@ class FakeLeisureRepo implements ILeisureRepository {
     List<String>? genres,
     int? customOrder,
     LeisureMediaDetails? detailsToCache,
+    bool? isFreeToPlay,
   }) async {
     return LeisureSharedListItemModel(
       id: '1',
@@ -152,6 +161,7 @@ class FakeLeisureRepo implements ILeisureRepository {
       rating: rating,
       genres: genres ?? const [],
       customOrder: customOrder ?? 0,
+      isFreeToPlay: isFreeToPlay,
       addedBy: 'u1',
       createdAt: DateTime.now(),
     );

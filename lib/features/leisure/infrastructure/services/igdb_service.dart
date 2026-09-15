@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/config/leisure_config.dart';
 import '../../domain/models/game_duration_dto.dart';
 import '../../domain/models/game_store_dto.dart';
+import '../../domain/models/leisure_game_f2p_helper.dart';
 import '../../domain/models/leisure_media_details.dart';
 import '../../domain/models/leisure_media_type.dart';
 
@@ -934,8 +935,11 @@ class IgdbService {
             ?.map((t) => t is Map ? t['name']?.toString().toLowerCase() : null)
             .whereType<String>()
             .toList() ?? [];
-        final hasF2P = tags.any((t) => t.contains('free to play') || t.contains('free-to-play') || t.contains('f2p'));
-        final isF2P = hasF2P ? true : (stores.isNotEmpty ? false : null);
+        final isF2P = LeisureGameF2pHelper.isF2p(
+          title: name,
+          genres: genres,
+          tags: tags,
+        ) ? true : (stores.isNotEmpty ? false : null);
 
         // Duración estimada (Tiempo para pasárselo)
         GameDurationDto? duration;
@@ -1041,8 +1045,12 @@ class IgdbService {
           ?.map((t) => t is Map ? t['name']?.toString().toLowerCase() : null)
           .whereType<String>()
           .toList() ?? [];
-      final hasF2P = tags.any((t) => t.contains('free to play') || t.contains('free-to-play') || t.contains('f2p'));
-      final isF2P = hasF2P ? true : (stores.isNotEmpty ? false : null);
+      final isF2P = LeisureGameF2pHelper.isF2p(
+        title: name,
+        genres: genres,
+        tags: tags,
+        overview: overview,
+      ) ? true : (stores.isNotEmpty ? false : null);
 
       // Duración estimada (Tiempo para pasárselo)
       GameDurationDto? duration;
@@ -1388,7 +1396,7 @@ class IgdbService {
 
     // Estado Free to Play (o de pago o desconocido)
     final keywordsRaw = json['keywords'] as List? ?? [];
-    final isFreeToPlay = _detectIsFreeToPlay(keywordsRaw, gameStores);
+    final isFreeToPlay = _detectIsFreeToPlay(keywordsRaw, gameStores, title: name, genres: genres, overview: summary);
 
     return LeisureMediaDetails(
       mediaId: id,
@@ -1471,7 +1479,25 @@ class IgdbService {
   }
 
   /// Determina certeramente si el juego es Free to Play (true), de pago (false) o desconocido (null)
-  static bool? _detectIsFreeToPlay(dynamic keywordsRaw, List<GameStoreDto> gameStores) {
+  static bool? _detectIsFreeToPlay(
+    dynamic keywordsRaw,
+    List<GameStoreDto> gameStores, {
+    String? title,
+    List<String>? genres,
+    String? overview,
+  }) {
+    if (title != null && LeisureGameF2pHelper.isKnownF2pTitle(title)) {
+      return true;
+    }
+    if (title != null &&
+        LeisureGameF2pHelper.isF2p(
+          title: title,
+          genres: genres ?? const [],
+          overview: overview,
+        )) {
+      return true;
+    }
+
     final List<String> keywordList = [];
     if (keywordsRaw is List) {
       for (final k in keywordsRaw) {
