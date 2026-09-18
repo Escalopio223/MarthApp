@@ -276,5 +276,40 @@ void main() {
       expect(mockRepo.lastRequestedRegion, equals('US'));
       expect(find.text('Hulu'), findsOneWidget);
     });
+
+    testWidgets('LeisureDetailSheet renders Powered by IGDB attribution card for games', (tester) async {
+      final mockRepo = MockStreamingRepo();
+      final controller = LeisureController(repository: mockRepo);
+
+      const media = LeisureMediaDetails(
+        mediaId: '1905',
+        mediaType: LeisureMediaType.game,
+        title: 'Fortnite',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LeisureDetailSheet(
+              initialMedia: media,
+              controller: controller,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Powered by IGDB'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(find.text('Powered by IGDB'), findsOneWidget);
+      expect(find.text('IGDB'), findsOneWidget);
+      expect(find.text('Datos de catálogo, carátulas y metadatos proporcionados por IGDB.'), findsOneWidget);
+    });
   });
 }
+

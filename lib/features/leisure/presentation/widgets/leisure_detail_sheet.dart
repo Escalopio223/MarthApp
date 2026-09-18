@@ -484,6 +484,8 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                     if (_media.mediaType == LeisureMediaType.game) ...[
                       _buildGameDurationSection(),
                       _buildGameStoresSection(),
+                      const SizedBox(height: 14),
+                      _buildIgdbAttribution(),
                       const SizedBox(height: 20),
                     ],
 
@@ -1009,6 +1011,91 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildIgdbAttribution() {
+    return InkWell(
+      onTap: () async {
+        final uri = Uri.parse('https://www.igdb.com');
+        try {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (_) {}
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1B1429),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF9146FF).withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF9146FF),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.sports_esports_rounded, size: 14, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    'IGDB',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Powered by IGDB',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.open_in_new_rounded,
+                        size: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Datos de catálogo, carátulas y metadatos proporcionados por IGDB.',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
