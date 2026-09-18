@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 
 enum AuthMode { login, register }
 
 /// Selector segmentado de modo de autenticación:
-/// - Base Neumórfica 'Soft UI' sobre #1A1F26 con sombras suaves
-/// - Pestaña activa con gradiente interactivo Liquid UI #7BB6FF -> #BD93F9
-/// - Curvas de aceleración elásticas Curves.easeOutCubic
+/// - Bandeja excavada Claymórfica cóncava (clayInsetShadows)
+/// - Pestaña activa 'puffy' convexa con feedback háptico táctil
+/// - Curvas de aceleración suaves Curves.easeOutQuad (~120ms)
 /// - Alto contraste WCAG AA
 class AuthModeSelector extends StatelessWidget {
   final AuthMode currentMode;
@@ -20,29 +21,20 @@ class AuthModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseColor = AppTheme.surfaceDark;
+
     return Container(
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceDark, // #1A1F26
+        color: baseColor,
         borderRadius: BorderRadius.circular(18),
+        boxShadow: AppTheme.clayInsetShadows(),
         border: Border.all(
-          color: AppTheme.glassBorderColor,
-          width: 0.8,
+          color: AppTheme.isDark
+              ? Colors.black.withValues(alpha: 0.25)
+              : AppTheme.shadowDark.withValues(alpha: 0.12),
+          width: 1.0,
         ),
-        boxShadow: [
-          // Sombra oscura inferior
-          BoxShadow(
-            color: AppTheme.neumorphicDarkShadow.withValues(alpha: 0.8),
-            offset: const Offset(2, 2),
-            blurRadius: 6,
-          ),
-          // Realce claro superior
-          BoxShadow(
-            color: AppTheme.neumorphicLightHighlight.withValues(alpha: 0.5),
-            offset: const Offset(-2, -2),
-            blurRadius: 6,
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -71,21 +63,40 @@ class AuthModeSelector extends StatelessWidget {
     required bool isSelected,
   }) {
     return GestureDetector(
-      onTap: () => onModeChanged(mode),
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onModeChanged(mode);
+      },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutQuad,
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
           gradient: isSelected ? AppTheme.liquidPrimaryGradient : null,
           color: isSelected ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
+          border: isSelected
+              ? Border.all(
+                  color: Colors.white.withValues(
+                    alpha: AppTheme.isDark ? 0.25 : 0.40,
+                  ),
+                  width: 1.0,
+                )
+              : null,
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.primaryLiquid.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+                    color: Colors.white.withValues(
+                      alpha: AppTheme.isDark ? 0.25 : 0.40,
+                    ),
+                    offset: const Offset(-1.5, -1.5),
+                    blurRadius: 3,
+                  ),
+                  BoxShadow(
+                    color: AppTheme.shadowDark.withValues(alpha: 0.32),
+                    blurRadius: 7,
+                    offset: const Offset(2, 3),
                   ),
                 ]
               : null,
@@ -97,7 +108,7 @@ class AuthModeSelector extends StatelessWidget {
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
-                  ? const Color(0xFF0D1219) // WCAG AA sobre gradiente cian-lila
+                  ? AppTheme.current.ctaTextColor
                   : AppTheme.textSecondary,
             ),
           ),
@@ -106,3 +117,4 @@ class AuthModeSelector extends StatelessWidget {
     );
   }
 }
+

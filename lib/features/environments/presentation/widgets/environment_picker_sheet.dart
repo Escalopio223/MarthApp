@@ -86,7 +86,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Entornos de Trabajo',
+                    'Entornos de trabajo',
                     style: TextStyle(
                       color: AppTheme.textPrimary,
                       fontSize: 18,

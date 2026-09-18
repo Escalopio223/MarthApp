@@ -247,7 +247,7 @@ void main() {
         await tester.pump();
 
         // Submit
-        await tester.tap(find.text('Crear Entorno'));
+        await tester.tap(find.text('Crear entorno'));
         await tester.pumpAndSettle();
 
         expect(mockRepo.lastCreatedName, equals('Viaje Tokio'));

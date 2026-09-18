@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 
 /// Botón de acción táctil Claymórfico (3D Soft Button):
-/// - Animación elástica de compresión física al presionar
+/// - Animación elástica de compresión física al presionar (~120ms, scale: 0.96)
+/// - Feedback háptico reactivo (HapticFeedback.lightImpact)
 /// - Aislado con RepaintBoundary para no invalidar el árbol de renderizado superior
-/// - Doble sombra dinámica (elevada en reposo, comprimida al pulsar)
+/// - Doble sombra volumétrica dinámica (luz cenital blanca + oclusión profunda)
 /// - Contraste garantizado WCAG AA >= 4.5:1
 class AppButton extends StatefulWidget {
   final String text;
@@ -35,6 +37,21 @@ class AppButton extends StatefulWidget {
 class _AppButtonState extends State<AppButton> {
   bool _isPressed = false;
 
+  void _handleTapDown(TapDownDetails _) {
+    if (widget.onPressed != null && !widget.isLoading) {
+      HapticFeedback.lightImpact();
+      setState(() => _isPressed = true);
+    }
+  }
+
+  void _handleTapUp(TapUpDetails _) {
+    if (_isPressed) setState(() => _isPressed = false);
+  }
+
+  void _handleTapCancel() {
+    if (_isPressed) setState(() => _isPressed = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null && !widget.isLoading;
@@ -46,17 +63,17 @@ class _AppButtonState extends State<AppButton> {
             : AppTheme.textPrimary);
 
     return RepaintBoundary(
-      child: GestureDetector(
-        onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
-        onTapUp: isEnabled ? (_) => setState(() => _isPressed = false) : null,
-        onTapCancel: isEnabled ? () => setState(() => _isPressed = false) : null,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutQuad,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOutQuad,
           height: widget.height,
           transform: Matrix4.translationValues(
             0,
-            _isPressed ? 2.0 : 0,
+            _isPressed ? 1.5 : 0,
             0,
           ),
           decoration: BoxDecoration(
@@ -71,7 +88,7 @@ class _AppButtonState extends State<AppButton> {
             borderRadius: BorderRadius.circular(widget.borderRadius),
             border: Border.all(
               color: isEnabled
-                  ? Colors.white.withValues(alpha: _isPressed ? 0.12 : 0.22)
+                  ? Colors.white.withValues(alpha: _isPressed ? 0.12 : 0.25)
                   : Colors.transparent,
               width: 1.0,
             ),
@@ -80,21 +97,23 @@ class _AppButtonState extends State<AppButton> {
                 : (_isPressed
                     ? [
                         BoxShadow(
-                          color: AppTheme.shadowDark.withValues(alpha: 0.25),
-                          offset: const Offset(0, 2),
+                          color: AppTheme.shadowDark.withValues(alpha: 0.22),
+                          offset: const Offset(1, 2),
                           blurRadius: 4,
                         ),
                       ]
                     : [
                         BoxShadow(
-                          color: AppTheme.shadowDark.withValues(alpha: 0.38),
-                          offset: const Offset(0, 5),
-                          blurRadius: 10,
+                          color: Colors.white.withValues(
+                            alpha: AppTheme.current.isDark ? 0.22 : 0.35,
+                          ),
+                          offset: const Offset(-2, -2),
+                          blurRadius: 4,
                         ),
                         BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.28),
-                          offset: const Offset(0, -1),
-                          blurRadius: 2,
+                          color: AppTheme.shadowDark.withValues(alpha: 0.38),
+                          offset: const Offset(3, 5),
+                          blurRadius: 10,
                         ),
                       ]),
           ),
@@ -102,6 +121,9 @@ class _AppButtonState extends State<AppButton> {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(widget.borderRadius),
+              onTapDown: isEnabled ? _handleTapDown : null,
+              onTapUp: isEnabled ? _handleTapUp : null,
+              onTapCancel: isEnabled ? _handleTapCancel : null,
               onTap: isEnabled ? widget.onPressed : null,
               splashColor: Colors.black.withValues(alpha: 0.12),
               highlightColor: Colors.white.withValues(alpha: 0.12),

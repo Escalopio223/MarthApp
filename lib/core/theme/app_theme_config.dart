@@ -58,25 +58,26 @@ class AppThemeConfig {
   // ===========================================================================
 
   /// Micro-gradiente diagonal sutil (135°) para generar curvatura volumétrica 3D en la arcilla.
-  /// Simula iluminación cenital-izquierda para un relieve almohadillado táctil.
+  /// Simula iluminación cenital-izquierda para un relieve almohadillado táctil adaptado al tema.
   LinearGradient claySurfaceGradient({Color? baseColor}) {
     final effectiveColor = baseColor ?? bgSurface;
     final topHighlight = isDark
-        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.07), effectiveColor)
-        : Color.alphaBlend(Colors.white.withValues(alpha: 0.45), effectiveColor);
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.08), effectiveColor)
+        : Color.alphaBlend(Colors.white.withValues(alpha: 0.40), effectiveColor);
     final bottomShade = isDark
-        ? Color.alphaBlend(Colors.black.withValues(alpha: 0.10), effectiveColor)
-        : Color.alphaBlend(Colors.black.withValues(alpha: 0.05), effectiveColor);
+        ? Color.alphaBlend(Colors.black.withValues(alpha: 0.18), effectiveColor)
+        : Color.alphaBlend(shadowDark.withValues(alpha: 0.20), effectiveColor);
 
     return LinearGradient(
-      colors: [topHighlight, bottomShade],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
+      colors: [topHighlight, effectiveColor, bottomShade],
+      stops: const [0.0, 0.45, 1.0],
+      begin: const Alignment(-0.8, -0.8),
+      end: const Alignment(0.8, 0.8),
     );
   }
 
-  /// Sistema de dobles sombras contenidas para elevación táctil ("Controlled Clay").
-  /// Evita solapamientos en listas densas limitando el blur a 10px.
+  /// Sistema de dobles sombras volumétricas para elevación física ("Puffy Clay").
+  /// Proyecta resplandor suave superior y oclusión ambiental inferior, comprimiéndose al presionar.
   List<BoxShadow> clayRaisedShadows({
     Color? baseColor,
     bool isPressed = false,
@@ -84,14 +85,15 @@ class AppThemeConfig {
     if (isPressed) {
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: isDark ? 0.35 : 0.15),
+          color: shadowDark.withValues(alpha: isDark ? 0.40 : 0.20),
           offset: const Offset(1, 2),
           blurRadius: 4,
         ),
         BoxShadow(
-          color: shadowLight.withValues(alpha: isDark ? 0.15 : 0.60),
+          color: (isDark ? Colors.white : shadowLight)
+              .withValues(alpha: isDark ? 0.04 : 0.45),
           offset: const Offset(-1, -1),
-          blurRadius: 3,
+          blurRadius: 2,
         ),
       ];
     }
@@ -99,53 +101,57 @@ class AppThemeConfig {
     if (isDark) {
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: 0.45),
+          color: shadowDark.withValues(alpha: 0.65),
           offset: const Offset(3, 4),
-          blurRadius: 10,
+          blurRadius: 10.0,
+          spreadRadius: 0,
         ),
         BoxShadow(
-          color: shadowLight.withValues(alpha: 0.22),
+          color: Colors.white.withValues(alpha: 0.08),
           offset: const Offset(-2, -2),
-          blurRadius: 6,
+          blurRadius: 6.0,
+          spreadRadius: 0,
         ),
       ];
     } else {
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: 0.32),
-          offset: const Offset(3, 5),
-          blurRadius: 10,
+          color: shadowDark.withValues(alpha: 0.35),
+          offset: const Offset(3, 4),
+          blurRadius: 10.0,
+          spreadRadius: 0,
         ),
         BoxShadow(
           color: shadowLight.withValues(alpha: 0.90),
           offset: const Offset(-2, -2),
-          blurRadius: 6,
+          blurRadius: 6.0,
+          spreadRadius: 0,
         ),
       ];
     }
   }
 
-  /// Sombra incrustada / hendidura cóncava para campos de texto y elementos incrustados
+  /// Sombra incrustada / hendidura cóncava para campos de texto y ranuras excavadas
   List<BoxShadow> clayInsetShadows() {
     if (isDark) {
       return [
         BoxShadow(
-          color: shadowDark.withValues(alpha: 0.45),
-          offset: const Offset(2, 2),
-          blurRadius: 4,
+          color: Colors.black.withValues(alpha: 0.55),
+          offset: const Offset(2, 3),
+          blurRadius: 5,
         ),
         BoxShadow(
-          color: shadowLight.withValues(alpha: 0.15),
+          color: Colors.white.withValues(alpha: 0.05),
           offset: const Offset(-1, -1),
-          blurRadius: 3,
+          blurRadius: 2,
         ),
       ];
     } else {
       return [
         BoxShadow(
           color: shadowDark.withValues(alpha: 0.25),
-          offset: const Offset(2, 2),
-          blurRadius: 4,
+          offset: const Offset(2, 3),
+          blurRadius: 5,
         ),
         BoxShadow(
           color: shadowLight.withValues(alpha: 0.85),
@@ -171,7 +177,17 @@ class AppThemeConfig {
   Color get cardBorderColor =>
       textSecondary.withValues(alpha: isDark ? 0.15 : 0.18);
 
-  // Alias retrocompatibles para migración fluida
+  // Alias y métodos puffy retrocompatibles
+  LinearGradient clayPuffyGradient({Color? baseColor}) =>
+      claySurfaceGradient(baseColor: baseColor);
+  List<BoxShadow> clayPuffyRaisedShadows({
+    Color? baseColor,
+    bool isPressed = false,
+  }) =>
+      clayRaisedShadows(baseColor: baseColor, isPressed: isPressed);
+  List<BoxShadow> clayPuffyInsetShadows() => clayInsetShadows();
+  Color get clayPuffyBorderColor => cardBorderColor;
+
   LinearGradient get liquidPrimaryGradient => actionGradient;
   Color get glassBorderColor => cardBorderColor;
   Color get glassSurfaceColor => bgSurface;
@@ -201,11 +217,32 @@ class AppThemeConfig {
         error: const Color(0xFFFF5E7E),
         onError: Colors.white,
       ),
+      cardTheme: CardThemeData(
+        color: bgSurface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: bgSurface,
+        elevation: 10,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: bgCanvas,
+        modalBackgroundColor: bgCanvas,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark
-            ? Color.alphaBlend(Colors.black.withValues(alpha: 0.18), bgSurface)
-            : Color.alphaBlend(shadowDark.withValues(alpha: 0.12), bgSurface),
+            ? Color.alphaBlend(Colors.black.withValues(alpha: 0.22), bgSurface)
+            : Color.alphaBlend(shadowDark.withValues(alpha: 0.10), bgSurface),
         hintStyle: TextStyle(
           color: textSecondary.withValues(alpha: 0.75),
           fontSize: 14,
@@ -214,35 +251,35 @@ class AppThemeConfig {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(
             color: cardBorderColor,
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(
             color: cardBorderColor,
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide(
             color: accentPrimary,
-            width: 1.5,
+            width: 1.6,
           ),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(
             color: Color(0xFFFF5E7E),
             width: 1.5,
           ),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(
             color: Color(0xFFFF5E7E),
             width: 2,

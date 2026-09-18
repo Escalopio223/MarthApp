@@ -229,7 +229,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
 
                     // Campo: Nombre del Entorno
                     Text(
-                      'Nombre del Entorno',
+                      'Nombre del entorno',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 12,
@@ -272,7 +272,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                     Row(
                       children: [
                         Text(
-                          'Color del Entorno',
+                          'Color del entorno',
                           style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontSize: 12,
@@ -340,7 +340,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
 
                     // Selector de Icono
                     Text(
-                      'Icono del Entorno',
+                      'Icono del entorno',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 12,
@@ -408,7 +408,7 @@ class _CreateEnvironmentModalState extends State<CreateEnvironmentModal> {
                     const SizedBox(height: 14),
 
                     AppButton(
-                      text: 'Crear Entorno',
+                      text: 'Crear entorno',
                       isLoading: isLoading,
                       icon: Icons.check_rounded,
                       onPressed: isLoading ? null : _handleCreate,

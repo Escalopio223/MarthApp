@@ -93,9 +93,19 @@ class AppTheme {
 
   /// Borde estructural sutil de la arcilla
   static Color get cardBorderColor => current.cardBorderColor;
+  static Color get clayPuffyBorderColor => current.cardBorderColor;
   static Color get glassBorderColor => current.cardBorderColor;
   static Color get glassSurfaceColor => current.bgSurface;
   static double get glassBlur => 0.0;
+
+  static LinearGradient clayPuffyGradient({Color? baseColor}) =>
+      current.claySurfaceGradient(baseColor: baseColor);
+  static List<BoxShadow> clayPuffyRaisedShadows({
+    Color? baseColor,
+    bool isPressed = false,
+  }) =>
+      current.clayRaisedShadows(baseColor: baseColor, isPressed: isPressed);
+  static List<BoxShadow> clayPuffyInsetShadows() => current.clayInsetShadows();
 
   static List<BoxShadow> neumorphicRaisedShadows({Color? baseColor}) =>
       current.clayRaisedShadows(baseColor: baseColor);

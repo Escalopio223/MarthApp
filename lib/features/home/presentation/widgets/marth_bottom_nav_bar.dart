@@ -103,14 +103,38 @@ class MarthBottomNavBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? AppTheme.primaryLiquid.withValues(alpha: 0.12)
+                ? AppTheme.primaryLiquid.withValues(alpha: AppTheme.isDark ? 0.16 : 0.12)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            gradient: isSelected
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppTheme.primaryLiquid.withValues(alpha: AppTheme.isDark ? 0.22 : 0.18),
+                      AppTheme.primaryLiquid.withValues(alpha: AppTheme.isDark ? 0.10 : 0.06),
+                    ],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(18),
             border: isSelected
                 ? Border.all(
-                    color: AppTheme.primaryLiquid.withValues(alpha: 0.35),
-                    width: 0.8,
+                    color: Colors.white.withValues(alpha: AppTheme.isDark ? 0.20 : 0.35),
+                    width: 1.0,
                   )
+                : null,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: AppTheme.isDark ? 0.12 : 0.25),
+                      offset: const Offset(-1, -1),
+                      blurRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: AppTheme.shadowDark.withValues(alpha: 0.18),
+                      offset: const Offset(1, 2),
+                      blurRadius: 4,
+                    ),
+                  ]
                 : null,
           ),
           child: Column(

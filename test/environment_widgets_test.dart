@@ -88,7 +88,7 @@ void main() {
         // Bottom sheet is now open
         expect(find.text('Entornos de trabajo'), findsOneWidget);
         expect(find.text('Todos los entornos'), findsOneWidget);
-        expect(find.text('Piso compartido'), findsOneWidget);
+        expect(find.text('Piso Compartido'), findsOneWidget);
         expect(find.text('Crear nuevo entorno'), findsOneWidget);
 
         // Tap "Todos los entornos"
