@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -63,6 +63,19 @@ class MarthBottomNavBar extends StatelessWidget {
             onTap: () {
               HapticFeedback.selectionClick();
               onTabSelected(1);
+            },
+          ),
+          const SizedBox(width: 12),
+          // Pestana 2: Planificador
+          _buildNavItem(
+            index: 2,
+            icon: Icons.calendar_month_outlined,
+            activeIcon: Icons.calendar_month_rounded,
+            label: 'Planificador',
+            badgeCount: 0,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              onTabSelected(2);
             },
           ),
         ],

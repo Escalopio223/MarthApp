@@ -26,6 +26,7 @@ import 'package:marth_app/features/leisure/domain/models/tv_season_details_dto.d
 import 'package:marth_app/features/leisure/domain/repositories/i_leisure_repository.dart';
 import 'package:marth_app/features/leisure/presentation/controllers/leisure_controller.dart';
 import 'package:marth_app/features/leisure/presentation/screens/leisure_screen.dart';
+import 'package:marth_app/features/planificador/presentation/screens/planificador_screen.dart';
 import 'package:marth_app/features/profile/presentation/controllers/profile_controller.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -273,6 +274,7 @@ class FakeLeisureRepo implements ILeisureRepository {
     List<String>? genres,
     int? customOrder,
     LeisureMediaDetails? detailsToCache,
+    bool? isFreeToPlay,
   }) async {
     return LeisureSharedListItemModel(
       id: '1',
@@ -420,5 +422,45 @@ void main() {
       expect(leisureController.currentEnvironmentId, equals(collabEnv.id));
       expect(leisureController.isPersonalEnvironment, isFalse);
     });
+
+    testWidgets('Tapping Planificador tab mounts PlanificadorScreen', (
+      tester,
+    ) async {
+      await tester.pumpWidget(createTestApp(initialIndex: 0));
+      await tester.pumpAndSettle();
+
+      // Tap on the Planificador tab in bottom nav
+      final navTabFinder = find.descendant(
+        of: find.byType(MarthBottomNavBar),
+        matching: find.text('Planificador'),
+      );
+      await tester.tap(navTabFinder);
+      await tester.pumpAndSettle();
+
+      // PlanificadorScreen is now mounted
+      expect(find.byType(PlanificadorScreen), findsOneWidget);
+    });
+
+    testWidgets(
+      'Tapping Planificador active module shortcut card navigates to PlanificadorScreen',
+      (tester) async {
+        await tester.pumpWidget(createTestApp(initialIndex: 0));
+        await tester.pumpAndSettle();
+
+        // Find the Planificador text inside EnvironmentsHomeView
+        final cardTextFinder = find.descendant(
+          of: find.byType(EnvironmentsHomeView),
+          matching: find.text('Planificador'),
+        );
+        expect(cardTextFinder, findsOneWidget);
+
+        await tester.ensureVisible(cardTextFinder);
+        await tester.tap(cardTextFinder);
+        await tester.pumpAndSettle();
+
+        // Should switch to PlanificadorScreen
+        expect(find.byType(PlanificadorScreen), findsOneWidget);
+      },
+    );
   });
 }

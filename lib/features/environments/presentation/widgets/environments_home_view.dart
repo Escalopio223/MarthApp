@@ -23,6 +23,7 @@ class EnvironmentsHomeView extends StatelessWidget {
   final ProfileController? profileController;
   final String? userEmail;
   final VoidCallback? onNavigateToLeisure;
+  final VoidCallback? onNavigateToPlanificador;
   final VoidCallback? onNavigateToFriends;
   final VoidCallback? onOpenSettings;
   final int rouletteCount;
@@ -34,6 +35,7 @@ class EnvironmentsHomeView extends StatelessWidget {
     this.profileController,
     this.userEmail,
     this.onNavigateToLeisure,
+    this.onNavigateToPlanificador,
     this.onNavigateToFriends,
     this.onOpenSettings,
     this.rouletteCount = 0,
@@ -76,7 +78,13 @@ class EnvironmentsHomeView extends StatelessWidget {
               _buildWorkspacesSection(context, environments, activeEnv, isAll),
               const SizedBox(height: 20),
 
-              // 3. Accion de creacion rapida
+              // 3. Módulos del entorno activo
+              if (activeEnv != null && !isAll) ...[
+                _buildActiveModulesSection(context, activeEnv),
+                const SizedBox(height: 20),
+              ],
+
+              // 4. Accion de creacion rapida
               AppButton(
                 text: 'Crear nuevo entorno',
                 icon: Icons.add_rounded,
@@ -90,6 +98,114 @@ class EnvironmentsHomeView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildActiveModulesSection(
+    BuildContext context,
+    EnvironmentModel activeEnv,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'MÓDULOS DE ${activeEnv.name.toUpperCase()}',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            // Módulo Planificador
+            Expanded(
+              child: AppCard(
+                onTap: onNavigateToPlanificador,
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.actionGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.calendar_month_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Planificador',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Agenda, tareas y reparto',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Módulo Ocio
+            Expanded(
+              child: AppCard(
+                onTap: onNavigateToLeisure,
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryAccent.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.local_activity_rounded,
+                        color: AppTheme.secondaryAccent,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Ocio & Cultura',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Películas, series y juegos',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

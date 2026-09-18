@@ -1,7 +1,9 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
 import 'core/constants/app_constants.dart';
+import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/presentation/controllers/auth_controller.dart';
@@ -22,6 +24,14 @@ Future<void> main() async {
     } catch (e) {
       debugPrint('Error al inicializar Supabase: $e');
     }
+  }
+
+  // Inicialización de Firebase y del servicio global de notificaciones push
+  try {
+    await Firebase.initializeApp();
+    await PushNotificationService.instance.initialize();
+  } catch (e) {
+    debugPrint('[PushNotificationService] FCM no configurado en esta plataforma: $e');
   }
 
   runApp(const MarthApp());
@@ -107,6 +117,10 @@ class _AuthGateState extends State<AuthGate> {
         final event = data.event;
         debugPrint('[AuthGate] Evento recibido de Supabase: $event');
 
+        if (event == AuthChangeEvent.signedIn) {
+          PushNotificationService.instance.sincronizarTokenConSupabase();
+        }
+
         if (event == AuthChangeEvent.passwordRecovery) {
           if (mounted) {
             setState(() {
@@ -129,6 +143,11 @@ class _AuthGateState extends State<AuthGate> {
           if (mounted && !_authController.isRegistering) setState(() {});
         }
       });
+
+      // Sincronizar token si ya existe sesión previa activa
+      if (supabaseClient?.auth.currentSession != null) {
+        PushNotificationService.instance.sincronizarTokenConSupabase();
+      }
     } catch (e) {
       debugPrint('[AuthGate] Listener onAuthStateChange no disponible: $e');
     }

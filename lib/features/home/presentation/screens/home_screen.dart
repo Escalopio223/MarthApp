@@ -10,6 +10,8 @@ import '../../../environments/presentation/widgets/environments_home_view.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../leisure/presentation/controllers/leisure_controller.dart';
 import '../../../leisure/presentation/screens/leisure_screen.dart';
+import '../../../planificador/presentation/controllers/planificador_controller.dart';
+import '../../../planificador/presentation/screens/planificador_screen.dart';
 import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
@@ -18,15 +20,16 @@ import '../widgets/marth_bottom_nav_bar.dart';
 
 /// Pantalla principal y shell de navegacion de MarthApp:
 /// - AppBar superior: Logo MarthApp ampliado a la izquierda, Selector de Entorno interactivo y Avatar de ajustes
-/// - Barra inferior Claymorfica de 2 pestanas: Entornos y Ocio
-/// - Renderizado diferido (lazy loading) para la pestana de Ocio (cero llamadas de red en el arranque)
-/// - Sincronizacion reactiva inmediata entre EnvironmentController y LeisureController
+/// - Barra inferior Claymorfica de 3 pestanas: Entornos, Ocio y Planificador
+/// - Renderizado diferido (lazy loading) para Ocio y Planificador (cero llamadas innecesarias en el arranque)
+/// - Sincronizacion reactiva inmediata entre EnvironmentController, LeisureController y PlanificadorController
 class HomeScreen extends StatefulWidget {
   final AuthController authController;
   final FriendsController? friendsController;
   final ProfileController? profileController;
   final EnvironmentController? environmentController;
   final LeisureController? leisureController;
+  final PlanificadorController? planificadorController;
   final int initialIndex;
 
   const HomeScreen({
@@ -36,6 +39,7 @@ class HomeScreen extends StatefulWidget {
     this.profileController,
     this.environmentController,
     this.leisureController,
+    this.planificadorController,
     this.initialIndex = 0,
   });
 
@@ -48,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final ProfileController _profileController;
   late final EnvironmentController _environmentController;
   late final LeisureController _leisureController;
+  late final PlanificadorController _planificadorController;
 
   late int _currentTabIndex;
   late final Set<int> _loadedIndices;
@@ -71,6 +76,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _leisureController = widget.leisureController ?? LeisureController();
     _leisureController.addListener(_onControllerUpdate);
 
+    _planificadorController =
+        widget.planificadorController ?? PlanificadorController();
+    _planificadorController.addListener(_onControllerUpdate);
+
     final user = widget.authController.user;
     if (user != null) {
       if (widget.friendsController == null) {
@@ -82,13 +91,16 @@ class _HomeScreenState extends State<HomeScreen> {
       if (widget.environmentController == null) {
         _environmentController.initialize(user.id);
       }
+      final activeEnv = _environmentController.activeEnvironment;
       if (widget.leisureController == null) {
-        final activeEnv = _environmentController.activeEnvironment;
         _leisureController.initialize(
           user.id,
           environmentId: activeEnv?.id,
           isPersonal: activeEnv?.isPersonal ?? true,
         );
+      }
+      if (widget.planificadorController == null && activeEnv != null) {
+        _planificadorController.setEntorno(activeEnv.id);
       }
     }
   }
@@ -103,6 +115,9 @@ class _HomeScreenState extends State<HomeScreen> {
       activeEnv?.id,
       isPersonal: activeEnv?.isPersonal ?? true,
     );
+    if (activeEnv != null) {
+      _planificadorController.setEntorno(activeEnv.id);
+    }
     if (mounted) setState(() {});
   }
 
@@ -112,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _profileController.removeListener(_onControllerUpdate);
     _environmentController.removeListener(_onEnvironmentChanged);
     _leisureController.removeListener(_onControllerUpdate);
+    _planificadorController.removeListener(_onControllerUpdate);
 
     if (widget.friendsController == null) {
       _friendsController.dispose();
@@ -124,6 +140,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (widget.leisureController == null) {
       _leisureController.dispose();
+    }
+    if (widget.planificadorController == null) {
+      _planificadorController.dispose();
     }
     super.dispose();
   }
@@ -187,6 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
               profileController: _profileController,
               userEmail: email,
               onNavigateToLeisure: () => _onTabSelected(1),
+              onNavigateToPlanificador: () => _onTabSelected(2),
               onOpenSettings: () => _openSettings(context),
             ),
 
@@ -195,6 +215,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? LeisureScreen(
                     controller: _leisureController,
                     environmentController: _environmentController,
+                    asTab: true,
+                  )
+                : const SizedBox.shrink(),
+
+            // Pestana 2: Carga diferida de PlanificadorScreen
+            _loadedIndices.contains(2)
+                ? PlanificadorScreen(
+                    controller: _planificadorController,
+                    environmentController: _environmentController,
+                    currentUserId: user?.id,
                     asTab: true,
                   )
                 : const SizedBox.shrink(),

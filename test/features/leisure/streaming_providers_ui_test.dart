@@ -134,7 +134,6 @@ class MockStreamingRepo implements ILeisureRepository {
   @override
   Future<List<LeisureEnvironmentMatchModel>> getEnvironmentMatches({required String environmentId}) async => [];
 
-  @override
   Future<void> clearEnvironmentMatches({required String environmentId}) async {}
 
   @override
