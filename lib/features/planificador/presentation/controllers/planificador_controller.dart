@@ -11,6 +11,7 @@ import '../../domain/models/recordatorio_tarea_model.dart';
 import '../../domain/models/tarea_model.dart';
 import '../../domain/repositories/i_planificador_repository.dart';
 import '../../infrastructure/repositories/planificador_repository.dart';
+import '../../../../core/services/local_notification_service.dart';
 
 /// Plantilla predefinida para tareas habituales del hogar
 class PlantillaTarea {
@@ -93,6 +94,7 @@ class PlanificadorController extends ChangeNotifier {
   StreamSubscription<List<ProyectoModel>>? _proyectosSub;
   StreamSubscription<List<TareaModel>>? _tareasSub;
   StreamSubscription<List<EventoModel>>? _eventosSub;
+  bool _initialSyncDone = false;
 
   // Filtro de usuario en vista "Hoy" (null = todas, o userId)
   String? _filtroUsuarioId;
@@ -364,6 +366,7 @@ class PlanificadorController extends ChangeNotifier {
     if (newEntornoId == null || newEntornoId == _entornoId) return;
     _entornoId = newEntornoId;
     _errorMessage = null;
+    _initialSyncDone = false;
     _participantesPersonalizados = false;
     _participantesIds = [];
     _tareasSeleccionadasIds.clear();
@@ -401,10 +404,17 @@ class PlanificadorController extends ChangeNotifier {
 
       _tareasSub = _repository.streamTareas(entornoId).listen(
         (tareas) {
+          final prevTareasMap = {for (final t in _tareas) t.id: t};
           _tareas = tareas;
           _actualizarRepartoAlCambiarTareas();
           _isLoading = false;
           notifyListeners();
+
+          if (_initialSyncDone) {
+            _reaccionarRemotamenteATareas(prevTareasMap, tareas);
+          } else {
+            _checkInitialNotificationSync();
+          }
         },
         onError: (err) {
           debugPrint('[Planificador] Error en streamTareas ($entornoId): $err');
@@ -415,9 +425,16 @@ class PlanificadorController extends ChangeNotifier {
 
       _eventosSub = _repository.streamEventos(entornoId).listen(
         (eventos) {
+          final prevEventosMap = {for (final e in _eventos) e.id: e};
           _eventos = eventos;
           _isLoading = false;
           notifyListeners();
+
+          if (_initialSyncDone) {
+            _reaccionarRemotamenteAEventos(prevEventosMap, eventos);
+          } else {
+            _checkInitialNotificationSync();
+          }
         },
         onError: (err) {
           debugPrint('[Planificador] Error en streamEventos ($entornoId): $err');
@@ -473,8 +490,10 @@ class PlanificadorController extends ChangeNotifier {
     // Feedback háptico atómico: impacto medio al completar, ligero al desmarcar
     if (nuevoEstado == 'completada') {
       HapticFeedback.mediumImpact();
+      unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeTarea(tareaId));
     } else {
       HapticFeedback.lightImpact();
+      _reprogramarRecordatoriosDeTareaLocal(tarea.copyWith(estado: nuevoEstado));
     }
 
     // Optimistic UI update
@@ -680,6 +699,7 @@ class PlanificadorController extends ChangeNotifier {
       if (!exists) {
         _tareas = [nuevaTarea, ..._tareas];
         _actualizarRepartoAlCambiarTareas();
+        _reprogramarRecordatoriosDeTareaLocal(nuevaTarea);
         notifyListeners();
       }
     } catch (e) {
@@ -717,11 +737,14 @@ class PlanificadorController extends ChangeNotifier {
       notifyListeners();
     }
 
+    _reprogramarRecordatoriosDeTareaLocal(tarea);
+
     try {
       await _repository.actualizarTarea(tarea);
     } catch (e) {
       if (index != -1 && previousTarea != null) {
         _tareas[index] = previousTarea;
+        _reprogramarRecordatoriosDeTareaLocal(previousTarea);
         notifyListeners();
       }
       _errorMessage = 'Error al actualizar tarea: $e';
@@ -740,12 +763,15 @@ class PlanificadorController extends ChangeNotifier {
       notifyListeners();
     }
 
+    unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeTarea(tareaId));
+
     try {
       await _repository.eliminarTarea(tareaId);
     } catch (e) {
       if (index != -1 && previousTarea != null) {
         _tareas.insert(index, previousTarea);
         _actualizarRepartoAlCambiarTareas();
+        _reprogramarRecordatoriosDeTareaLocal(previousTarea);
         notifyListeners();
       }
       _errorMessage = 'Error al eliminar tarea: $e';
@@ -786,6 +812,7 @@ class PlanificadorController extends ChangeNotifier {
       final exists = _eventos.any((e) => e.id == nuevoEvento.id);
       if (!exists) {
         _eventos = [..._eventos, nuevoEvento];
+        _reprogramarRecordatoriosDeEventoLocal(nuevoEvento);
         notifyListeners();
       }
     } catch (e) {
@@ -804,11 +831,14 @@ class PlanificadorController extends ChangeNotifier {
       notifyListeners();
     }
 
+    _reprogramarRecordatoriosDeEventoLocal(evento);
+
     try {
       await _repository.actualizarEvento(evento);
     } catch (e) {
       if (index != -1 && previousEvento != null) {
         _eventos[index] = previousEvento;
+        _reprogramarRecordatoriosDeEventoLocal(previousEvento);
         notifyListeners();
       }
       _errorMessage = 'Error al actualizar evento: $e';
@@ -826,11 +856,14 @@ class PlanificadorController extends ChangeNotifier {
       notifyListeners();
     }
 
+    unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeEvento(eventoId));
+
     try {
       await _repository.eliminarEvento(eventoId);
     } catch (e) {
       if (index != -1 && previousEvento != null) {
         _eventos.insert(index, previousEvento);
+        _reprogramarRecordatoriosDeEventoLocal(previousEvento);
         notifyListeners();
       }
       _errorMessage = 'Error al eliminar evento: $e';
@@ -1130,6 +1163,109 @@ class PlanificadorController extends ChangeNotifier {
   @override
   void dispose() {
     _cancelSubscriptions();
+    LocalNotificationService.instance.cancelDebounceTimer();
     super.dispose();
+  }
+
+  // ===========================================================================
+  // Métodos Auxiliares para Notificaciones Locales Quirúrgicas
+  // ===========================================================================
+
+  void _checkInitialNotificationSync() {
+    if (_initialSyncDone || _entornoId == null) return;
+    if (_tareas.isNotEmpty || _eventos.isNotEmpty) {
+      _initialSyncDone = true;
+      unawaited(LocalNotificationService.instance.sincronizarRecordatoriosLocalmente(
+        tareas: _tareas,
+        eventos: _eventos,
+        currentUserId: _filtroUsuarioId,
+      ));
+    }
+  }
+
+  void _reaccionarRemotamenteATareas(
+    Map<String, TareaModel> prevMap,
+    List<TareaModel> newTareas,
+  ) {
+    final newMap = {for (final t in newTareas) t.id: t};
+
+    // 1. Tareas eliminadas remotamente
+    for (final prevEntry in prevMap.entries) {
+      if (!newMap.containsKey(prevEntry.key)) {
+        unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeTarea(prevEntry.key));
+      }
+    }
+
+    // 2. Tareas modificadas o completadas remotamente
+    for (final newTarea in newTareas) {
+      final prevTarea = prevMap[newTarea.id];
+      if (prevTarea == null) continue;
+
+      if (newTarea.estaCompletada && !prevTarea.estaCompletada) {
+        unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeTarea(newTarea.id));
+      } else if (!newTarea.estaCompletada && prevTarea.estaCompletada) {
+        _reprogramarRecordatoriosDeTareaLocal(newTarea);
+      } else if (newTarea.recordatorios != prevTarea.recordatorios ||
+          newTarea.fechaLimite != prevTarea.fechaLimite) {
+        _reprogramarRecordatoriosDeTareaLocal(newTarea);
+      }
+    }
+  }
+
+  void _reaccionarRemotamenteAEventos(
+    Map<String, EventoModel> prevMap,
+    List<EventoModel> newEventos,
+  ) {
+    final newMap = {for (final e in newEventos) e.id: e};
+
+    // 1. Eventos eliminados remotamente
+    for (final prevEntry in prevMap.entries) {
+      if (!newMap.containsKey(prevEntry.key)) {
+        unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeEvento(prevEntry.key));
+      }
+    }
+
+    // 2. Eventos modificados remotamente
+    for (final newEv in newEventos) {
+      final prevEv = prevMap[newEv.id];
+      if (prevEv == null) continue;
+
+      if (newEv.recordatorios != prevEv.recordatorios ||
+          newEv.fechaInicio != prevEv.fechaInicio) {
+        _reprogramarRecordatoriosDeEventoLocal(newEv);
+      }
+    }
+  }
+
+  void _reprogramarRecordatoriosDeTareaLocal(TareaModel tarea) {
+    unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeTarea(tarea.id));
+    if (tarea.estaCompletada) return;
+
+    final bool mePertenece = tarea.asignadoA == null ||
+        tarea.asignadoA!.isEmpty ||
+        tarea.asignadoA == _filtroUsuarioId;
+
+    if (mePertenece && tarea.recordatorios.isNotEmpty) {
+      for (final rec in tarea.recordatorios) {
+        unawaited(LocalNotificationService.instance.programarRecordatorioTarea(
+          tareaId: tarea.id,
+          tituloTarea: tarea.titulo,
+          recordatorio: rec,
+        ));
+      }
+    }
+  }
+
+  void _reprogramarRecordatoriosDeEventoLocal(EventoModel evento) {
+    unawaited(LocalNotificationService.instance.cancelarRecordatoriosDeEvento(evento.id));
+    if (evento.recordatorios.isNotEmpty) {
+      for (final rec in evento.recordatorios) {
+        unawaited(LocalNotificationService.instance.programarRecordatorioEvento(
+          eventoId: evento.id,
+          tituloEvento: evento.titulo,
+          recordatorio: rec,
+        ));
+      }
+    }
   }
 }

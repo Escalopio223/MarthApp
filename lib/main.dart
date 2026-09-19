@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
 import 'core/constants/app_constants.dart';
+import 'core/services/local_notification_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
@@ -13,6 +14,13 @@ import 'features/home/presentation/screens/home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicialización del servicio local de notificaciones offline
+  try {
+    await LocalNotificationService.instance.initialize();
+  } catch (e) {
+    debugPrint('[LocalNotificationService] Error al inicializar notificaciones locales: $e');
+  }
 
   // Inicialización del SDK oficial de Supabase
   if (SupabaseConfig.isConfigured) {
