@@ -138,6 +138,8 @@ async function sendFcmMessage(
               notification: {
                 sound: 'default',
                 channel_id: 'marthapp_notifications',
+                icon: 'ic_notification',
+                color: '#7CBCA2',
               },
             },
           },
