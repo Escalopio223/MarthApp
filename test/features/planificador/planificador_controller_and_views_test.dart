@@ -637,7 +637,7 @@ void main() {
       expect(controller.repartoAsignaciones['t2'], equals('usr-alberto'));
     });
 
-    testWidgets('PlanificadorHoyView renders critical alerts, routines and task feed',
+    testWidgets('PlanificadorHoyView renders critical alerts and task feed without routine carousel',
         (tester) async {
       final now = DateTime.now();
       // Cumpleaños mañana
@@ -702,19 +702,12 @@ void main() {
       expect(find.text('Laura'), findsOneWidget);
       expect(find.text('¡MAÑANA ES SU CUMPLEAÑOS!'), findsOneWidget);
 
-      // Verifica carrusel de rutinas rápidas
-      expect(find.text('Fregar platos'), findsOneWidget);
-      expect(find.text('Poner lavadora'), findsOneWidget);
+      // Verifica que no se renderiza la sección de rutinas habituales (1 toque)
+      expect(find.text('RUTINAS HABITUALES (1 TOQUE)'), findsNothing);
+      expect(find.text('Fregar platos'), findsNothing);
 
       // Verifica tarea de hoy
       expect(find.text('Pasear a Max'), findsOneWidget);
-
-      // Tap en plantilla rápida de rutina
-      await tester.tap(find.text('Fregar platos'));
-      await tester.pump(const Duration(milliseconds: 50));
-
-      // Comprobar que se creó la tarea en el repositorio
-      expect(mockRepo.tareas.any((t) => t.titulo == 'Fregar platos'), isTrue);
     });
 
     testWidgets('CrearTareaRapidaDialog submits task with selected chips',

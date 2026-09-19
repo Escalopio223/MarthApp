@@ -16,7 +16,6 @@ import 'editar_tarea_dialog.dart';
 /// Vista principal "Hoy" para el módulo Planificador:
 /// - Feed vertical scrolleable enfocado en: "¿Qué hay que hacer hoy y quién lo hace?"
 /// - Alertas críticas superiores: Cumpleaños próximos con ideas de regalo y eventos con hora fija
-/// - Carrusel horizontal de plantillas habituales del hogar para añadir con 1 solo toque
 /// - Filtros ágiles mediante chips: "Mis tareas" vs "Todas" y por etiquetas del hogar
 /// - Agrupación visual por etiquetas para mantener todo ordenado
 /// - Checkbox atómico de 1 toque con tachado optimista inmediato sin recarga de pantalla
@@ -62,11 +61,7 @@ class PlanificadorHoyView extends StatelessWidget {
               const SizedBox(height: 16),
             ],
 
-            // 2. Carrusel de Rutinas Habituales del Hogar (1 toque)
-            _buildPlantillasHabitualesSection(context),
-            const SizedBox(height: 16),
-
-            // 3. Barra de Filtro Rápido (Mis tareas vs Todas y Etiquetas)
+            // 2. Barra de Filtro Rápido (Mis tareas vs Todas y Etiquetas)
             _buildFiltrosChipsSection(context, filtroActivo),
             const SizedBox(height: 14),
 
@@ -499,117 +494,7 @@ class PlanificadorHoyView extends StatelessWidget {
   }
 
   // ===========================================================================
-  // 2. Carrusel de Rutinas Habituales del Hogar (1 toque)
-  // ===========================================================================
-
-  Widget _buildPlantillasHabitualesSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'RUTINAS HABITUALES (1 TOQUE)',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.1,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            if (onIrAPlanificacion != null)
-              GestureDetector(
-                onTap: onIrAPlanificacion,
-                child: Text(
-                  'Ver planificación →',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryLiquid,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 38,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: PlanificadorController.plantillasHabituales.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final plantilla =
-                  PlanificadorController.plantillasHabituales[index];
-              return _buildPlantillaChip(context, plantilla);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPlantillaChip(BuildContext context, PlantillaTarea plantilla) {
-    return InkWell(
-      onTap: () async {
-        HapticFeedback.lightImpact();
-        await controller.crearTareaDesdePlantilla(
-          plantilla,
-          asignadoA: usuarioActualId,
-          fechaLimite: DateTime.now(),
-        );
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Añadida: ${plantilla.titulo} para hoy'),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppTheme.surfaceDark,
-            ),
-          );
-        }
-      },
-      borderRadius: BorderRadius.circular(19),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceDark,
-          borderRadius: BorderRadius.circular(19),
-          border: Border.all(color: AppTheme.cardBorderColor, width: 0.8),
-          boxShadow: AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              plantilla.icono,
-              size: 15,
-              color: AppTheme.primaryLiquid,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              plantilla.titulo,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.add_rounded,
-              size: 14,
-              color: AppTheme.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // 3. Barra de Filtro Rápido
+  // 2. Barra de Filtro Rápido
   // ===========================================================================
 
   Widget _buildFiltrosChipsSection(
