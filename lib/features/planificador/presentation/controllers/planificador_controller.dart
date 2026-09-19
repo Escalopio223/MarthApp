@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/models/agenda_item_model.dart';
 import '../../domain/models/checklist_item_model.dart';
@@ -469,6 +470,13 @@ class PlanificadorController extends ChangeNotifier {
     final nuevoEstado =
         tarea.estado == 'completada' ? 'pendiente' : 'completada';
 
+    // Feedback háptico atómico: impacto medio al completar, ligero al desmarcar
+    if (nuevoEstado == 'completada') {
+      HapticFeedback.mediumImpact();
+    } else {
+      HapticFeedback.lightImpact();
+    }
+
     // Optimistic UI update
     final index = _tareas.indexWhere((t) => t.id == tareaId);
     if (index != -1) {
@@ -485,6 +493,7 @@ class PlanificadorController extends ChangeNotifier {
   }
 
   Future<void> toggleChecklistItem(String tareaId, String itemId) async {
+    HapticFeedback.lightImpact();
     // Optimistic UI update local inmediato
     final index = _tareas.indexWhere((t) => t.id == tareaId);
     if (index != -1) {
@@ -547,6 +556,7 @@ class PlanificadorController extends ChangeNotifier {
   }
 
   Future<void> toggleEventoChecklistItem(String eventoId, String itemId) async {
+    HapticFeedback.lightImpact();
     // Optimistic UI update local inmediato
     final index = _eventos.indexWhere((e) => e.id == eventoId);
     if (index != -1) {
@@ -593,6 +603,41 @@ class PlanificadorController extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = 'Error al crear proyecto: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> actualizarProyecto(ProyectoModel proyecto) async {
+    final index = _proyectos.indexWhere((p) => p.id == proyecto.id);
+    if (index != -1) {
+      _proyectos[index] = proyecto;
+      notifyListeners();
+    }
+    try {
+      await _repository.actualizarProyecto(proyecto);
+    } catch (e) {
+      _errorMessage = 'Error al actualizar proyecto: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> eliminarProyecto(String proyectoId) async {
+    _proyectos.removeWhere((p) => p.id == proyectoId);
+    // Para las tareas asignadas a este proyecto, desasociarlas localmente
+    _tareas = _tareas.map((t) {
+      if (t.proyectoId == proyectoId) {
+        return t.copyWith(clearProyectoId: true);
+      }
+      return t;
+    }).toList();
+    notifyListeners();
+
+    try {
+      await _repository.eliminarProyecto(proyectoId);
+    } catch (e) {
+      _errorMessage = 'Error al eliminar proyecto: $e';
       notifyListeners();
       rethrow;
     }
@@ -685,6 +730,7 @@ class PlanificadorController extends ChangeNotifier {
     String? personaCumpleanos,
     String? ideasRegalo,
     List<ChecklistItemModel> checklist = const [],
+    List<RecordatorioTareaModel> recordatorios = const [],
   }) async {
     final envId = _entornoId;
     if (envId == null) return;
@@ -700,6 +746,7 @@ class PlanificadorController extends ChangeNotifier {
         personaCumpleanos: personaCumpleanos,
         ideasRegalo: ideasRegalo,
         checklist: checklist,
+        recordatorios: recordatorios,
       );
 
       final exists = _eventos.any((e) => e.id == nuevoEvento.id);

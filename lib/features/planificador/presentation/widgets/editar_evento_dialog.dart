@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/evento_model.dart';
+import '../../domain/models/recordatorio_tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'checklist_editor_section.dart';
+import 'recordatorios_selector_widget.dart';
 
 /// Modal bottom sheet para editar y eliminar eventos del Planificador:
 /// - Permite editar título y fecha del evento
@@ -50,6 +52,7 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
   late String _tipo;
   late DateTime _fechaInicio;
   late List<ChecklistItemModel> _checklist;
+  late List<RecordatorioTareaModel> _recordatorios;
   bool _isSaving = false;
   bool _isDeleting = false;
 
@@ -66,6 +69,8 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
     _tipo = widget.evento.tipo;
     _fechaInicio = widget.evento.fechaInicio;
     _checklist = List<ChecklistItemModel>.from(widget.evento.checklist);
+    _recordatorios =
+        List<RecordatorioTareaModel>.from(widget.evento.recordatorios);
   }
 
   @override
@@ -132,6 +137,7 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
             ? _ideasController.text.trim()
             : null,
         checklist: _checklist,
+        recordatorios: _recordatorios,
       );
 
       await widget.controller.actualizarEvento(eventoActualizado);
@@ -442,6 +448,16 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
               hintText: 'Añadir elemento (ej. Coger cartilla)...',
               onChanged: (nuevosItems) {
                 setState(() => _checklist = nuevosItems);
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // SECCIÓN RECORDATORIOS PROGRAMADOS DEL EVENTO
+            RecordatoriosSelectorWidget(
+              recordatoriosIniciales: _recordatorios,
+              fechaLimite: _fechaInicio,
+              onChanged: (nuevos) {
+                setState(() => _recordatorios = List.from(nuevos));
               },
             ),
             const SizedBox(height: 20),

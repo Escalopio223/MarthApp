@@ -166,8 +166,9 @@ CREATE TABLE IF NOT EXISTS public.planificador_eventos (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Garantizar existencia de la columna checklist en tablas existentes
+-- Garantizar existencia de la columna checklist y recordatorios en tablas existentes
 ALTER TABLE public.planificador_eventos ADD COLUMN IF NOT EXISTS checklist JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.planificador_eventos ADD COLUMN IF NOT EXISTS recordatorios JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 COMMENT ON TABLE public.planificador_eventos IS 'Agenda, eventos y cumpleaños de familiares o miembros con recordatorios automáticos y checklist';
 

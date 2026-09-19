@@ -3,19 +3,26 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_container.dart';
+import '../../../environments/domain/models/environment_member_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
+import 'crear_tarea_rapida_dialog.dart';
+import 'editar_proyecto_dialog.dart';
 
 /// Vista de Proyectos y Backlog de Tareas sueltas con barras de progreso y checkboxes reactivos
 class ProyectosBacklogView extends StatefulWidget {
   final PlanificadorController controller;
+  final List<EnvironmentMemberModel> miembros;
+  final String? usuarioActualId;
   final VoidCallback? onCrearProyecto;
   final VoidCallback? onCrearTarea;
 
   const ProyectosBacklogView({
     super.key,
     required this.controller,
+    this.miembros = const [],
+    this.usuarioActualId,
     this.onCrearProyecto,
     this.onCrearTarea,
   });
@@ -28,6 +35,98 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
   // 0 = Proyectos, 1 = Tareas sueltas
   int _selectedTab = 0;
   final Set<String> _expandedProjectIds = {};
+
+  void _crearTareaEnProyecto(ProyectoModel proyecto) {
+    setState(() {
+      _expandedProjectIds.add(proyecto.id);
+    });
+    CrearTareaRapidaDialog.show(
+      context,
+      controller: widget.controller,
+      miembros: widget.miembros,
+      usuarioActualId: widget.usuarioActualId,
+      proyectoIdInicial: proyecto.id,
+    );
+  }
+
+  Future<void> _confirmarYEliminarProyecto(ProyectoModel proyecto) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_outline_rounded,
+                color: Colors.redAccent, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '¿Eliminar proyecto?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar "${proyecto.nombre}"?\n\n'
+          'Las tareas asociadas NO se eliminarán; se moverán a la sección de "Tareas sueltas".',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar definitivamente'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      HapticFeedback.heavyImpact();
+      try {
+        await widget.controller.eliminarProyecto(proyecto.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Proyecto "${proyecto.nombre}" eliminado'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al eliminar proyecto: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +351,78 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
                   ],
                 ),
               ),
+              // Menú de opciones del proyecto
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  color: AppTheme.textSecondary,
+                  size: 20,
+                ),
+                color: AppTheme.surfaceDark,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: AppTheme.cardBorderColor,
+                    width: 0.8,
+                  ),
+                ),
+                onSelected: (value) {
+                  if (value == 'crear_tarea') {
+                    _crearTareaEnProyecto(proyecto);
+                  } else if (value == 'editar') {
+                    EditarProyectoDialog.show(
+                      context,
+                      proyecto: proyecto,
+                      controller: widget.controller,
+                    );
+                  } else if (value == 'eliminar') {
+                    _confirmarYEliminarProyecto(proyecto);
+                  }
+                },
+                itemBuilder: (ctx) => [
+                  PopupMenuItem(
+                    value: 'crear_tarea',
+                    child: Row(
+                      children: [
+                        Icon(Icons.add_task_rounded,
+                            size: 18, color: AppTheme.primaryLiquid),
+                        const SizedBox(width: 10),
+                        const Text('Añadir tarea', style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'editar',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_rounded,
+                            size: 18, color: AppTheme.textPrimary),
+                        const SizedBox(width: 10),
+                        const Text('Editar proyecto', style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  PopupMenuItem(
+                    value: 'eliminar',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delete_outline_rounded,
+                            size: 18, color: Colors.redAccent),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Eliminar proyecto',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               // Botón expandir/colapsar tareas
               IconButton(
                 icon: Icon(
@@ -305,16 +476,56 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
           if (isExpanded) ...[
             const SizedBox(height: 14),
             const Divider(height: 1),
+            const SizedBox(height: 10),
+            // Sección para crear tarea directamente en este proyecto
+            InkWell(
+              onTap: () => _crearTareaEnProyecto(proyecto),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_circle_outline_rounded,
+                        size: 18, color: color),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Añadir tarea a ${proyecto.nombre}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 8),
             if (tareasDelProyecto.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  'Este proyecto no tiene tareas asociadas.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    color: AppTheme.textSecondary,
+                child: Center(
+                  child: Text(
+                    'No hay tareas creadas en este proyecto.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                 ),
               )
@@ -392,7 +603,11 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                HapticFeedback.selectionClick();
+                if (!isDone) {
+                  HapticFeedback.mediumImpact();
+                } else {
+                  HapticFeedback.lightImpact();
+                }
                 widget.controller.toggleTarea(tarea.id);
               },
               child: AnimatedContainer(

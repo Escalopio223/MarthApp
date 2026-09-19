@@ -7,6 +7,7 @@ import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/etiqueta_tarea.dart';
 import '../../domain/models/evento_model.dart';
+import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'crear_tarea_rapida_dialog.dart';
@@ -20,7 +21,7 @@ import 'editar_tarea_dialog.dart';
 /// - Agrupación visual por etiquetas para mantener todo ordenado
 /// - Checkbox atómico de 1 toque con tachado optimista inmediato sin recarga de pantalla
 /// - Botón flotante para creación rápida de tareas en < 5 segundos
-class PlanificadorHoyView extends StatelessWidget {
+class PlanificadorHoyView extends StatefulWidget {
   final PlanificadorController controller;
   final List<EnvironmentMemberModel> miembros;
   final String? usuarioActualId;
@@ -35,10 +36,58 @@ class PlanificadorHoyView extends StatelessWidget {
   });
 
   @override
+  State<PlanificadorHoyView> createState() => _PlanificadorHoyViewState();
+}
+
+class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  PlanificadorController get controller => widget.controller;
+  List<EnvironmentMemberModel> get miembros => widget.miembros;
+  String? get usuarioActualId => widget.usuarioActualId;
+  VoidCallback? get onIrAPlanificacion => widget.onIrAPlanificacion;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final alertas = controller.alertasCriticasHoy;
-    final tareas = controller.tareasDeHoy;
+    final rawTareas = controller.tareasDeHoy;
     final filtroActivo = controller.filtroUsuarioId;
+
+    final query = _searchQuery.trim().toLowerCase();
+    final tareas = query.isEmpty
+        ? rawTareas
+        : rawTareas.where((t) {
+            if (t.titulo.toLowerCase().contains(query)) return true;
+            if (t.descripcion != null &&
+                t.descripcion!.toLowerCase().contains(query)) {
+              return true;
+            }
+            if (t.checklist.any((i) => i.titulo.toLowerCase().contains(query))) {
+              return true;
+            }
+            if (t.proyectoId != null) {
+              final p = controller.proyectos.firstWhere(
+                (proj) => proj.id == t.proyectoId,
+                orElse: () => ProyectoModel(
+                  id: '',
+                  entornoId: '',
+                  nombre: '',
+                  createdBy: '',
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ),
+              );
+              if (p.nombre.toLowerCase().contains(query)) return true;
+            }
+            return false;
+          }).toList();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -61,15 +110,20 @@ class PlanificadorHoyView extends StatelessWidget {
               const SizedBox(height: 16),
             ],
 
-            // 2. Barra de Filtro Rápido (Mis tareas vs Todas y Etiquetas)
+            // 2. Buscador de tareas en Hoy
+            _buildSearchBar(context),
+
+            // 3. Barra de Filtro Rápido (Mis tareas vs Todas y Etiquetas)
             _buildFiltrosChipsSection(context, filtroActivo),
             const SizedBox(height: 14),
 
             // 4. Feed de Tareas de Hoy (Agrupadas o planas)
-            if (tareas.isEmpty)
+            if (rawTareas.isEmpty)
               _buildEmptyState(context)
+            else if (tareas.isEmpty)
+              _buildEmptySearchState(context)
             else if (controller.agruparPorEtiqueta)
-              ..._buildTareasAgrupadas(context)
+              ..._buildTareasAgrupadas(context, tareas)
             else
               ...tareas.map((tarea) => _buildTareaHoyItem(context, tarea)),
           ],
@@ -782,8 +836,20 @@ class PlanificadorHoyView extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildTareasAgrupadas(BuildContext context) {
-    final agrupadas = controller.tareasDeHoyAgrupadasPorEtiqueta;
+  List<Widget> _buildTareasAgrupadas(
+    BuildContext context, [
+    List<TareaModel>? tareasFiltradas,
+  ]) {
+    final Map<String, List<TareaModel>> agrupadas;
+    if (tareasFiltradas != null) {
+      agrupadas = {};
+      for (final t in tareasFiltradas) {
+        final tag = t.etiqueta ?? 'Sin etiqueta';
+        agrupadas.putIfAbsent(tag, () => []).add(t);
+      }
+    } else {
+      agrupadas = controller.tareasDeHoyAgrupadasPorEtiqueta;
+    }
     final List<Widget> items = [];
 
     for (final entry in agrupadas.entries) {
@@ -923,7 +989,11 @@ class PlanificadorHoyView extends StatelessWidget {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
-                          HapticFeedback.selectionClick();
+                          if (!isDone) {
+                            HapticFeedback.mediumImpact();
+                          } else {
+                            HapticFeedback.lightImpact();
+                          }
                           controller.toggleTarea(tarea.id);
                         },
                         child: AnimatedContainer(
@@ -1457,6 +1527,116 @@ class PlanificadorHoyView extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _searchQuery.isNotEmpty
+              ? AppTheme.primaryLiquid.withValues(alpha: 0.7)
+              : AppTheme.cardBorderColor,
+          width: _searchQuery.isNotEmpty ? 1.4 : 0.8,
+        ),
+        boxShadow: AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchQuery = val),
+        style: TextStyle(
+          color: AppTheme.textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Buscar tareas en Hoy...',
+          hintStyle: TextStyle(
+            color: AppTheme.textSecondary.withValues(alpha: 0.6),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: _searchQuery.isNotEmpty
+                ? AppTheme.primaryLiquid
+                : AppTheme.textSecondary,
+            size: 20,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  color: AppTheme.textSecondary,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptySearchState(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.cardBorderColor,
+          width: 0.8,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 48,
+            color: AppTheme.textSecondary.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Sin resultados',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'No hay tareas en Hoy que coincidan con "$_searchQuery"',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              _searchController.clear();
+              setState(() => _searchQuery = '');
+            },
+            icon: const Icon(Icons.clear_rounded, size: 16),
+            label: const Text('Limpiar búsqueda'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryLiquid,
+            ),
+          ),
+        ],
       ),
     );
   }

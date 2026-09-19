@@ -14,6 +14,7 @@ import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'checklist_editor_section.dart';
 import 'recordatorios_selector_widget.dart';
+import 'tiempo_estimado_selector.dart';
 
 /// Modal bottom sheet para editar y eliminar tareas del Planificador:
 /// - Permite renombrar la tarea (ej: cambiar "fregar platos")
@@ -70,6 +71,7 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
   DateTime? _fechaPersonalizada;
   String? _asignadoAId;
   String? _etiquetaSeleccionada;
+  String? _proyectoIdSeleccionado;
   late int _tiempoMinutos;
   late List<ChecklistItemModel> _checklist;
   late List<ComentarioTareaModel> _comentarios;
@@ -84,6 +86,7 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
     _tituloController = TextEditingController(text: widget.tarea.titulo);
     _asignadoAId = widget.tarea.asignadoA;
     _etiquetaSeleccionada = widget.tarea.etiqueta;
+    _proyectoIdSeleccionado = widget.tarea.proyectoId;
     _tiempoMinutos = widget.tarea.tiempoEstimadoMinutos;
     _checklist = List<ChecklistItemModel>.from(widget.tarea.checklist);
     _comentarios = List<ComentarioTareaModel>.from(widget.tarea.comentarios);
@@ -160,6 +163,8 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
         titulo: nuevoTitulo,
         descripcion: _etiquetaSeleccionada,
         clearDescripcion: _etiquetaSeleccionada == null,
+        proyectoId: _proyectoIdSeleccionado,
+        clearProyectoId: _proyectoIdSeleccionado == null,
         fechaLimite: _calcularNuevaFechaLimite,
         clearFechaLimite: _calcularNuevaFechaLimite == null,
         asignadoA: _asignadoAId,
@@ -466,6 +471,22 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
           _buildEtiquetasSelector(),
           const SizedBox(height: 14),
 
+          // Selector opcional de Proyecto
+          if (widget.controller.proyectos.isNotEmpty) ...[
+            Text(
+              'Proyecto',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.1,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildProyectoSelector(),
+            const SizedBox(height: 14),
+          ],
+
           // Selector de fecha
           Text(
             'Fecha',
@@ -500,18 +521,13 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
           ),
           const SizedBox(height: 14),
 
-          // Selector de tiempo
-          Text(
-            'Tiempo',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.1,
-              color: AppTheme.textSecondary,
-            ),
+          // Selector interactivo de tiempo estimado (1-60 + minutos/horas o sin tiempo)
+          TiempoEstimadoSelector(
+            initialMinutes: _tiempoMinutos,
+            onChanged: (minutos) {
+              setState(() => _tiempoMinutos = minutos);
+            },
           ),
-          const SizedBox(height: 8),
-          _buildTiempoSelector(),
           const SizedBox(height: 14),
 
           // Selector de responsable
@@ -913,76 +929,6 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
     );
   }
 
-  Widget _buildTiempoSelector() {
-    final opciones = [
-      (label: 'Sin tiempo', minutos: 0),
-      (label: '15 min', minutos: 15),
-      (label: '30 min', minutos: 30),
-      (label: '45 min', minutos: 45),
-      (label: '1 hora', minutos: 60),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: opciones.map((opcion) {
-          final isSelected = _tiempoMinutos == opcion.minutos;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _tiempoMinutos = opcion.minutos);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppTheme.primaryLiquid.withValues(alpha: 0.18)
-                      : AppTheme.darkBackground,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryLiquid
-                        : AppTheme.cardBorderColor,
-                    width: isSelected ? 1.4 : 0.8,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      opcion.minutos == 0
-                          ? Icons.timer_off_outlined
-                          : Icons.access_time_rounded,
-                      size: 13,
-                      color: isSelected
-                          ? AppTheme.primaryLiquid
-                          : AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      opcion.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: isSelected
-                            ? AppTheme.primaryLiquid
-                            : AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
 
   Widget _buildComentariosSection() {
     return Column(
@@ -1146,4 +1092,125 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
       ],
     );
   }
+
+  Color _parseProjectColor(String hex) {
+    try {
+      final clean = hex.replaceAll('#', '');
+      return Color(int.parse('FF$clean', radix: 16));
+    } catch (_) {
+      return AppTheme.primaryLiquid;
+    }
+  }
+
+  IconData _getProjectIcon(String iconoKey) {
+    switch (iconoKey) {
+      case 'home':
+        return Icons.home_rounded;
+      case 'work':
+        return Icons.work_rounded;
+      case 'shopping':
+        return Icons.shopping_bag_rounded;
+      case 'star':
+        return Icons.star_rounded;
+      case 'build':
+        return Icons.build_rounded;
+      case 'favorite':
+        return Icons.favorite_rounded;
+      case 'fitness':
+        return Icons.fitness_center_rounded;
+      case 'flight':
+        return Icons.flight_rounded;
+      case 'folder':
+      default:
+        return Icons.folder_rounded;
+    }
+  }
+
+  Widget _buildProyectoSelector() {
+    final proyectos = widget.controller.proyectos;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildProyectoChip(
+            nombre: 'Sin proyecto',
+            icono: Icons.inbox_rounded,
+            color: AppTheme.textSecondary,
+            isSelected: _proyectoIdSeleccionado == null,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _proyectoIdSeleccionado = null);
+            },
+          ),
+          const SizedBox(width: 8),
+          ...proyectos.map((p) {
+            final isSelected = _proyectoIdSeleccionado == p.id;
+            final pColor = _parseProjectColor(p.colorHex);
+            final pIcon = _getProjectIcon(p.icono);
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: _buildProyectoChip(
+                nombre: p.nombre,
+                icono: pIcon,
+                color: pColor,
+                isSelected: isSelected,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    _proyectoIdSeleccionado = isSelected ? null : p.id;
+                  });
+                },
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProyectoChip({
+    required String nombre,
+    required IconData icono,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? color.withValues(alpha: 0.18)
+              : AppTheme.darkBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : AppTheme.cardBorderColor,
+            width: isSelected ? 1.4 : 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icono,
+              size: 14,
+              color: isSelected ? color : AppTheme.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              nombre,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? color : AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

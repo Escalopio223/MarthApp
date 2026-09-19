@@ -79,6 +79,7 @@ class TareaModel {
     String? id,
     String? entornoId,
     String? proyectoId,
+    bool clearProyectoId = false,
     String? titulo,
     String? descripcion,
     bool clearDescripcion = false,
@@ -99,7 +100,7 @@ class TareaModel {
     return TareaModel(
       id: id ?? this.id,
       entornoId: entornoId ?? this.entornoId,
-      proyectoId: proyectoId ?? this.proyectoId,
+      proyectoId: clearProyectoId ? null : (proyectoId ?? this.proyectoId),
       titulo: titulo ?? this.titulo,
       descripcion: clearDescripcion ? null : (descripcion ?? this.descripcion),
       fechaLimite: clearFechaLimite ? null : (fechaLimite ?? this.fechaLimite),

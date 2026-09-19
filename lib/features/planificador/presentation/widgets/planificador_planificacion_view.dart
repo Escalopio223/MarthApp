@@ -92,6 +92,8 @@ class _PlanificadorPlanificacionViewState
               // 1: Proyectos del hogar (sin ruido del día a día)
               ProyectosBacklogView(
                 controller: widget.controller,
+                miembros: widget.miembros,
+                usuarioActualId: widget.usuarioActualId,
                 onCrearProyecto: widget.onCrearProyecto,
                 onCrearTarea: widget.onCrearTarea,
               ),

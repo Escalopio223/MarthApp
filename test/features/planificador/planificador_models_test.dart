@@ -175,6 +175,44 @@ void main() {
       expect(serialized['checklist'], isA<List>());
       expect((serialized['checklist'] as List).length, equals(2));
     });
+
+    test('EventoModel supports recordatorios, calculates notification text and handles json', () {
+      final json = {
+        'id': 'ev-cumple',
+        'entorno_id': 'env-1',
+        'titulo': 'Cumpleaños de Mamá',
+        'tipo': 'cumpleanos',
+        'fecha_inicio': '2026-09-25T00:00:00Z',
+        'recordatorios': [
+          {
+            'id': 'rec-1',
+            'tarea_id': 'ev-cumple',
+            'fecha_notificacion': '2026-09-24',
+            'hora_notificacion': '09:00',
+            'enviado': false,
+          },
+          {
+            'id': 'rec-2',
+            'tarea_id': 'ev-cumple',
+            'fecha_notificacion': '2026-09-25',
+            'hora_notificacion': null,
+            'enviado': false,
+          },
+        ],
+        'created_by': 'usr-1',
+        'created_at': '2026-09-17T08:00:00Z',
+      };
+
+      final evento = EventoModel.fromJson(json);
+      expect(evento.recordatorios.length, equals(2));
+      expect(evento.recordatorios.first.horaNotificacion, equals('09:00'));
+      expect(evento.recordatorios.first.tieneHoraFija, isTrue);
+      expect(evento.recordatorios.last.tieneHoraFija, isFalse);
+
+      final serialized = evento.toJson();
+      expect(serialized['recordatorios'], isA<List>());
+      expect((serialized['recordatorios'] as List).length, equals(2));
+    });
   });
 
   group('Reparto Models Tests', () {

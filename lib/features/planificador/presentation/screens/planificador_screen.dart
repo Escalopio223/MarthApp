@@ -9,9 +9,11 @@ import '../../../../core/widgets/app_container.dart';
 import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
 import '../../domain/models/checklist_item_model.dart';
+import '../../domain/models/recordatorio_tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import '../widgets/checklist_editor_section.dart';
 import '../widgets/crear_tarea_rapida_dialog.dart';
+import '../widgets/recordatorios_selector_widget.dart';
 import '../widgets/planificador_hoy_view.dart';
 import '../widgets/planificador_planificacion_view.dart';
 
@@ -451,6 +453,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     final ideasController = TextEditingController();
     String tipo = 'evento_general';
     List<ChecklistItemModel> checklist = [];
+    List<RecordatorioTareaModel> recordatorios = [];
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -561,6 +564,16 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                         setModalState(() => checklist = nuevos);
                       },
                     ),
+                    const SizedBox(height: 16),
+
+                    // Selector de recordatorios programados (igual que en tareas)
+                    RecordatoriosSelectorWidget(
+                      recordatoriosIniciales: recordatorios,
+                      fechaLimite: _controller.selectedDate,
+                      onChanged: (nuevos) {
+                        setModalState(() => recordatorios = List.from(nuevos));
+                      },
+                    ),
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
@@ -584,6 +597,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                                         ? ideasController.text.trim()
                                         : null,
                                     checklist: checklist,
+                                    recordatorios: recordatorios,
                                   );
 
                                   if (ctx.mounted) {

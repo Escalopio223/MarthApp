@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'checklist_item_model.dart';
+import 'recordatorio_tarea_model.dart';
 
 /// Modelo inmutable de un Evento dentro del Planificador (tabla `planificador_eventos`).
 /// Soporta eventos generales y cumpleaños con ideas de regalo y checklist de subtareas.
@@ -18,6 +19,7 @@ class EventoModel {
   final String? personaCumpleanos;
   final String? ideasRegalo;
   final List<ChecklistItemModel> checklist;
+  final List<RecordatorioTareaModel> recordatorios;
   final String createdBy;
   final DateTime createdAt;
 
@@ -34,6 +36,7 @@ class EventoModel {
     this.personaCumpleanos,
     this.ideasRegalo,
     this.checklist = const [],
+    this.recordatorios = const [],
     required this.createdBy,
     required this.createdAt,
   });
@@ -81,6 +84,7 @@ class EventoModel {
     String? personaCumpleanos,
     String? ideasRegalo,
     List<ChecklistItemModel>? checklist,
+    List<RecordatorioTareaModel>? recordatorios,
     String? createdBy,
     DateTime? createdAt,
   }) {
@@ -97,6 +101,7 @@ class EventoModel {
       personaCumpleanos: personaCumpleanos ?? this.personaCumpleanos,
       ideasRegalo: ideasRegalo ?? this.ideasRegalo,
       checklist: checklist ?? this.checklist,
+      recordatorios: recordatorios ?? this.recordatorios,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -126,6 +131,31 @@ class EventoModel {
       parsedChecklist = const [];
     }
 
+    // Parseo seguro y resiliente del campo recordatorios (JSONB)
+    List<RecordatorioTareaModel> parsedRecordatorios = const [];
+    final rawRecordatorios = json['recordatorios'];
+
+    try {
+      if (rawRecordatorios is List) {
+        parsedRecordatorios = rawRecordatorios
+            .whereType<Map>()
+            .map((e) =>
+                RecordatorioTareaModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+      } else if (rawRecordatorios is String && rawRecordatorios.isNotEmpty) {
+        final decoded = jsonDecode(rawRecordatorios);
+        if (decoded is List) {
+          parsedRecordatorios = decoded
+              .whereType<Map>()
+              .map((e) =>
+                  RecordatorioTareaModel.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+        }
+      }
+    } catch (_) {
+      parsedRecordatorios = const [];
+    }
+
     return EventoModel(
       id: json['id'] as String? ?? '',
       entornoId: json['entorno_id'] as String? ?? '',
@@ -143,6 +173,7 @@ class EventoModel {
       personaCumpleanos: json['persona_cumpleanos'] as String?,
       ideasRegalo: json['ideas_regalo'] as String?,
       checklist: parsedChecklist,
+      recordatorios: parsedRecordatorios,
       createdBy: json['created_by'] as String? ?? '',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
@@ -164,6 +195,7 @@ class EventoModel {
       if (personaCumpleanos != null) 'persona_cumpleanos': personaCumpleanos,
       if (ideasRegalo != null) 'ideas_regalo': ideasRegalo,
       'checklist': checklist.map((item) => item.toJson()).toList(),
+      'recordatorios': recordatorios.map((item) => item.toJson()).toList(),
       'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
     };
@@ -185,6 +217,7 @@ class EventoModel {
         other.personaCumpleanos == personaCumpleanos &&
         other.ideasRegalo == ideasRegalo &&
         listEquals(other.checklist, checklist) &&
+        listEquals(other.recordatorios, recordatorios) &&
         other.createdBy == createdBy &&
         other.createdAt == createdAt;
   }
@@ -203,11 +236,12 @@ class EventoModel {
         personaCumpleanos,
         ideasRegalo,
         Object.hashAll(checklist),
+        Object.hashAll(recordatorios),
         createdBy,
         createdAt,
       );
 
   @override
   String toString() =>
-      'EventoModel(id: $id, titulo: $titulo, tipo: $tipo, checklist: ${checklist.length} items)';
+      'EventoModel(id: $id, titulo: $titulo, tipo: $tipo, checklist: ${checklist.length} items, recordatorios: ${recordatorios.length} recs)';
 }

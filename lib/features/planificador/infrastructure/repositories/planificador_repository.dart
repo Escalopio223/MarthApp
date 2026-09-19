@@ -437,34 +437,58 @@ class PlanificadorRepository implements IPlanificadorRepository {
     String? personaCumpleanos,
     String? ideasRegalo,
     List<ChecklistItemModel> checklist = const [],
+    List<RecordatorioTareaModel> recordatorios = const [],
   }) async {
     final userId = _currentUserId;
     if (userId == null) throw StateError('Usuario no autenticado');
 
-    final res = await _client
-        .from('planificador_eventos')
-        .insert({
-          'entorno_id': entornoId,
-          'titulo': titulo,
-          'descripcion': ?descripcion,
-          'tipo': tipo,
-          'fecha_inicio': fechaInicio.toIso8601String(),
-          'fecha_fin': ?fechaFin?.toIso8601String(),
-          'es_todo_el_dia': esTodoElDia,
-          'persona_cumpleanos': ?personaCumpleanos,
-          'ideas_regalo': ?ideasRegalo,
-          'checklist': checklist.map((e) => e.toJson()).toList(),
-          'created_by': userId,
-        })
-        .select()
-        .single();
+    final Map<String, dynamic> insertPayload = {
+      'entorno_id': entornoId,
+      'titulo': titulo,
+      'descripcion': ?descripcion,
+      'tipo': tipo,
+      'fecha_inicio': fechaInicio.toIso8601String(),
+      'fecha_fin': ?fechaFin?.toIso8601String(),
+      'es_todo_el_dia': esTodoElDia,
+      'persona_cumpleanos': ?personaCumpleanos,
+      'ideas_regalo': ?ideasRegalo,
+      'checklist': checklist.map((e) => e.toJson()).toList(),
+      'created_by': userId,
+    };
 
-    return EventoModel.fromJson(Map<String, dynamic>.from(res));
+    if (recordatorios.isNotEmpty) {
+      insertPayload['recordatorios'] =
+          recordatorios.map((e) => e.toJson()).toList();
+    }
+
+    try {
+      final res = await _client
+          .from('planificador_eventos')
+          .insert(insertPayload)
+          .select()
+          .single();
+
+      return EventoModel.fromJson(Map<String, dynamic>.from(res));
+    } catch (e) {
+      // Si la columna 'recordatorios' aún no existe en Supabase remoto, reintentar sin ella
+      if (insertPayload.containsKey('recordatorios') &&
+          e.toString().contains('recordatorios')) {
+        insertPayload.remove('recordatorios');
+        final res = await _client
+            .from('planificador_eventos')
+            .insert(insertPayload)
+            .select()
+            .single();
+        final model = EventoModel.fromJson(Map<String, dynamic>.from(res));
+        return model.copyWith(recordatorios: recordatorios);
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<void> actualizarEvento(EventoModel evento) async {
-    await _client.from('planificador_eventos').update({
+    final Map<String, dynamic> updatePayload = {
       'titulo': evento.titulo,
       'descripcion': evento.descripcion,
       'tipo': evento.tipo,
@@ -474,7 +498,26 @@ class PlanificadorRepository implements IPlanificadorRepository {
       'persona_cumpleanos': evento.personaCumpleanos,
       'ideas_regalo': evento.ideasRegalo,
       'checklist': evento.checklist.map((e) => e.toJson()).toList(),
-    }).eq('id', evento.id);
+      'recordatorios': evento.recordatorios.map((e) => e.toJson()).toList(),
+    };
+
+    try {
+      await _client
+          .from('planificador_eventos')
+          .update(updatePayload)
+          .eq('id', evento.id);
+    } catch (e) {
+      if (updatePayload.containsKey('recordatorios') &&
+          e.toString().contains('recordatorios')) {
+        updatePayload.remove('recordatorios');
+        await _client
+            .from('planificador_eventos')
+            .update(updatePayload)
+            .eq('id', evento.id);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   @override

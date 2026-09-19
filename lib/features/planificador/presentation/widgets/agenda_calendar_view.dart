@@ -694,7 +694,11 @@ class AgendaCalendarView extends StatelessWidget {
                         behavior: HitTestBehavior.opaque,
                         onTap: tarea != null
                             ? () {
-                                HapticFeedback.selectionClick();
+                                if (!isDone) {
+                                  HapticFeedback.mediumImpact();
+                                } else {
+                                  HapticFeedback.lightImpact();
+                                }
                                 controller.toggleTarea(tarea.id);
                               }
                             : null,

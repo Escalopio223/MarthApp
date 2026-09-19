@@ -101,6 +101,7 @@ abstract class IPlanificadorRepository {
     String? personaCumpleanos,
     String? ideasRegalo,
     List<ChecklistItemModel> checklist = const [],
+    List<RecordatorioTareaModel> recordatorios = const [],
   });
 
   Future<void> actualizarEvento(EventoModel evento);
