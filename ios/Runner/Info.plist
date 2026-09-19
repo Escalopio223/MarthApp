@@ -81,5 +81,10 @@
 	<string>MarthApp necesita acceso a tu galería para que puedas seleccionar tu foto de perfil.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>MarthApp necesita acceso a tu cámara para que puedas tomar tu foto de perfil.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
