@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -151,9 +152,46 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
     }
   }
 
+  String get _currentUserId {
+    if (widget.usuarioActualId != null && widget.usuarioActualId!.isNotEmpty) {
+      return widget.usuarioActualId!;
+    }
+    try {
+      final supaId = Supabase.instance.client.auth.currentUser?.id;
+      if (supaId != null && supaId.isNotEmpty) return supaId;
+    } catch (_) {}
+    return widget.controller.entornoId ?? 'usuario';
+  }
+
+  String get _autorNombre {
+    final uid = _currentUserId;
+    if (widget.miembros.isNotEmpty) {
+      final miembro = widget.miembros.firstWhere(
+        (m) => m.userId == uid,
+        orElse: () => widget.miembros.first,
+      );
+      return miembro.username;
+    }
+    return 'Yo';
+  }
+
   Future<void> _guardarCambios() async {
     final nuevoTitulo = _tituloController.text.trim();
     if (nuevoTitulo.isEmpty) return;
+
+    // 1. Si el usuario escribió un comentario pero pulsó directamente "Guardar Cambios"
+    final comentarioPendiente = _comentarioController.text.trim();
+    if (comentarioPendiente.isNotEmpty) {
+      final nuevoCom = ComentarioTareaModel(
+        id: 'com_${DateTime.now().millisecondsSinceEpoch}',
+        autorId: _currentUserId,
+        autorNombre: _autorNombre,
+        texto: comentarioPendiente,
+        createdAt: DateTime.now(),
+      );
+      _comentarios.add(nuevoCom);
+      _comentarioController.clear();
+    }
 
     setState(() => _isSaving = true);
     HapticFeedback.mediumImpact();
@@ -207,36 +245,15 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
     setState(() => _isAddingComment = true);
     HapticFeedback.lightImpact();
 
-    final currentUserId = widget.usuarioActualId ??
-        widget.controller.entornoId ??
-        'usuario';
-
-    String autorNombre = 'Yo';
-    if (widget.miembros.isNotEmpty) {
-      final miembro = widget.miembros.firstWhere(
-        (m) => m.userId == widget.usuarioActualId,
-        orElse: () => widget.miembros.first,
-      );
-      autorNombre = miembro.username;
-    }
-
     try {
-      await widget.controller.agregarComentario(
+      final nuevoComentario = await widget.controller.agregarComentario(
         tareaId: widget.tarea.id,
         texto: texto,
-        autorId: currentUserId,
-        autorNombre: autorNombre,
+        autorId: _currentUserId,
+        autorNombre: _autorNombre,
       );
 
-      final nuevoComentario = ComentarioTareaModel(
-        id: 'com_${DateTime.now().millisecondsSinceEpoch}',
-        autorId: currentUserId,
-        autorNombre: autorNombre,
-        texto: texto,
-        createdAt: DateTime.now(),
-      );
-
-      if (mounted) {
+      if (mounted && nuevoComentario != null) {
         setState(() {
           _comentarios.add(nuevoComentario);
           _comentarioController.clear();
@@ -249,7 +266,7 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al añadir comentario: $e'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: AppTheme.accentCoral,
           ),
         );
       }
@@ -1012,13 +1029,34 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
                                   color: AppTheme.textPrimary,
                                 ),
                               ),
-                              Text(
-                                '${com.createdAt.day}/${com.createdAt.month} ${com.createdAt.hour.toString().padLeft(2, '0')}:${com.createdAt.minute.toString().padLeft(2, '0')}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppTheme.textSecondary
-                                      .withValues(alpha: 0.6),
-                                ),
+                              Row(
+                                children: [
+                                  Text(
+                                    '${com.createdAt.day}/${com.createdAt.month} ${com.createdAt.hour.toString().padLeft(2, '0')}:${com.createdAt.minute.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.textSecondary
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                  if (esYo) ...[
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.lightImpact();
+                                        setState(() {
+                                          _comentarios.removeAt(index);
+                                        });
+                                      },
+                                      child: Icon(
+                                        Icons.close_rounded,
+                                        size: 14,
+                                        color: AppTheme.textSecondary
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),

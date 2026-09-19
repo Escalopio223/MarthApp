@@ -9,6 +9,7 @@ import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'crear_tarea_rapida_dialog.dart';
 import 'editar_proyecto_dialog.dart';
+import 'editar_tarea_dialog.dart';
 
 /// Vista de Proyectos y Backlog de Tareas sueltas con barras de progreso y checkboxes reactivos
 class ProyectosBacklogView extends StatefulWidget {
@@ -651,36 +652,95 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tarea.titulo,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isDone ? FontWeight.normal : FontWeight.w600,
-                      decoration: isDone ? TextDecoration.lineThrough : null,
-                      color: isDone
-                          ? AppTheme.textSecondary.withValues(alpha: 0.5)
-                          : AppTheme.textPrimary,
-                    ),
-                  ),
-                  if (tarea.descripcion != null &&
-                      tarea.descripcion!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  EditarTareaDialog.show(
+                    context,
+                    tarea: tarea,
+                    controller: widget.controller,
+                    miembros: widget.miembros,
+                    usuarioActualId: widget.usuarioActualId,
+                  );
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      tarea.descripcion!,
+                      tarea.titulo,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                        fontSize: 14,
+                        fontWeight: isDone ? FontWeight.normal : FontWeight.w600,
+                        decoration: isDone ? TextDecoration.lineThrough : null,
+                        color: isDone
+                            ? AppTheme.textSecondary.withValues(alpha: 0.5)
+                            : AppTheme.textPrimary,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
+                    if (tarea.descripcion != null &&
+                        tarea.descripcion!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        tarea.descripcion!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
+            if (tarea.comentarios.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  EditarTareaDialog.show(
+                    context,
+                    tarea: tarea,
+                    controller: widget.controller,
+                    miembros: widget.miembros,
+                    usuarioActualId: widget.usuarioActualId,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLiquid.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.primaryLiquid.withValues(alpha: 0.3),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 11,
+                        color: AppTheme.primaryLiquid,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${tarea.comentarios.length}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryLiquid,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(width: 8),
             // Clay pill de tiempo estimado
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),

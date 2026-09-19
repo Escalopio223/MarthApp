@@ -169,8 +169,10 @@ class PushNotificationService {
       // Redirigir o emitir evento para solicitudes de amistad
     } else if (type == 'environment_invitation') {
       // Redirigir o emitir evento para invitaciones
-    } else if (type == 'task_reminder' || type == 'reparto_sesion') {
-      // Redirigir a la pantalla del planificador
+    } else if (type == 'task_reminder' ||
+        type == 'reparto_sesion' ||
+        type == 'task_comment') {
+      // Redirigir a la pantalla del planificador / detalle de tarea
     }
   }
 

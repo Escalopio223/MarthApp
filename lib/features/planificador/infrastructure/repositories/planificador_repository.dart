@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -406,13 +408,24 @@ class PlanificadorRepository implements IPlanificadorRepository {
         .eq('id', tareaId)
         .single();
 
-    final List<dynamic> currentComentarios =
-        (row['comentarios'] as List?) ?? [];
+    final raw = row['comentarios'];
+    List<dynamic> currentComentarios = [];
+    if (raw is List) {
+      currentComentarios = List<dynamic>.from(raw);
+    } else if (raw is String && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          currentComentarios = List<dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+
     final updated = [...currentComentarios, comentario.toJson()];
 
     await _client.from('planificador_tareas').update({
       'comentarios': updated,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', tareaId);
   }
 

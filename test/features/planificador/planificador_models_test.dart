@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/features/planificador/domain/models/agenda_item_model.dart';
 import 'package:marth_app/features/planificador/domain/models/checklist_item_model.dart';
+import 'package:marth_app/features/planificador/domain/models/comentario_tarea_model.dart';
 import 'package:marth_app/features/planificador/domain/models/evento_model.dart';
 import 'package:marth_app/features/planificador/domain/models/proyecto_model.dart';
 import 'package:marth_app/features/planificador/domain/models/sesion_reparto_model.dart';
@@ -284,6 +285,44 @@ void main() {
       final list = [itemEvento, itemTarea]..sort();
       expect(list.first.id, equals('t1')); // Earlier deadline first
       expect(list.last.id, equals('e1'));
+    });
+  });
+
+  group('Comentarios and Push Notification Payload Tests', () {
+    test('ComentarioTareaModel serializes and constructs push payload properly', () {
+      final now = DateTime.now();
+      final comentario = ComentarioTareaModel(
+        id: 'com-123',
+        autorId: 'usr-autor',
+        autorNombre: 'Carlos',
+        texto: 'Por favor comprad leche desnatada si podéis',
+        createdAt: now,
+      );
+
+      final json = comentario.toJson();
+      expect(json['id'], equals('com-123'));
+      expect(json['autor_id'], equals('usr-autor'));
+      expect(json['autor_nombre'], equals('Carlos'));
+      expect(json['texto'], equals('Por favor comprad leche desnatada si podéis'));
+
+      // Simular estructura de payload de push notification construida por trg_notif_task_comment_func
+      final pushPayload = {
+        'user_ids': ['usr-dest-1', 'usr-dest-2'],
+        'title': '💬 ${comentario.autorNombre} en "Hacer la compra"',
+        'body': comentario.texto,
+        'data': {
+          'type': 'task_comment',
+          'tarea_id': 'tarea-abc',
+          'entorno_id': 'env-1',
+          'autor_id': comentario.autorId,
+        },
+      };
+
+      expect(pushPayload['title'], equals('💬 Carlos en "Hacer la compra"'));
+      expect(pushPayload['body'], contains('leche desnatada'));
+      expect((pushPayload['user_ids'] as List).contains('usr-autor'), isFalse);
+      expect((pushPayload['user_ids'] as List).length, equals(2));
+      expect((pushPayload['data'] as Map)['type'], equals('task_comment'));
     });
   });
 }

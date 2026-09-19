@@ -516,14 +516,14 @@ class PlanificadorController extends ChangeNotifier {
     }
   }
 
-  Future<void> agregarComentario({
+  Future<ComentarioTareaModel?> agregarComentario({
     required String tareaId,
     required String texto,
     required String autorId,
     required String autorNombre,
   }) async {
     final cleanTexto = texto.trim();
-    if (cleanTexto.isEmpty) return;
+    if (cleanTexto.isEmpty) return null;
 
     final comentario = ComentarioTareaModel(
       id: 'com_${DateTime.now().millisecondsSinceEpoch}',
@@ -535,6 +535,7 @@ class PlanificadorController extends ChangeNotifier {
 
     // Actualización optimista local inmediata
     final index = _tareas.indexWhere((t) => t.id == tareaId);
+    final previousTarea = index != -1 ? _tareas[index] : null;
     if (index != -1) {
       final tarea = _tareas[index];
       _tareas[index] = tarea.copyWith(
@@ -548,7 +549,12 @@ class PlanificadorController extends ChangeNotifier {
         tareaId: tareaId,
         comentario: comentario,
       );
+      return comentario;
     } catch (e) {
+      if (index != -1 && previousTarea != null) {
+        _tareas[index] = previousTarea;
+        notifyListeners();
+      }
       _errorMessage = 'Error al agregar comentario: $e';
       notifyListeners();
       rethrow;
@@ -703,20 +709,48 @@ class PlanificadorController extends ChangeNotifier {
   }
 
   Future<void> actualizarTarea(TareaModel tarea) async {
+    final index = _tareas.indexWhere((t) => t.id == tarea.id);
+    final previousTarea = index != -1 ? _tareas[index] : null;
+
+    if (index != -1) {
+      _tareas[index] = tarea;
+      notifyListeners();
+    }
+
     try {
       await _repository.actualizarTarea(tarea);
     } catch (e) {
+      if (index != -1 && previousTarea != null) {
+        _tareas[index] = previousTarea;
+        notifyListeners();
+      }
       _errorMessage = 'Error al actualizar tarea: $e';
       notifyListeners();
+      rethrow;
     }
   }
 
   Future<void> eliminarTarea(String tareaId) async {
+    final index = _tareas.indexWhere((t) => t.id == tareaId);
+    final previousTarea = index != -1 ? _tareas[index] : null;
+
+    if (index != -1) {
+      _tareas.removeAt(index);
+      _actualizarRepartoAlCambiarTareas();
+      notifyListeners();
+    }
+
     try {
       await _repository.eliminarTarea(tareaId);
     } catch (e) {
+      if (index != -1 && previousTarea != null) {
+        _tareas.insert(index, previousTarea);
+        _actualizarRepartoAlCambiarTareas();
+        notifyListeners();
+      }
       _errorMessage = 'Error al eliminar tarea: $e';
       notifyListeners();
+      rethrow;
     }
   }
 
@@ -762,20 +796,46 @@ class PlanificadorController extends ChangeNotifier {
   }
 
   Future<void> actualizarEvento(EventoModel evento) async {
+    final index = _eventos.indexWhere((e) => e.id == evento.id);
+    final previousEvento = index != -1 ? _eventos[index] : null;
+
+    if (index != -1) {
+      _eventos[index] = evento;
+      notifyListeners();
+    }
+
     try {
       await _repository.actualizarEvento(evento);
     } catch (e) {
+      if (index != -1 && previousEvento != null) {
+        _eventos[index] = previousEvento;
+        notifyListeners();
+      }
       _errorMessage = 'Error al actualizar evento: $e';
       notifyListeners();
+      rethrow;
     }
   }
 
   Future<void> eliminarEvento(String eventoId) async {
+    final index = _eventos.indexWhere((e) => e.id == eventoId);
+    final previousEvento = index != -1 ? _eventos[index] : null;
+
+    if (index != -1) {
+      _eventos.removeAt(index);
+      notifyListeners();
+    }
+
     try {
       await _repository.eliminarEvento(eventoId);
     } catch (e) {
+      if (index != -1 && previousEvento != null) {
+        _eventos.insert(index, previousEvento);
+        notifyListeners();
+      }
       _errorMessage = 'Error al eliminar evento: $e';
       notifyListeners();
+      rethrow;
     }
   }
 

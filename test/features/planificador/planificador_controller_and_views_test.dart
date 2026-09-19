@@ -1624,5 +1624,54 @@ void main() {
           controller.tareas.firstWhere((t) => t.id == 't-edit-proj');
       expect(tareaActualizada.proyectoId, 'p-b');
     });
+
+    testWidgets('EditarTareaDialog auto-saves pending comment when clicking Guardar Cambios without pressing send', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      controller.setEntorno('env-1');
+
+      // Agregamos la tarea al controlador
+      await controller.crearTarea(
+        titulo: 'Tarea para probar guardado de comentarios',
+      );
+      final tareaEnCtrl = controller.tareas.first;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: Scaffold(
+            body: EditarTareaDialog(
+              tarea: tareaEnCtrl,
+              controller: controller,
+              usuarioActualId: 'usr-1',
+              miembros: const [],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Encontrar el campo de texto de comentarios
+      final commentInput = find.widgetWithText(TextField, 'Escribe un comentario...');
+      expect(commentInput, findsOneWidget);
+
+      // Escribir un comentario pero NO pulsar el botón del avión
+      await tester.enterText(commentInput, 'Comentario pendiente importante');
+      await tester.pumpAndSettle();
+
+      // Pulsar directamente "Guardar Cambios"
+      await tester.ensureVisible(find.text('Guardar Cambios'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Guardar Cambios'));
+      await tester.pumpAndSettle();
+
+      // Verificar que el comentario se guardó en el controlador y la tarea
+      final tareaActualizada =
+          controller.tareas.firstWhere((t) => t.id == tareaEnCtrl.id);
+      expect(tareaActualizada.comentarios.length, equals(1));
+      expect(tareaActualizada.comentarios.first.texto, equals('Comentario pendiente importante'));
+    });
   });
 }
