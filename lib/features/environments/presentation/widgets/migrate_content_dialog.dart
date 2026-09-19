@@ -62,7 +62,8 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
         setState(() => _errorMessage = 'No se pudo completar la migración');
       }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = '$e');
+      final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      if (mounted) setState(() => _errorMessage = msg);
     } finally {
       if (mounted) setState(() => _isMigrating = false);
     }
@@ -82,7 +83,8 @@ class _MigrateContentDialogState extends State<MigrateContentDialog> {
         setState(() => _errorMessage = 'No se pudo completar la acción');
       }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = '$e');
+      final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      if (mounted) setState(() => _errorMessage = msg);
     } finally {
       if (mounted) setState(() => _isProceeding = false);
     }

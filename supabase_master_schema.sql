@@ -664,6 +664,7 @@ begin
     raise exception 'No se puede eliminar el entorno personal principal';
   end if;
 
+  -- Validar restricción estricta: debe ser exactamente 1 (el owner)
   select count(*) into v_member_count
   from public.environment_members
   where environment_id = p_environment_id;
@@ -674,9 +675,67 @@ begin
 
   delete from public.environments where id = p_environment_id;
 
+  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'entornos') then
+    delete from public.entornos where id = p_environment_id;
+  end if;
+
   return jsonb_build_object('success', true, 'message', 'Entorno eliminado exitosamente');
 end;
 $$ language plpgsql security definer;
+
+-- RPC 2.1: remove_environment_member
+create or replace function public.remove_environment_member(
+  p_environment_id uuid,
+  p_user_id uuid
+)
+returns jsonb as $$
+declare
+  v_caller_id uuid := auth.uid();
+  v_owner_id uuid;
+  v_is_personal boolean;
+begin
+  if v_caller_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  select created_by, is_personal into v_owner_id, v_is_personal
+  from public.environments
+  where id = p_environment_id;
+
+  if v_owner_id is null then
+    raise exception 'El entorno especificado no existe';
+  end if;
+
+  if v_is_personal then
+    raise exception 'No se pueden expulsar miembros del entorno personal';
+  end if;
+
+  if v_caller_id != v_owner_id and v_caller_id != p_user_id then
+    raise exception 'No tienes permisos para expulsar a este usuario del entorno';
+  end if;
+
+  if p_user_id = v_owner_id then
+    raise exception 'No se puede expulsar al propietario del entorno. Para cerrarlo debes eliminar el entorno.';
+  end if;
+
+  delete from public.environment_members
+  where environment_id = p_environment_id and user_id = p_user_id;
+
+  if exists (select 1 from pg_tables where schemaname = 'public' and tablename = 'entorno_usuarios') then
+    delete from public.entorno_usuarios
+    where entorno_id = p_environment_id and user_id = p_user_id;
+  end if;
+
+  delete from public.environment_invitations
+  where environment_id = p_environment_id and (receiver_id = p_user_id or sender_id = p_user_id);
+
+  return jsonb_build_object(
+    'success', true,
+    'message', 'Miembro eliminado exitosamente del entorno'
+  );
+end;
+$$ language plpgsql security definer;
+
 
 -- RPC 3: accept_environment_invitation
 create or replace function public.accept_environment_invitation(p_invitation_id uuid)

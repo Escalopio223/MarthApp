@@ -215,9 +215,9 @@ void main() {
         );
 
         expect(find.text('Nuevo entorno'), findsOneWidget);
-        expect(find.text('Color del entorno'), findsOneWidget);
-        expect(find.text('Icono del entorno'), findsOneWidget);
-        expect(find.text('Nombre del entorno'), findsOneWidget);
+        expect(find.text('Color del Entorno'), findsOneWidget);
+        expect(find.text('Icono del Entorno'), findsOneWidget);
+        expect(find.text('Nombre del Entorno'), findsOneWidget);
 
         // Verify colors and icons rendered
         expect(

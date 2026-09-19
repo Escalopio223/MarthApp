@@ -182,17 +182,31 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
             sourceEnvironmentId: sourceId,
             targetEnvironmentId: personalEnv.id,
           );
-          if (!okMigrate) return false;
+          if (!okMigrate) {
+            final err = widget.environmentController.errorMessage;
+            if (err != null && err.isNotEmpty) throw Exception(err);
+            return false;
+          }
         }
-        return widget.environmentController.deleteEnvironment(sourceId);
+        final okDelete = await widget.environmentController.deleteEnvironment(sourceId);
+        if (!okDelete) {
+          final err = widget.environmentController.errorMessage;
+          if (err != null && err.isNotEmpty) throw Exception(err);
+        }
+        return okDelete;
       },
       onProceedWithoutMigrating: () async {
-        return widget.environmentController.deleteEnvironment(sourceId);
+        final okDelete = await widget.environmentController.deleteEnvironment(sourceId);
+        if (!okDelete) {
+          final err = widget.environmentController.errorMessage;
+          if (err != null && err.isNotEmpty) throw Exception(err);
+        }
+        return okDelete;
       },
     );
 
     if (!mounted) return;
-    if (result == true) {
+    if (result != null) {
       Navigator.pop(context);
     }
   }
@@ -212,17 +226,31 @@ class _ManageEnvironmentModalState extends State<ManageEnvironmentModal> {
             sourceEnvironmentId: sourceId,
             targetEnvironmentId: personalEnv.id,
           );
-          if (!okMigrate) return false;
+          if (!okMigrate) {
+            final err = widget.environmentController.errorMessage;
+            if (err != null && err.isNotEmpty) throw Exception(err);
+            return false;
+          }
         }
-        return widget.environmentController.leaveEnvironment(sourceId);
+        final okLeave = await widget.environmentController.leaveEnvironment(sourceId);
+        if (!okLeave) {
+          final err = widget.environmentController.errorMessage;
+          if (err != null && err.isNotEmpty) throw Exception(err);
+        }
+        return okLeave;
       },
       onProceedWithoutMigrating: () async {
-        return widget.environmentController.leaveEnvironment(sourceId);
+        final okLeave = await widget.environmentController.leaveEnvironment(sourceId);
+        if (!okLeave) {
+          final err = widget.environmentController.errorMessage;
+          if (err != null && err.isNotEmpty) throw Exception(err);
+        }
+        return okLeave;
       },
     );
 
     if (!mounted) return;
-    if (result == true) {
+    if (result != null) {
       Navigator.pop(context);
     }
   }

@@ -86,9 +86,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // Bottom sheet is now open
-        expect(find.text('Entornos de trabajo'), findsOneWidget);
+        expect(find.text('Entornos de Trabajo'), findsOneWidget);
         expect(find.text('Todos los entornos'), findsOneWidget);
-        expect(find.text('Piso compartido'), findsOneWidget);
+        expect(find.text('Piso Compartido'), findsOneWidget);
         expect(find.text('Crear nuevo entorno'), findsOneWidget);
 
         // Tap "Todos los entornos"
@@ -114,11 +114,11 @@ void main() {
         );
 
         expect(find.text('Nuevo entorno'), findsOneWidget);
-        expect(find.text('Crear entorno'), findsOneWidget);
+        expect(find.text('Crear Entorno'), findsOneWidget);
 
         // Submit short name
         await tester.enterText(find.byType(TextFormField), '12');
-        await tester.tap(find.text('Crear entorno'));
+        await tester.tap(find.text('Crear Entorno'));
         await tester.pumpAndSettle();
 
         expect(
@@ -129,7 +129,7 @@ void main() {
 
         // Submit valid name
         await tester.enterText(find.byType(TextFormField), 'Oficina central');
-        await tester.tap(find.text('Crear entorno'));
+        await tester.tap(find.text('Crear Entorno'));
         await tester.pumpAndSettle();
 
         expect(mockRepo.createCalled, isTrue);

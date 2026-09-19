@@ -213,15 +213,17 @@ class EnvironmentService implements IEnvironmentRepository {
     required String userId,
   }) async {
     try {
-      await _client
-          .from('environment_members')
-          .delete()
-          .eq('environment_id', environmentId)
-          .eq('user_id', userId);
+      await _client.rpc(
+        'remove_environment_member',
+        params: {
+          'p_environment_id': environmentId,
+          'p_user_id': userId,
+        },
+      );
       return true;
     } catch (e) {
       debugPrint('[EnvironmentService] Error al expulsar miembro: $e');
-      return false;
+      rethrow;
     }
   }
 
@@ -231,15 +233,17 @@ class EnvironmentService implements IEnvironmentRepository {
     required String userId,
   }) async {
     try {
-      await _client
-          .from('environment_members')
-          .delete()
-          .eq('environment_id', environmentId)
-          .eq('user_id', userId);
+      await _client.rpc(
+        'remove_environment_member',
+        params: {
+          'p_environment_id': environmentId,
+          'p_user_id': userId,
+        },
+      );
       return true;
     } catch (e) {
       debugPrint('[EnvironmentService] Error al abandonar entorno: $e');
-      return false;
+      rethrow;
     }
   }
 

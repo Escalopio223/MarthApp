@@ -190,7 +190,11 @@ class EnvironmentController extends ChangeNotifier {
       _errorMessage = 'No se pudo eliminar el entorno';
       return false;
     } catch (e) {
-      _errorMessage = 'Error al eliminar entorno: $e';
+      if (e is PostgrestException) {
+        _errorMessage = e.message;
+      } else {
+        _errorMessage = 'Error al eliminar entorno: ${e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '')}';
+      }
       return false;
     } finally {
       _isActionLoading = false;
@@ -338,7 +342,13 @@ class EnvironmentController extends ChangeNotifier {
       _errorMessage = 'No se pudo expulsar al miembro';
       return false;
     } catch (e) {
-      _errorMessage = 'Error al expulsar miembro: $e';
+      if (e is PostgrestException && e.code == 'PGRST202') {
+        _errorMessage = 'Falta aplicar la migración en Supabase: la función "remove_environment_member" no existe aún en la base de datos.';
+      } else if (e is PostgrestException) {
+        _errorMessage = e.message;
+      } else {
+        _errorMessage = 'Error al expulsar miembro: ${e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '')}';
+      }
       return false;
     } finally {
       _isActionLoading = false;
@@ -371,7 +381,13 @@ class EnvironmentController extends ChangeNotifier {
       _errorMessage = 'No se pudo abandonar el entorno';
       return false;
     } catch (e) {
-      _errorMessage = 'Error al abandonar entorno: $e';
+      if (e is PostgrestException && e.code == 'PGRST202') {
+        _errorMessage = 'Falta aplicar la migración en Supabase: la función "remove_environment_member" no existe aún en la base de datos.';
+      } else if (e is PostgrestException) {
+        _errorMessage = e.message;
+      } else {
+        _errorMessage = 'Error al abandonar entorno: ${e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '')}';
+      }
       return false;
     } finally {
       _isActionLoading = false;
