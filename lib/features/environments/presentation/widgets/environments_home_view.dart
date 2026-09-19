@@ -61,7 +61,7 @@ class EnvironmentsHomeView extends StatelessWidget {
 
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 100, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),

@@ -68,40 +68,42 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final incomingRequests = controller.incomingRequests;
     final friends = controller.friends;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: widget.asTab ? null : AppBar(
+    return AppBackground(
+      useSafeArea: false,
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppTheme.textPrimary, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Amigos y Solicitudes',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
+        appBar: widget.asTab ? null : AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new_rounded,
+                color: AppTheme.textPrimary, size: 20),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh_rounded, color: AppTheme.textPrimary),
-            tooltip: 'Actualizar en vivo',
-            onPressed: () => controller.refresh(),
+          title: Text(
+            'Amigos y Solicitudes',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
           ),
-        ],
-      ),
-      body: AppBackground(
-        child: RefreshIndicator(
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.refresh_rounded, color: AppTheme.textPrimary),
+              tooltip: 'Actualizar en vivo',
+              onPressed: () => controller.refresh(),
+            ),
+          ],
+        ),
+        body: RefreshIndicator(
           color: AppTheme.primaryLiquid,
           backgroundColor: AppTheme.surfaceDark,
           onRefresh: () => controller.refresh(),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 100, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 580),

@@ -183,16 +183,14 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     );
 
     if (widget.asTab) {
-      return SafeArea(
-        child: bodyContent,
-      );
+      return bodyContent;
     }
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         title: Text(
           'Planificador',
           style: TextStyle(
@@ -203,9 +201,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         ),
       ),
       body: AppBackground(
-        child: SafeArea(
-          child: bodyContent,
-        ),
+        child: bodyContent,
       ),
     );
   }

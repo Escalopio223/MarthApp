@@ -176,27 +176,29 @@ class _HomeScreenState extends State<HomeScreen> {
     final email = user?.email ?? 'Explorador';
     final pendingEnvCount = _environmentController.pendingInvitationsCount;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
+    return AppBackground(
+      useSafeArea: false,
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: _buildAppBarTitle(),
-        actions: [
-          // Selector de entorno colocado en la barra superior
-          EnvironmentSelectorChip(
-            environmentController: _environmentController,
-            friendsController: _friendsController,
-            onEnvironmentChanged: () {
-              if (mounted) setState(() {});
-            },
-          ),
-          const SizedBox(width: 8),
-          _buildSettingsIconButton(context),
-        ],
-      ),
-      body: AppBackground(
-        child: IndexedStack(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          title: _buildAppBarTitle(),
+          actions: [
+            // Selector de entorno colocado en la barra superior
+            EnvironmentSelectorChip(
+              environmentController: _environmentController,
+              friendsController: _friendsController,
+              onEnvironmentChanged: () {
+                if (mounted) setState(() {});
+              },
+            ),
+            const SizedBox(width: 8),
+            _buildSettingsIconButton(context),
+          ],
+        ),
+        body: IndexedStack(
           index: _currentTabIndex,
           children: [
             // Pestana 0: Vista redisenada y minimalista de entornos
@@ -230,11 +232,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 : const SizedBox.shrink(),
           ],
         ),
-      ),
-      bottomNavigationBar: MarthBottomNavBar(
-        currentIndex: _currentTabIndex,
-        onTabSelected: _onTabSelected,
-        pendingInvitesCount: pendingEnvCount,
+        bottomNavigationBar: MarthBottomNavBar(
+          currentIndex: _currentTabIndex,
+          onTabSelected: _onTabSelected,
+          pendingInvitesCount: pendingEnvCount,
+        ),
       ),
     );
   }

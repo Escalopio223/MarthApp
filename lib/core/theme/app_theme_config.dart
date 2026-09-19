@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Identificadores de los 10 temas core curados en MarthApp (5 oscuros, 5 claros)
 enum ThemeId {
@@ -190,6 +191,18 @@ class AppThemeConfig {
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: bgCanvas,
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        ),
+      ),
       colorScheme: ColorScheme(
         brightness: brightness,
         primary: accentPrimary,

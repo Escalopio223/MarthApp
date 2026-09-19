@@ -106,7 +106,6 @@ class _LeisureScreenState extends State<LeisureScreen> {
             : _filterUserSavedItems());
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: widget.asTab ? null : AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -182,7 +181,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(height: widget.asTab ? kToolbarHeight + 8 : 8),
+              const SizedBox(height: 8),
 
               // Barra de búsqueda con Debounce (400ms)
               Padding(

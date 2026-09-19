@@ -7,10 +7,12 @@ import '../theme/app_theme.dart';
 /// - Garantiza 60 FPS estables eliminando filtros GPU costosos
 class AppBackground extends StatelessWidget {
   final Widget child;
+  final bool useSafeArea;
 
   const AppBackground({
     super.key,
     required this.child,
+    this.useSafeArea = true,
   });
 
   @override
@@ -32,7 +34,7 @@ class AppBackground extends StatelessWidget {
           ],
         ),
       ),
-      child: SafeArea(child: child),
+      child: useSafeArea ? SafeArea(child: child) : child,
     );
   }
 }
