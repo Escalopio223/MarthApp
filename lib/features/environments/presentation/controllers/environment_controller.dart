@@ -14,6 +14,7 @@ class EnvironmentController extends ChangeNotifier {
 
   List<EnvironmentModel> _environments = [];
   EnvironmentModel? _activeEnvironment;
+  List<EnvironmentMemberModel> _activeMembers = [];
   bool _isAllSelected = false;
   List<EnvironmentInvitationModel> _pendingInvitations = [];
 
@@ -24,6 +25,7 @@ class EnvironmentController extends ChangeNotifier {
 
   String? _currentUserId;
   RealtimeChannel? _invitationsChannel;
+  RealtimeChannel? _membersChannel;
 
   EnvironmentController({IEnvironmentRepository? environmentRepository})
     : _environmentRepository = environmentRepository ?? EnvironmentService();
@@ -33,6 +35,8 @@ class EnvironmentController extends ChangeNotifier {
   // Getters de estado
   List<EnvironmentModel> get environments => List.unmodifiable(_environments);
   EnvironmentModel? get activeEnvironment => _activeEnvironment;
+  List<EnvironmentMemberModel> get activeMembers =>
+      List.unmodifiable(_activeMembers);
   bool get isAllSelected => _isAllSelected;
 
   EnvironmentModel? get personalEnvironment {
@@ -64,6 +68,10 @@ class EnvironmentController extends ChangeNotifier {
       await _loadEnvironments(userId);
       await _loadPendingInvitations(userId);
       _setupRealtimeSubscription(userId);
+      if (_activeEnvironment != null) {
+        _setupMembersSubscription(_activeEnvironment!.id);
+        await loadActiveMembers(_activeEnvironment!.id);
+      }
     } catch (e) {
       _errorMessage = 'Error al inicializar entornos: $e';
     } finally {
@@ -116,6 +124,8 @@ class EnvironmentController extends ChangeNotifier {
     _isAllSelected = false;
     _activeEnvironment = env;
     _errorMessage = null;
+    _setupMembersSubscription(env.id);
+    loadActiveMembers(env.id);
     notifyListeners();
   }
 
@@ -123,6 +133,8 @@ class EnvironmentController extends ChangeNotifier {
   void selectAllEnvironments() {
     _isAllSelected = true;
     _activeEnvironment = null;
+    _activeMembers = [];
+    _cleanupMembersSubscription();
     _errorMessage = null;
     notifyListeners();
   }
@@ -156,6 +168,8 @@ class EnvironmentController extends ChangeNotifier {
         _activeEnvironment = created;
         _isAllSelected = false;
         _successMessage = 'Entorno "${created.name}" creado con éxito';
+        _setupMembersSubscription(created.id);
+        loadActiveMembers(created.id);
         return true;
       }
       _errorMessage = 'No se pudo crear el entorno';
@@ -183,6 +197,13 @@ class EnvironmentController extends ChangeNotifier {
         if (_activeEnvironment?.id == environmentId) {
           _activeEnvironment = personalEnvironment;
           _isAllSelected = false;
+          if (_activeEnvironment != null) {
+            _setupMembersSubscription(_activeEnvironment!.id);
+            loadActiveMembers(_activeEnvironment!.id);
+          } else {
+            _activeMembers = [];
+            _cleanupMembersSubscription();
+          }
         }
         _successMessage = 'Entorno eliminado correctamente';
         return true;
@@ -374,6 +395,13 @@ class EnvironmentController extends ChangeNotifier {
         if (_activeEnvironment?.id == environmentId) {
           _activeEnvironment = personalEnvironment;
           _isAllSelected = false;
+          if (_activeEnvironment != null) {
+            _setupMembersSubscription(_activeEnvironment!.id);
+            loadActiveMembers(_activeEnvironment!.id);
+          } else {
+            _activeMembers = [];
+            _cleanupMembersSubscription();
+          }
         }
         _successMessage = 'Has abandonado el entorno';
         return true;
@@ -400,6 +428,34 @@ class EnvironmentController extends ChangeNotifier {
     return _environmentRepository.getEnvironmentMembers(environmentId);
   }
 
+  /// Carga los miembros del entorno activo y actualiza el estado reactivo
+  Future<void> loadActiveMembers(String envId) async {
+    try {
+      final members = await _environmentRepository.getEnvironmentMembers(envId);
+      if (_activeEnvironment?.id == envId) {
+        _activeMembers = members;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[EnvironmentController] Error al cargar miembros ($envId): $e');
+    }
+  }
+
+  void _setupMembersSubscription(String envId) {
+    _cleanupMembersSubscription();
+    _membersChannel = _environmentRepository.subscribeToMembers(
+      envId,
+      () => loadActiveMembers(envId),
+    );
+  }
+
+  void _cleanupMembersSubscription() {
+    if (_membersChannel != null) {
+      _environmentRepository.unsubscribe(_membersChannel);
+      _membersChannel = null;
+    }
+  }
+
   /// Recarga manual de entornos e invitaciones (pull-to-refresh)
   Future<void> refresh() async {
     if (_currentUserId == null) return;
@@ -419,6 +475,11 @@ class EnvironmentController extends ChangeNotifier {
       _pendingInvitations = await _environmentRepository.getPendingInvitations(
         _currentUserId!,
       );
+
+      if (_activeEnvironment != null) {
+        _setupMembersSubscription(_activeEnvironment!.id);
+        await loadActiveMembers(_activeEnvironment!.id);
+      }
     } catch (e) {
       debugPrint('[EnvironmentController] Error en refresh: $e');
     } finally {
@@ -435,6 +496,7 @@ class EnvironmentController extends ChangeNotifier {
   @override
   void dispose() {
     _environmentRepository.unsubscribe(_invitationsChannel);
+    _cleanupMembersSubscription();
     super.dispose();
   }
 }

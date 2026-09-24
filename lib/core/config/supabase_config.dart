@@ -21,6 +21,14 @@ class SupabaseConfig {
   /// Alias de conveniencia retrocompatible
   static String get anonKey => publishableKey;
 
+  /// Web Client ID de Google Cloud para Google Sign-In Nativo (serverClientId).
+  /// Debe ser el ID de tipo 'Web application' registrado en Google Cloud Console
+  /// y configurado en Supabase Dashboard (Auth -> Providers -> Google).
+  static const String googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+    defaultValue: '',
+  );
+
   /// Validador para determinar si la clave pública ha sido configurada
   static bool get isConfigured =>
       publishableKey.isNotEmpty &&

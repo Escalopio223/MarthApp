@@ -47,6 +47,13 @@ class FakeSettingsAuthService implements IAuthRepository {
   }
 
   @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
+
+  @override
   Future<void> signOut() async {}
 }
 

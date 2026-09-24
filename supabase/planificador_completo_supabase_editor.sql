@@ -939,6 +939,9 @@ EXCEPTION
 END;
 $$;
 
+-- Garantizar compatibilidad con perfiles (evitar error 42703 column nombre_completo does not exist)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nombre_completo TEXT;
+
 -- 7.6. Triggers Inmediatos (Event-Driven)
 -- 7.6.1. Solicitud de amistad recibida
 CREATE OR REPLACE FUNCTION public.trg_notif_friend_request_func()
@@ -970,6 +973,10 @@ BEGIN
     );
   END IF;
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'trg_notif_friend_request_func falló (%: %)', SQLSTATE, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 
@@ -1015,6 +1022,10 @@ BEGIN
     );
   END IF;
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'trg_notif_env_invitation_func falló (%: %)', SQLSTATE, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 
@@ -1049,6 +1060,10 @@ BEGIN
     );
   END IF;
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'trg_notif_reparto_sesion_func falló (%: %)', SQLSTATE, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 
@@ -1128,6 +1143,10 @@ BEGIN
   END IF;
 
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'trg_notif_task_comment_func falló (%: %)', SQLSTATE, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 

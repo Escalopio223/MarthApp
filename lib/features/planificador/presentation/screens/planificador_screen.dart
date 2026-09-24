@@ -6,7 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_background.dart';
 import '../../../../core/widgets/app_container.dart';
-import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
 import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
@@ -42,7 +41,6 @@ class PlanificadorScreen extends StatefulWidget {
 class _PlanificadorScreenState extends State<PlanificadorScreen> {
   late final PlanificadorController _controller;
   EnvironmentController? _environmentController;
-  List<EnvironmentMemberModel> _miembros = const [];
 
   // 0 = Hoy, 1 = Planificación
   int _currentSectionIndex = 0;
@@ -71,7 +69,6 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _controller.setEntorno(activeEnv.id);
-        _cargarMiembros(activeEnv.id);
         _registrarTokenFcmSiExiste(activeEnv.id);
       });
     }
@@ -105,19 +102,8 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     final activeEnv = _environmentController?.activeEnvironment;
     if (activeEnv != null) {
       _controller.setEntorno(activeEnv.id);
-      _cargarMiembros(activeEnv.id);
       _registrarTokenFcmSiExiste(activeEnv.id);
       if (mounted) setState(() {});
-    }
-  }
-
-  Future<void> _cargarMiembros(String envId) async {
-    final repo = _environmentController?.repository;
-    if (repo != null) {
-      try {
-        final m = await repo.getEnvironmentMembers(envId);
-        if (mounted) setState(() => _miembros = m);
-      } catch (_) {}
     }
   }
 
@@ -147,7 +133,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final members = _miembros;
+    final members = _environmentController?.activeMembers ?? const [];
     final userId = _currentUserId;
 
     Widget bodyContent = Column(
@@ -161,6 +147,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
               // Vista 1: "Hoy" (Foco diario y rutinas)
               PlanificadorHoyView(
                 controller: _controller,
+                environmentController: _environmentController,
                 miembros: members,
                 usuarioActualId: userId,
                 onIrAPlanificacion: () =>
@@ -291,7 +278,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
       context,
       controller: _controller,
       usuarioActualId: _currentUserId,
-      miembros: _miembros,
+      miembros: _environmentController?.activeMembers ?? const [],
       fechaInicial: _controller.selectedDate,
     );
   }

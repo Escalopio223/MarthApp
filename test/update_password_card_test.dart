@@ -53,6 +53,16 @@ class MockPasswordAuthRepo implements IAuthRepository {
   }
 
   @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    updatePasswordCalled = true;
+    updatedPasswordValue = newPassword;
+  }
+
+  @override
   Future<void> signOut() async {}
 }
 

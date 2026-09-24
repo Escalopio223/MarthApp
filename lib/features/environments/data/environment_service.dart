@@ -394,6 +394,38 @@ class EnvironmentService implements IEnvironmentRepository {
   }
 
   @override
+  RealtimeChannel? subscribeToMembers(
+    String environmentId,
+    void Function() onMembersChanged,
+  ) {
+    try {
+      final channel = _client.channel('env_members_realtime_$environmentId');
+      channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'environment_members',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'environment_id',
+              value: environmentId,
+            ),
+            callback: (payload) {
+              onMembersChanged();
+            },
+          )
+          .subscribe();
+
+      return channel;
+    } catch (e) {
+      debugPrint(
+        '[EnvironmentService] Error al suscribir a Realtime de miembros: $e',
+      );
+      return null;
+    }
+  }
+
+  @override
   Future<void> unsubscribe(RealtimeChannel? channel) async {
     if (channel != null) {
       try {

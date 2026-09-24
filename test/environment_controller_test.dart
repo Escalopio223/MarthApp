@@ -90,6 +90,12 @@ class MockEnvironmentRepository implements IEnvironmentRepository {
   }
 
   @override
+  RealtimeChannel? subscribeToMembers(
+    String environmentId,
+    void Function() onMembersChanged,
+  ) => null;
+
+  @override
   Future<bool> removeMember({
     required String environmentId,
     required String userId,

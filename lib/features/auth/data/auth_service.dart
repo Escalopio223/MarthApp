@@ -1,17 +1,22 @@
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/config/supabase_config.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/errors/auth_exception.dart';
 import '../domain/repositories/auth_repository.dart';
 
 /// Implementación del repositorio de autenticación para MarthApp sobre Supabase Auth.
-/// Gestiona OAuth Social (Google, GitHub), credenciales directas
-/// (Email/Password con sesión inmediata) y flujo de recuperación de contraseña.
+/// Gestiona OAuth Social (Google Nativo en móvil, GitHub), credenciales directas
+/// (Email/Password con sesión inmediata) y flujo de recuperación de contraseña con OTP.
 class AuthService implements IAuthRepository {
   final SupabaseClient _client;
+  final GoogleSignIn? _googleSignIn;
 
-  AuthService({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+  AuthService({SupabaseClient? client, GoogleSignIn? googleSignIn})
+      : _client = client ?? Supabase.instance.client,
+        // ignore: prefer_initializing_formals
+        _googleSignIn = googleSignIn;
 
   @override
   User? get currentUser => _client.auth.currentUser;
@@ -36,10 +41,51 @@ class AuthService implements IAuthRepository {
 
   @override
   Future<bool> signInWithGoogle() async {
-    return _signInWithOAuth(
-      provider: OAuthProvider.google,
-      mobileCallback: AppConstants.loginCallbackPath,
-    );
+    if (kIsWeb) {
+      return _signInWithOAuth(
+        provider: OAuthProvider.google,
+        mobileCallback: AppConstants.loginCallbackPath,
+      );
+    }
+    return _signInWithGoogleNative();
+  }
+
+  Future<bool> _signInWithGoogleNative() async {
+    try {
+      final webClientId = SupabaseConfig.googleWebClientId;
+      final GoogleSignIn googleSignIn = _googleSignIn ??
+          GoogleSignIn(
+            serverClientId: webClientId.isNotEmpty ? webClientId : null,
+            scopes: const ['email', 'profile', 'openid'],
+          );
+
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) {
+        return false;
+      }
+
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final String? idToken = auth.idToken;
+
+      if (idToken == null) {
+        throw AppAuthException(
+          'Google no devolvió un idToken válido. Verifica la configuración de serverClientId y la huella SHA-1.',
+        );
+      }
+
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: auth.accessToken,
+      );
+
+      return response.session != null || response.user != null;
+    } on AuthException catch (e) {
+      throw AppAuthException.fromSupabase(e);
+    } catch (e) {
+      if (e is AppAuthException) rethrow;
+      throw AppAuthException('Error al iniciar sesión con Google: $e');
+    }
   }
 
   @override
@@ -126,12 +172,8 @@ class AuthService implements IAuthRepository {
   @override
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      final redirectUrl =
-          _resolveRedirectUrl(mobileCallbackPath: AppConstants.resetCallbackPath);
-
       await _client.auth.resetPasswordForEmail(
         email.trim(),
-        redirectTo: redirectUrl,
       );
     } on AuthException catch (e) {
       debugPrint('[AuthService] Error al enviar recuperación de contraseña: "${e.message}" (código: ${e.statusCode})');
@@ -139,6 +181,38 @@ class AuthService implements IAuthRepository {
     } catch (e) {
       debugPrint('[AuthService] Error inesperado en recuperación: $e');
       throw AppAuthException('Error al enviar correo de recuperación: $e');
+    }
+  }
+
+  @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _client.auth.verifyOTP(
+        email: email.trim(),
+        token: token.trim(),
+        type: OtpType.recovery,
+      );
+
+      if (response.session == null) {
+        throw AppAuthException('Código de recuperación inválido o expirado.');
+      }
+
+      await _client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      // Cierre de sesión preventivo para evitar condiciones de carrera en AuthGate
+      // y obligar a un inicio de sesión limpio con las nuevas credenciales.
+      await _client.auth.signOut();
+    } on AuthException catch (e) {
+      throw AppAuthException.fromSupabase(e);
+    } catch (e) {
+      if (e is AppAuthException) rethrow;
+      throw AppAuthException('Error al restablecer contraseña: $e');
     }
   }
 

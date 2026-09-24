@@ -77,6 +77,10 @@ BEGIN
   END IF;
 
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'trg_notif_task_comment_func falló (%: %)', SQLSTATE, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 

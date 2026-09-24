@@ -49,6 +49,13 @@ class MockWidgetAuthService implements IAuthRepository {
   }
 
   @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
+
+  @override
   Future<void> signOut() async {}
 }
 
@@ -202,7 +209,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Enviar Enlace'), findsOneWidget);
+    expect(find.text('Enviar Código de 6 Dígitos'), findsOneWidget);
 
     // Can close the dialog
     await tester.tap(find.byIcon(Icons.close));

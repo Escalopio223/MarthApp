@@ -1,15 +1,17 @@
 -- ==============================================================================
--- CORRECCIÓN INMEDIATA: Triggers de Notificaciones de Amistad y Entornos
+-- CORRECCIÓN DEFINITIVA: Triggers de Notificaciones de Amistad y Entornos
 -- ==============================================================================
 -- Corrige el error: column "nombre_completo" does not exist
--- En la tabla public.profiles el campo identificador es 'username'.
--- En la tabla public.environments el campo identificador es 'name'.
+-- En la tabla public.profiles el campo identificador principal es 'username'.
+-- Se añade la columna 'nombre_completo' por compatibilidad hacia atrás
+-- y se protegen los triggers con bloques EXCEPTION para que NUNCA bloqueen
+-- una solicitud de amistad ni una invitación de entorno ante cualquier fallo de notificación.
 -- ==============================================================================
 
--- 1. Añadir columna opcional nombre_completo a profiles por compatibilidad futura
+-- 1. Añadir columna opcional nombre_completo a profiles por compatibilidad si no existe
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS nombre_completo TEXT;
 
--- 2. Corregir trigger de solicitudes de amistad
+-- 2. Corregir trigger de solicitudes de amistad (Resiliente y seguro)
 CREATE OR REPLACE FUNCTION public.trg_notif_friend_request_func()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -19,7 +21,8 @@ DECLARE
   v_sender_name TEXT;
 BEGIN
   IF NEW.status = 'pending' THEN
-    SELECT COALESCE(nombre_completo, username, 'Un usuario')
+    -- Obtenemos el username del perfil (campo nativo y seguro en profiles)
+    SELECT COALESCE(username, 'Un usuario')
     INTO v_sender_name
     FROM public.profiles
     WHERE id = NEW.sender_id;
@@ -39,6 +42,10 @@ BEGIN
     );
   END IF;
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'trg_notif_friend_request_func falló (%: %)', SQLSTATE, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 
@@ -48,7 +55,7 @@ CREATE TRIGGER trg_notif_friend_request
   FOR EACH ROW
   EXECUTE FUNCTION public.trg_notif_friend_request_func();
 
--- 3. Corregir trigger de invitaciones a entornos
+-- 3. Corregir trigger de invitaciones a entornos (Resiliente y seguro)
 CREATE OR REPLACE FUNCTION public.trg_notif_env_invitation_func()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -59,7 +66,7 @@ DECLARE
   v_env_name TEXT;
 BEGIN
   IF NEW.status = 'pending' THEN
-    SELECT COALESCE(nombre_completo, username, 'Un miembro')
+    SELECT COALESCE(username, 'Un miembro')
     INTO v_sender_name
     FROM public.profiles
     WHERE id = NEW.sender_id;
@@ -84,6 +91,10 @@ BEGIN
     );
   END IF;
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'trg_notif_env_invitation_func falló (%: %)', SQLSTATE, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 

@@ -70,6 +70,12 @@ abstract class IEnvironmentRepository {
     void Function() onInvitationsChanged,
   );
 
+  /// Suscripción Realtime a cambios en members de un entorno específico
+  RealtimeChannel? subscribeToMembers(
+    String environmentId,
+    void Function() onMembersChanged,
+  );
+
   /// Cancela la suscripción del canal Realtime
   Future<void> unsubscribe(RealtimeChannel? channel);
 }

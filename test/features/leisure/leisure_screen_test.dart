@@ -47,6 +47,12 @@ class FakeAuthRepo implements IAuthRepository {
         'created_at': DateTime.now().toIso8601String(),
       });
   @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
+  @override
   Future<void> signOut() async {}
 }
 

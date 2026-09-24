@@ -375,6 +375,14 @@ class PlanificadorController extends ChangeNotifier {
     _subscribeToStreams(newEntornoId);
   }
 
+  /// Fuerza la reconexión y recarga reactiva de los streams del entorno actual.
+  Future<void> recargar() async {
+    final id = _entornoId;
+    if (id == null) return;
+    _cancelSubscriptions();
+    _subscribeToStreams(id);
+  }
+
   void _cancelSubscriptions() {
     _proyectosSub?.cancel();
     _tareasSub?.cancel();

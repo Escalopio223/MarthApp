@@ -184,6 +184,34 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  Future<bool> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    _isUpdateLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.completePasswordReset(
+        email: email,
+        token: token,
+        newPassword: newPassword,
+      );
+      _successMessage =
+          'Tu contraseña ha sido actualizada con éxito. Inicia sesión con tus nuevas credenciales.';
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
+    } finally {
+      _isUpdateLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> signOut() async {
     _errorMessage = null;
     _successMessage = null;

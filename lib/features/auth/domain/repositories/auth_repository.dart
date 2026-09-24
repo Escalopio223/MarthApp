@@ -31,6 +31,15 @@ abstract class IAuthRepository {
   /// Actualizar contraseña del usuario tras recibir el enlace de recuperación
   Future<UserResponse> updatePassword(String newPassword);
 
+  /// Completa el restablecimiento de contraseña mediante OTP numérico de 6 dígitos.
+  /// Valida el token con GoTrue (OtpType.recovery), actualiza la contraseña del usuario
+  /// y cierra la sesión de recuperación para garantizar un estado limpio sin condiciones de carrera.
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  });
+
   /// Cerrar sesión actual
   Future<void> signOut();
 }

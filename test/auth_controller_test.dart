@@ -66,6 +66,16 @@ class MockFullAuthService implements IAuthRepository {
   }
 
   @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    lastAction = 'completePasswordReset';
+    if (shouldFail) throw Exception(failMessage ?? 'Error al restablecer contraseña');
+  }
+
+  @override
   Future<void> signOut() async {
     lastAction = 'signOut';
     if (shouldFail) throw Exception('Error al cerrar sesión');
@@ -142,6 +152,31 @@ void main() {
       expect(mockAuthService.lastAction, equals('updatePassword'));
       expect(controller.successMessage, isNotNull);
       expect(controller.errorMessage, isNull);
+    });
+
+    test('completePasswordReset verifies OTP and sets successMessage', () async {
+      final success = await controller.completePasswordReset(
+        email: 'user@marthapp.com',
+        token: '123456',
+        newPassword: 'newSecurePassword456',
+      );
+      expect(success, isTrue);
+      expect(mockAuthService.lastAction, equals('completePasswordReset'));
+      expect(controller.successMessage, isNotNull);
+      expect(controller.errorMessage, isNull);
+    });
+
+    test('completePasswordReset failure sets errorMessage', () async {
+      mockAuthService.shouldFail = true;
+      mockAuthService.failMessage = 'Código expirado';
+
+      final success = await controller.completePasswordReset(
+        email: 'user@marthapp.com',
+        token: '000000',
+        newPassword: 'newSecurePassword456',
+      );
+      expect(success, isFalse);
+      expect(controller.errorMessage, contains('Código expirado'));
     });
 
     test('Failed operation properly updates errorMessage', () async {

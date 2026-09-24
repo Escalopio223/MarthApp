@@ -59,6 +59,12 @@ class FakeAuthRepo implements IAuthRepository {
         'created_at': DateTime.now().toIso8601String(),
       });
   @override
+  Future<void> completePasswordReset({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
+  @override
   Future<void> signOut() async {}
 }
 
@@ -109,6 +115,12 @@ class FakeEnvironmentRepo implements IEnvironmentRepository {
   Future<List<EnvironmentMemberModel>> getEnvironmentMembers(
     String environmentId,
   ) async => [];
+
+  @override
+  RealtimeChannel? subscribeToMembers(
+    String environmentId,
+    void Function() onMembersChanged,
+  ) => null;
 
   @override
   Future<bool> removeMember({

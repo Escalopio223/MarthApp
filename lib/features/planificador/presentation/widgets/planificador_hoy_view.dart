@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../environments/domain/models/environment_member_model.dart';
+import '../../../environments/presentation/controllers/environment_controller.dart';
 import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/etiqueta_tarea.dart';
@@ -23,6 +24,7 @@ import 'editar_tarea_dialog.dart';
 /// - Botón flotante para creación rápida de tareas en < 5 segundos
 class PlanificadorHoyView extends StatefulWidget {
   final PlanificadorController controller;
+  final EnvironmentController? environmentController;
   final List<EnvironmentMemberModel> miembros;
   final String? usuarioActualId;
   final VoidCallback? onIrAPlanificacion;
@@ -30,6 +32,7 @@ class PlanificadorHoyView extends StatefulWidget {
   const PlanificadorHoyView({
     super.key,
     required this.controller,
+    this.environmentController,
     this.miembros = const [],
     this.usuarioActualId,
     this.onIrAPlanificacion,
@@ -44,7 +47,8 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
   String _searchQuery = '';
 
   PlanificadorController get controller => widget.controller;
-  List<EnvironmentMemberModel> get miembros => widget.miembros;
+  List<EnvironmentMemberModel> get miembros =>
+      widget.environmentController?.activeMembers ?? widget.miembros;
   String? get usuarioActualId => widget.usuarioActualId;
   VoidCallback? get onIrAPlanificacion => widget.onIrAPlanificacion;
 
@@ -95,7 +99,11 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
         onRefresh: () async {
           final envId = controller.entornoId;
           if (envId != null) {
-            controller.setEntorno(envId);
+            await Future.wait([
+              controller.recargar(),
+              if (widget.environmentController != null)
+                widget.environmentController!.loadActiveMembers(envId),
+            ]);
           }
         },
         color: AppTheme.primaryLiquid,
