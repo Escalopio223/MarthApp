@@ -24,7 +24,7 @@ class MarthBottomNavBar extends StatelessWidget {
     final effectiveBaseColor = AppTheme.surfaceDark;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(24, 8, 24, bottomPadding > 0 ? bottomPadding : 12),
+      padding: EdgeInsets.fromLTRB(24, 8, 24, bottomPadding > 0 ? bottomPadding + 4 : 12),
       decoration: BoxDecoration(
         color: effectiveBaseColor,
         gradient: AppTheme.claySurfaceGradient(baseColor: effectiveBaseColor),

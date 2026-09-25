@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:marth_app/core/widgets/app_background.dart';
 import 'package:marth_app/features/friends/domain/models/friend_request_model.dart';
 import 'package:marth_app/features/friends/domain/models/profile_model.dart';
 import 'package:marth_app/features/friends/presentation/controllers/friends_controller.dart';
@@ -149,6 +150,40 @@ void main() {
       // Verifica que se guardó y volvió a modo vista
       expect(find.text('@arturo_king'), findsOneWidget);
       expect(controller.currentProfile?.username, equals('arturo_king'));
+    });
+
+    testWidgets('FriendsScreen applies SafeArea when asTab is true, avoids redundant SafeArea when asTab is false',
+        (WidgetTester tester) async {
+      // 1. asTab: true (No AppBar -> AppBackground wraps with SafeArea top)
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FriendsScreen(
+            friendsController: controller,
+            asTab: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppBar), findsNothing);
+      final appBgTab = tester.widget<AppBackground>(find.byType(AppBackground));
+      expect(appBgTab.useSafeArea, isTrue);
+      expect(appBgTab.safeAreaTop, isTrue);
+
+      // 2. asTab: false (Has AppBar -> AppBar manages top, AppBackground does NOT wrap in SafeArea to avoid double padding)
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FriendsScreen(
+            friendsController: controller,
+            asTab: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppBar), findsOneWidget);
+      final appBgStandalone = tester.widget<AppBackground>(find.byType(AppBackground));
+      expect(appBgStandalone.useSafeArea, isFalse);
     });
   });
 }

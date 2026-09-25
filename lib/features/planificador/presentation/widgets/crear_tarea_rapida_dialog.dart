@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -49,6 +50,7 @@ class CrearTareaRapidaDialog extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => CrearTareaRapidaDialog(
         controller: controller,
@@ -176,6 +178,7 @@ class _CrearTareaRapidaDialogState extends State<CrearTareaRapidaDialog> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
 
     return Container(
       decoration: BoxDecoration(
@@ -189,7 +192,7 @@ class _CrearTareaRapidaDialogState extends State<CrearTareaRapidaDialog> {
         ),
         boxShadow: AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
       ),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 20),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + math.max(bottomSafeArea, 20.0)),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

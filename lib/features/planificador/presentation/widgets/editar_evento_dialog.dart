@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -32,6 +33,7 @@ class EditarEventoDialog extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => EditarEventoDialog(
         evento: evento,
@@ -239,6 +241,7 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
     final esCumple = _tipo == 'cumpleanos';
 
     return Container(
@@ -254,7 +257,7 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
         ),
         boxShadow: AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
       ),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 20),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + math.max(bottomSafeArea, 20.0)),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

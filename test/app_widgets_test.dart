@@ -169,4 +169,90 @@ void main() {
       expect(find.text('Inset Item'), findsOneWidget);
     });
   });
+
+  group('AppBackground Safe Area Tests', () {
+    testWidgets('wraps child in SafeArea with default edges when useSafeArea is true',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppBackground(
+              child: Text('Safe Area Content'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Safe Area Content'), findsOneWidget);
+      final safeAreaFinder = find.byType(SafeArea);
+      expect(safeAreaFinder, findsOneWidget);
+
+      final safeAreaWidget = tester.widget<SafeArea>(safeAreaFinder);
+      expect(safeAreaWidget.top, isTrue);
+      expect(safeAreaWidget.bottom, isTrue);
+      expect(safeAreaWidget.left, isTrue);
+      expect(safeAreaWidget.right, isTrue);
+    });
+
+    testWidgets('respects custom edge flags like safeAreaTop: false',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppBackground(
+              safeAreaTop: false,
+              safeAreaBottom: false,
+              child: Text('Custom Safe Area Content'),
+            ),
+          ),
+        ),
+      );
+
+      final safeAreaFinder = find.byType(SafeArea);
+      expect(safeAreaFinder, findsOneWidget);
+
+      final safeAreaWidget = tester.widget<SafeArea>(safeAreaFinder);
+      expect(safeAreaWidget.top, isFalse);
+      expect(safeAreaWidget.bottom, isFalse);
+      expect(safeAreaWidget.left, isTrue);
+      expect(safeAreaWidget.right, isTrue);
+    });
+
+    testWidgets('does not wrap in SafeArea when useSafeArea is false',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppBackground(
+              useSafeArea: false,
+              child: Text('No Safe Area Content'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('No Safe Area Content'), findsOneWidget);
+      expect(find.byType(SafeArea), findsNothing);
+    });
+
+    testWidgets('background container stretches edge-to-edge (infinite dimensions)',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: AppBackground(
+              child: Text('Edge to edge'),
+            ),
+          ),
+        ),
+      );
+
+      final containerFinder = find.byWidgetPredicate(
+        (w) => w is Container &&
+            w.constraints?.minWidth == double.infinity &&
+            w.constraints?.minHeight == double.infinity,
+      );
+      expect(containerFinder, findsOneWidget);
+    });
+  });
 }

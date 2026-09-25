@@ -68,8 +68,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final incomingRequests = controller.incomingRequests;
     final friends = controller.friends;
 
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
     return AppBackground(
-      useSafeArea: false,
+      useSafeArea: widget.asTab,
+      safeAreaTop: widget.asTab,
+      safeAreaBottom: false,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: widget.asTab ? null : AppBar(
@@ -103,7 +107,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           onRefresh: () => controller.refresh(),
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 580),

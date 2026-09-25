@@ -504,7 +504,7 @@ class _RepartoTareasBoardViewState extends State<RepartoTareasBoardView> {
 
     return ListView.separated(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 85.0),
       itemCount: participantes.length,
       separatorBuilder: (_, _) => const SizedBox(width: 14),
       itemBuilder: (context, index) {

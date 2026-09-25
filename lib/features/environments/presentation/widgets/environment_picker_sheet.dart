@@ -31,6 +31,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (_) => EnvironmentPickerSheet(
         controller: controller,
         friendsController: friendsController,
@@ -49,7 +50,7 @@ class EnvironmentPickerSheet extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         return Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.paddingOf(context).bottom),
           decoration: BoxDecoration(
             color: AppTheme.surfaceDark,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),

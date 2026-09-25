@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -188,6 +189,8 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         ),
       ),
       body: AppBackground(
+        safeAreaTop: false,
+        safeAreaBottom: false,
         child: bodyContent,
       ),
     );
@@ -291,6 +294,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppTheme.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -298,12 +302,13 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            final bottomPadding = math.max(MediaQuery.paddingOf(ctx).bottom, 20.0);
             return Padding(
               padding: EdgeInsets.only(
                 left: 20,
                 right: 20,
                 top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + bottomPadding,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -442,6 +447,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppTheme.surfaceDark,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -449,12 +455,13 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            final bottomPadding = math.max(MediaQuery.paddingOf(ctx).bottom, 20.0);
             return Padding(
               padding: EdgeInsets.only(
                 left: 20,
                 right: 20,
                 top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + bottomPadding,
               ),
               child: SingleChildScrollView(
                 child: Column(

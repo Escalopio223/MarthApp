@@ -25,6 +25,7 @@ class LeisureSharedListsSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => LeisureSharedListsSheet(controller: controller),
     );
@@ -250,7 +251,7 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
                     ? _buildNoEnvironmentNotice()
                     : ListView(
                         controller: scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: EdgeInsets.fromLTRB(20, 0, 20, 24 + MediaQuery.paddingOf(context).bottom),
                         children: [
                           // Botón para crear nueva lista
                           AppButton(
@@ -499,10 +500,11 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
     final currentSort = widget.controller.getListSortOption(listId);
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          padding: EdgeInsets.fromLTRB(16, 20, 16, 20 + MediaQuery.paddingOf(ctx).bottom),
           decoration: BoxDecoration(
             color: AppTheme.surfaceDark,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),

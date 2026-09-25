@@ -177,10 +177,11 @@ class _LeisureScreenState extends State<LeisureScreen> {
         ],
       ),
       body: AppBackground(
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        safeAreaTop: false,
+        safeAreaBottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
               const SizedBox(height: 8),
 
               // Barra de búsqueda con Debounce (400ms)
@@ -299,7 +300,6 @@ class _LeisureScreenState extends State<LeisureScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 

@@ -38,6 +38,7 @@ class LeisureDetailSheet extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => LeisureDetailSheet(
         initialMedia: media,
@@ -275,10 +276,11 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
 
     showModalBottomSheet(
       context: context,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.paddingOf(ctx).bottom),
           decoration: BoxDecoration(
             color: AppTheme.surfaceDark,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -394,7 +396,7 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 36),
+                  padding: EdgeInsets.fromLTRB(20, 4, 20, 36 + MediaQuery.paddingOf(context).bottom),
                   children: [
                     // Fila de acciones superiores (Cerrar y Ruleta)
                     Row(

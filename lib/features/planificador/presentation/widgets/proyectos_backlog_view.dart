@@ -281,7 +281,7 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 6.0, 16.0, 100.0),
       itemCount: proyectos.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -572,7 +572,7 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 6.0, 16.0, 100.0),
       itemCount: tareas.length,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {

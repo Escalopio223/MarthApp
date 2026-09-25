@@ -97,6 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final user = widget.authController.user;
     final email = user?.email ?? 'usuario@marthapp.com';
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return AppBackground(
       useSafeArea: false,
@@ -121,7 +122,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           centerTitle: true,
         ),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 24 + bottomInset),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 540),

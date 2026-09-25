@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -49,6 +50,7 @@ class EditarTareaDialog extends StatefulWidget {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => EditarTareaDialog(
         tarea: tarea,
@@ -349,6 +351,7 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return ConstrainedBox(
@@ -367,7 +370,7 @@ class _EditarTareaDialogState extends State<EditarTareaDialog> {
           ),
           boxShadow: AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
         ),
-        padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 20),
+        padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + math.max(bottomSafeArea, 20.0)),
         child: SingleChildScrollView(
           child: Column(
           mainAxisSize: MainAxisSize.min,

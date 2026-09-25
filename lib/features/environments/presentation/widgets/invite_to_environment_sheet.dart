@@ -41,6 +41,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (sheetContext) => InviteToEnvironmentSheet(
         friend: friend,
         environmentController: environmentController,
@@ -55,7 +56,7 @@ class InviteToEnvironmentSheet extends StatelessWidget {
         .toList();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.paddingOf(context).bottom),
       decoration: BoxDecoration(
         color: AppTheme.surfaceDark,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),

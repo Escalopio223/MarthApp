@@ -8,15 +8,33 @@ import '../theme/app_theme.dart';
 class AppBackground extends StatelessWidget {
   final Widget child;
   final bool useSafeArea;
+  final bool safeAreaTop;
+  final bool safeAreaBottom;
+  final bool safeAreaLeft;
+  final bool safeAreaRight;
 
   const AppBackground({
     super.key,
     required this.child,
     this.useSafeArea = true,
+    this.safeAreaTop = true,
+    this.safeAreaBottom = true,
+    this.safeAreaLeft = true,
+    this.safeAreaRight = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Widget content = useSafeArea
+        ? SafeArea(
+            top: safeAreaTop,
+            bottom: safeAreaBottom,
+            left: safeAreaLeft,
+            right: safeAreaRight,
+            child: child,
+          )
+        : child;
+
     return Container(
       width: double.infinity,
       height: double.infinity,
@@ -34,7 +52,7 @@ class AppBackground extends StatelessWidget {
           ],
         ),
       ),
-      child: useSafeArea ? SafeArea(child: child) : child,
+      child: content,
     );
   }
 }
