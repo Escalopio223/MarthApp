@@ -1,0 +1,12 @@
+{
+  "name": "sanitize-image",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test index.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.1",
+    "sharp": "^0.33.5"
+  }
+}
