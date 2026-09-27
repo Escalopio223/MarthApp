@@ -443,8 +443,10 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
               const SizedBox(height: 12),
             ],
 
-            // Tarjeta unificada de entrada: Título + Descripción ligera
-            _buildHeroInputCard(),
+            // Inputs principales: Nombre de la tarea y Comentario/Descripción
+            _buildTituloInput(),
+            const SizedBox(height: 10),
+            _buildDescripcionInput(),
             const SizedBox(height: 14),
 
             // Selector compacto de fecha y hora
@@ -581,81 +583,80 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     );
   }
 
-  Widget _buildHeroInputCard() {
+  Widget _buildTituloInput() {
     final hasError = _validationError != null;
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 136),
       decoration: BoxDecoration(
         color: AppTheme.darkBackground,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: hasError
               ? AppTheme.accentCoral
-              : Colors.white.withValues(alpha: 0.1),
+              : Colors.white.withValues(alpha: 0.08),
           width: hasError ? 1.4 : 1.0,
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _tituloController,
-            autofocus: widget.mode.isCreate,
-            enabled: !_isSubmitting,
-            textCapitalization: TextCapitalization.sentences,
-            style: TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 16.5,
-              fontWeight: FontWeight.w600,
-            ),
-            decoration: InputDecoration(
-              hintText: '¿Qué hay que hacer?',
-              hintStyle: TextStyle(
-                color: AppTheme.textSecondary.withValues(alpha: 0.45),
-                fontSize: 16.5,
-                fontWeight: FontWeight.normal,
-              ),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 4),
-              border: InputBorder.none,
-            ),
-            onChanged: _onTituloChanged,
-            onSubmitted: (_) => _handleSubmit(),
+      child: TextField(
+        controller: _tituloController,
+        autofocus: widget.mode.isCreate,
+        enabled: !_isSubmitting,
+        textAlignVertical: TextAlignVertical.center,
+        textCapitalization: TextCapitalization.sentences,
+        style: TextStyle(
+          color: AppTheme.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          hintText: '¿Qué hay que hacer?',
+          hintStyle: TextStyle(
+            color: AppTheme.textSecondary.withValues(alpha: 0.45),
+            fontSize: 16,
+            fontWeight: FontWeight.normal,
           ),
-          const SizedBox(height: 12),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: Colors.white.withValues(alpha: 0.07),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: InputBorder.none,
+          isDense: false,
+        ),
+        onChanged: _onTituloChanged,
+        onSubmitted: (_) => _handleSubmit(),
+      ),
+    );
+  }
+
+  Widget _buildDescripcionInput() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.darkBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 1.0,
+        ),
+      ),
+      child: TextField(
+        controller: _descripcionController,
+        enabled: !_isSubmitting,
+        minLines: 2,
+        maxLines: 4,
+        textCapitalization: TextCapitalization.sentences,
+        style: TextStyle(
+          color: AppTheme.textPrimary.withValues(alpha: 0.9),
+          fontSize: 14,
+          height: 1.4,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Añadir descripción o notas (opcional)...',
+          hintStyle: TextStyle(
+            color: AppTheme.textSecondary.withValues(alpha: 0.4),
+            fontSize: 14,
+            height: 1.4,
           ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _descripcionController,
-            enabled: !_isSubmitting,
-            minLines: 2,
-            maxLines: 4,
-            textCapitalization: TextCapitalization.sentences,
-            style: TextStyle(
-              color: AppTheme.textPrimary.withValues(alpha: 0.9),
-              fontSize: 13.5,
-              height: 1.4,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Añadir descripción o notas (opcional)...',
-              hintStyle: TextStyle(
-                color: AppTheme.textSecondary.withValues(alpha: 0.4),
-                fontSize: 13.5,
-                height: 1.4,
-              ),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(vertical: 4),
-              border: InputBorder.none,
-            ),
-          ),
-        ],
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          border: InputBorder.none,
+          isDense: false,
+        ),
       ),
     );
   }
