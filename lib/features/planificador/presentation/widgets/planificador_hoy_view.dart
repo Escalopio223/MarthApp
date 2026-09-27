@@ -15,6 +15,8 @@ import 'editar_evento_dialog.dart';
 import 'editar_tarea_dialog.dart';
 import 'task_form_basic.dart';
 import '../../domain/models/task_form_basic_payload.dart';
+import '../../domain/services/reparto_equitativo_service.dart';
+import 'reparto_preview_dialog.dart';
 
 /// Vista principal "Hoy" para el módulo Planificador:
 /// - Feed vertical scrolleable enfocado en: "¿Qué hay que hacer hoy y quién lo hace?"
@@ -46,6 +48,8 @@ class PlanificadorHoyView extends StatefulWidget {
 class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _selectionMode = false;
+  final Set<String> _selectedTaskIds = {};
 
   PlanificadorController get controller => widget.controller;
   List<EnvironmentMemberModel> get miembros =>
@@ -57,6 +61,149 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _activarModoSeleccion(
+    List<TareaModel> rawTareas,
+    List<TareaModel> tareasVisibles,
+  ) {
+    if (miembros.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'No hay miembros activos en el entorno para repartir tareas'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final pendientes =
+        rawTareas.where((t) => t.estado != 'completada').toList();
+    if (pendientes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay tareas pendientes en Hoy para repartir'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _selectionMode = true;
+      _selectedTaskIds.clear();
+      final tareasASeleccionar =
+          tareasVisibles.where((t) => t.estado != 'completada');
+      if (tareasASeleccionar.isNotEmpty) {
+        _selectedTaskIds.addAll(tareasASeleccionar.map((t) => t.id));
+      } else {
+        _selectedTaskIds.addAll(pendientes.map((t) => t.id));
+      }
+    });
+  }
+
+  void _cancelarModoSeleccion() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _selectionMode = false;
+      _selectedTaskIds.clear();
+    });
+  }
+
+  void _seleccionarTodas(List<TareaModel> tareasVisibles) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      final pendientes = tareasVisibles
+          .where((t) => t.estado != 'completada')
+          .map((t) => t.id);
+      _selectedTaskIds.addAll(pendientes);
+    });
+  }
+
+  void _deseleccionarTodas() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectedTaskIds.clear();
+    });
+  }
+
+  void _toggleSeleccionTarea(String tareaId) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedTaskIds.contains(tareaId)) {
+        _selectedTaskIds.remove(tareaId);
+      } else {
+        _selectedTaskIds.add(tareaId);
+      }
+    });
+  }
+
+  Future<void> _abrirPrevisualizacionReparto(
+      List<TareaModel> todasLasTareas) async {
+    if (_selectedTaskIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona al menos una tarea para repartir'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (miembros.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'No hay miembros activos disponibles para el reparto'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final tareasARepartir = todasLasTareas
+        .where(
+            (t) => _selectedTaskIds.contains(t.id) && t.estado != 'completada')
+        .toList();
+
+    if (tareasARepartir.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Ninguna de las tareas seleccionadas está pendiente'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final resultado = RepartoEquitativoService.calcularRepartoEquitativo(
+      tareas: tareasARepartir,
+      miembros: miembros,
+      fallbackTiempoMinutos:
+          RepartoEquitativoService.kTiempoEstimadoFallbackMinutos,
+    );
+
+    final aplicado = await RepartoPreviewDialog.show(
+      context,
+      resultado: resultado,
+      controller: controller,
+    );
+
+    if (aplicado == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Tareas repartidas equitativamente con éxito! 🎉'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      setState(() {
+        _selectionMode = false;
+        _selectedTaskIds.clear();
+      });
+    }
   }
 
   @override
@@ -126,7 +273,14 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
             _buildFiltrosChipsSection(context, filtroActivo),
             const SizedBox(height: 14),
 
-            // 4. Feed de Tareas de Hoy (Agrupadas o planas)
+            // 4. Barra de Acciones y Modo de Selección por Lotes para Reparto Automático
+            if (_selectionMode)
+              _buildSelectionToolbar(context, tareas, rawTareas)
+            else
+              _buildHeaderToolbar(context, rawTareas, tareas),
+            const SizedBox(height: 12),
+
+            // 5. Feed de Tareas de Hoy (Agrupadas o planas)
             if (rawTareas.isEmpty)
               _buildEmptyState(context)
             else if (tareas.isEmpty)
@@ -138,28 +292,30 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppTheme.primaryLiquid,
-        foregroundColor: Colors.white,
-        elevation: 6,
-        icon: const Icon(Icons.add_rounded, size: 22),
-        label: const Text(
-          'Tarea rápida',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-        onPressed: () => TaskFormBasic.showModal(
-          context,
-          mode: TaskFormMode.create,
-          initialPayload: TaskFormBasicPayload.initialForCreate(
-            defaultDate: DateTime.now(),
-            defaultAssigneeId: usuarioActualId,
-          ),
-          miembros: miembros,
-          proyectos: controller.proyectos,
-          usuarioActualId: usuarioActualId,
-          onSubmit: (payload) => controller.crearTareaDesdePayload(payload),
-        ),
-      ),
+      floatingActionButton: _selectionMode
+          ? null
+          : FloatingActionButton.extended(
+              backgroundColor: AppTheme.primaryLiquid,
+              foregroundColor: Colors.white,
+              elevation: 6,
+              icon: const Icon(Icons.add_rounded, size: 22),
+              label: const Text(
+                'Tarea rápida',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              onPressed: () => TaskFormBasic.showModal(
+                context,
+                mode: TaskFormMode.create,
+                initialPayload: TaskFormBasicPayload.initialForCreate(
+                  defaultDate: DateTime.now(),
+                  defaultAssigneeId: usuarioActualId,
+                ),
+                miembros: miembros,
+                proyectos: controller.proyectos,
+                usuarioActualId: usuarioActualId,
+                onSubmit: (payload) => controller.crearTareaDesdePayload(payload),
+              ),
+            ),
     );
   }
 
@@ -851,6 +1007,295 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
     );
   }
 
+  Widget _buildHeaderToolbar(
+    BuildContext context,
+    List<TareaModel> rawTareas,
+    List<TareaModel> tareasVisibles,
+  ) {
+    final pendientesHoy =
+        rawTareas.where((t) => t.estado != 'completada').length;
+    final tieneMiembros = miembros.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      child: Row(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.checklist_rounded,
+                size: 15,
+                color: AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'TAREAS DE HOY',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.9,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              if (pendientesHoy > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLiquid.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$pendientesHoy',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryLiquid,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const Spacer(),
+          // Botón de acción: Reparto automático
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _activarModoSeleccion(rawTareas, tareasVisibles);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceDark,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: (tieneMiembros && pendientesHoy > 0)
+                      ? AppTheme.accentEmerald.withValues(alpha: 0.5)
+                      : AppTheme.cardBorderColor.withValues(alpha: 0.5),
+                  width: 1.0,
+                ),
+                boxShadow: AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 13,
+                    color: (tieneMiembros && pendientesHoy > 0)
+                        ? AppTheme.accentEmerald
+                        : AppTheme.textSecondary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Reparto automático',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: (tieneMiembros && pendientesHoy > 0)
+                          ? AppTheme.accentEmerald
+                          : AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionToolbar(
+    BuildContext context,
+    List<TareaModel> tareasVisibles,
+    List<TareaModel> rawTareas,
+  ) {
+    final pendientesVisibles =
+        tareasVisibles.where((t) => t.estado != 'completada').toList();
+    final puedeRepartir =
+        _selectedTaskIds.isNotEmpty && miembros.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppTheme.accentEmerald.withValues(alpha: 0.6),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.accentEmerald.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+          ...AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Fila 1: Botón Cancelar + Contador dinámico + Botón Repartir
+          Row(
+            children: [
+              // Botón cancelar modo de selección
+              InkWell(
+                onTap: _cancelarModoSeleccion,
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Contador dinámico de tareas seleccionadas
+              Expanded(
+                child: Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentEmerald.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.accentEmerald.withValues(alpha: 0.4),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      '${_selectedTaskIds.length} seleccionada${_selectedTaskIds.length == 1 ? "" : "s"}',
+                      style: TextStyle(
+                        color: AppTheme.accentEmerald,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Botón de acción: Repartir (N)
+              ElevatedButton.icon(
+                onPressed: puedeRepartir
+                    ? () => _abrirPrevisualizacionReparto(rawTareas)
+                    : null,
+                icon: const Icon(Icons.auto_awesome_rounded, size: 14),
+                label: Text('Repartir (${_selectedTaskIds.length})'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentEmerald,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor:
+                      AppTheme.darkBackground.withValues(alpha: 0.5),
+                  disabledForegroundColor:
+                      AppTheme.textSecondary.withValues(alpha: 0.4),
+                  elevation: puedeRepartir ? 4 : 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: Colors.white10),
+          const SizedBox(height: 6),
+
+          // Fila 2: Opciones rápidas (Seleccionar todas / Deseleccionar todas)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              InkWell(
+                onTap: () => _seleccionarTodas(pendientesVisibles),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.select_all_rounded,
+                        size: 14,
+                        color: AppTheme.primaryLiquid,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Seleccionar todas',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryLiquid,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: _deseleccionarTodas,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.deselect_rounded,
+                        size: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Deseleccionar todas',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   List<Widget> _buildTareasAgrupadas(
     BuildContext context, [
     List<TareaModel>? tareasFiltradas,
@@ -941,6 +1386,7 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
 
   Widget _buildTareaHoyItem(BuildContext context, TareaModel tarea) {
     final isDone = tarea.estado == 'completada';
+    final isSelected = _selectedTaskIds.contains(tarea.id);
     final etiqueta = EtiquetaTarea.buscar(tarea.etiqueta);
     final responsable = miembros.firstWhere(
       (m) => m.userId == tarea.asignadoA,
@@ -962,17 +1408,37 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
         color: AppTheme.surfaceDark,
         gradient: isDone
             ? null
-            : AppTheme.claySurfaceGradient(baseColor: AppTheme.surfaceDark),
+            : (_selectionMode && isSelected
+                ? LinearGradient(
+                    colors: [
+                      AppTheme.surfaceDark,
+                      AppTheme.accentEmerald.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : AppTheme.claySurfaceGradient(baseColor: AppTheme.surfaceDark)),
         borderRadius: cardRadius,
         border: Border.all(
-          color: isDone
-              ? AppTheme.accentEmerald.withValues(alpha: 0.25)
-              : AppTheme.cardBorderColor.withValues(alpha: 0.85),
-          width: 1.0,
+          color: _selectionMode && isSelected
+              ? AppTheme.accentEmerald
+              : (isDone
+                  ? AppTheme.accentEmerald.withValues(alpha: 0.25)
+                  : AppTheme.cardBorderColor.withValues(alpha: 0.85)),
+          width: _selectionMode && isSelected ? 1.8 : 1.0,
         ),
         boxShadow: isDone
             ? AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark, isPressed: true)
-            : AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
+            : (_selectionMode && isSelected
+                ? [
+                    BoxShadow(
+                      color: AppTheme.accentEmerald.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                    ...AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
+                  ]
+                : AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -981,81 +1447,143 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
           borderRadius: cardRadius,
           onTap: () {
             HapticFeedback.lightImpact();
-            EditarTareaDialog.show(
-              context,
-              tarea: tarea,
-              controller: controller,
-              miembros: miembros,
-              usuarioActualId: usuarioActualId,
-            );
+            if (_selectionMode) {
+              if (!isDone) {
+                _toggleSeleccionTarea(tarea.id);
+              }
+            } else {
+              EditarTareaDialog.show(
+                context,
+                tarea: tarea,
+                controller: controller,
+                miembros: miembros,
+                usuarioActualId: usuarioActualId,
+              );
+            }
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Fila Superior: Checkbox Clay + Título + Avatar Responsable + Menú
+                // Fila Superior: Checkbox Clay / Selección + Título + Avatar Responsable + Menú
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Checkbox Claymórfico Táctil 3D
+                    // Checkbox de Selección Múltiple o Checkbox Claymórfico de Completado
                     Padding(
                       padding: const EdgeInsets.only(top: 1),
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (!isDone) {
-                            HapticFeedback.mediumImpact();
-                          } else {
-                            HapticFeedback.lightImpact();
-                          }
-                          controller.toggleTarea(tarea.id);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOutCubic,
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: isDone
-                                ? AppTheme.liquidEmeraldGradient
-                                : AppTheme.claySurfaceGradient(baseColor: AppTheme.surfaceDark),
-                            border: Border.all(
-                              color: isDone
-                                  ? AppTheme.accentEmerald
-                                  : AppTheme.cardBorderColor.withValues(alpha: 0.9),
-                              width: isDone ? 1.0 : 1.4,
-                            ),
-                            boxShadow: isDone
-                                ? [
-                                    BoxShadow(
-                                      color: AppTheme.accentEmerald.withValues(alpha: 0.45),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                    ...AppTheme.clayRaisedShadows(baseColor: AppTheme.accentEmerald, isPressed: true),
-                                  ]
-                                : AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark, isPressed: false),
-                          ),
-                          child: Center(
-                            child: isDone
-                                ? const Icon(
-                                    Icons.check_rounded,
-                                    size: 17,
-                                    color: Colors.white,
-                                  )
-                                : Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: AppTheme.textSecondary.withValues(alpha: 0.22),
-                                    ),
+                      child: _selectionMode
+                          ? GestureDetector(
+                              key: const ValueKey('selection_checkbox_gesture'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                if (!isDone) {
+                                  _toggleSeleccionTarea(tarea.id);
+                                }
+                              },
+                              child: AnimatedContainer(
+                                key: const ValueKey('selection_checkbox_box'),
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOutCubic,
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  gradient: isSelected
+                                      ? AppTheme.liquidEmeraldGradient
+                                      : null,
+                                  color: isSelected ? null : AppTheme.surfaceDark,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppTheme.accentEmerald
+                                        : AppTheme.cardBorderColor.withValues(alpha: 0.9),
+                                    width: 1.4,
                                   ),
-                          ),
-                        ),
-                      ),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: AppTheme.accentEmerald.withValues(alpha: 0.4),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                      : AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark, isPressed: false),
+                                ),
+                                child: Center(
+                                  child: isDone
+                                      ? const Icon(
+                                          Icons.check_rounded,
+                                          size: 15,
+                                          color: Colors.white38,
+                                        )
+                                      : (isSelected
+                                          ? const Icon(
+                                              Icons.check_rounded,
+                                              size: 17,
+                                              color: Colors.white,
+                                            )
+                                          : null),
+                                ),
+                              ),
+                            )
+                          : GestureDetector(
+                              key: const ValueKey('completion_checkbox_gesture'),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                if (!isDone) {
+                                  HapticFeedback.mediumImpact();
+                                } else {
+                                  HapticFeedback.lightImpact();
+                                }
+                                controller.toggleTarea(tarea.id);
+                              },
+                              child: AnimatedContainer(
+                                key: const ValueKey('completion_checkbox_box'),
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeOutCubic,
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: isDone
+                                      ? AppTheme.liquidEmeraldGradient
+                                      : AppTheme.claySurfaceGradient(baseColor: AppTheme.surfaceDark),
+                                  border: Border.all(
+                                    color: isDone
+                                        ? AppTheme.accentEmerald
+                                        : AppTheme.cardBorderColor.withValues(alpha: 0.9),
+                                    width: isDone ? 1.0 : 1.4,
+                                  ),
+                                  boxShadow: isDone
+                                      ? [
+                                          BoxShadow(
+                                            color: AppTheme.accentEmerald.withValues(alpha: 0.45),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                          ...AppTheme.clayRaisedShadows(baseColor: AppTheme.accentEmerald, isPressed: true),
+                                        ]
+                                      : AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark, isPressed: false),
+                                ),
+                                child: Center(
+                                  child: isDone
+                                      ? const Icon(
+                                          Icons.check_rounded,
+                                          size: 17,
+                                          color: Colors.white,
+                                        )
+                                      : Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: AppTheme.textSecondary.withValues(alpha: 0.22),
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 12),
 
@@ -1126,8 +1654,9 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
                       ),
                     ],
 
-                    // Menú de opciones (tres puntos)
-                    _buildTareaOptionsMenu(context, tarea),
+                    // Menú de opciones (tres puntos) solo si no está en modo selección
+                    if (!_selectionMode)
+                      _buildTareaOptionsMenu(context, tarea),
                   ],
                 ),
 
@@ -1281,8 +1810,12 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
                           return GestureDetector(
                             behavior: HitTestBehavior.opaque,
                             onTap: () {
-                              HapticFeedback.selectionClick();
-                              controller.toggleChecklistItem(tarea.id, item.id);
+                              if (_selectionMode) {
+                                if (!isDone) _toggleSeleccionTarea(tarea.id);
+                              } else {
+                                HapticFeedback.selectionClick();
+                                controller.toggleChecklistItem(tarea.id, item.id);
+                              }
                             },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 3),

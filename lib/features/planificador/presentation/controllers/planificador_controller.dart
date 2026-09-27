@@ -1211,6 +1211,52 @@ class PlanificadorController extends ChangeNotifier {
     }
   }
 
+  /// Aplica de forma atómica y persistente un reparto en lote de asignaciones a las tareas,
+  /// actualizando tanto la base de datos como el estado reactivo local en memoria.
+  Future<bool> aplicarRepartoLote({
+    required Map<String, String> asignacionesFinales,
+    required List<String> usuariosParticipantes,
+  }) async {
+    final envId = _entornoId;
+    if (envId == null ||
+        usuariosParticipantes.isEmpty ||
+        asignacionesFinales.isEmpty) {
+      _errorMessage = 'Datos insuficientes para aplicar el reparto';
+      notifyListeners();
+      return false;
+    }
+
+    _isRepartoLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.guardarSesionRepartoManual(
+        entornoId: envId,
+        usuariosParticipantes: usuariosParticipantes,
+        asignacionesFinales: asignacionesFinales,
+        todasLasTareas: _tareas,
+      );
+
+      // Actualizar inmediatamente las tareas locales en memoria
+      _tareas = _tareas.map((t) {
+        if (asignacionesFinales.containsKey(t.id)) {
+          return t.copyWith(asignadoA: asignacionesFinales[t.id]);
+        }
+        return t;
+      }).toList();
+
+      _successMessage = 'Reparto aplicado con éxito';
+      return true;
+    } catch (e) {
+      _errorMessage = 'Error al aplicar reparto: $e';
+      return false;
+    } finally {
+      _isRepartoLoading = false;
+      notifyListeners();
+    }
+  }
+
   void _actualizarRepartoAlCambiarTareas() {
     // Si alguna tarea fue eliminada, quitarla del mapa de reparto
     final currentIds = _tareas.map((t) => t.id).toSet();
