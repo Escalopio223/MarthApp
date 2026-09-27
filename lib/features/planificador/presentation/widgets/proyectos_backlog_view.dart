@@ -12,7 +12,7 @@ import 'editar_tarea_dialog.dart';
 import 'task_form_basic.dart';
 import '../../domain/models/task_form_basic_payload.dart';
 
-/// Vista de Proyectos y Backlog de Tareas sueltas con barras de progreso y checkboxes reactivos
+/// Vista de Proyectos del hogar con barras de progreso, tareas asociadas y checkboxes reactivos
 class ProyectosBacklogView extends StatefulWidget {
   final PlanificadorController controller;
   final List<EnvironmentMemberModel> miembros;
@@ -34,8 +34,6 @@ class ProyectosBacklogView extends StatefulWidget {
 }
 
 class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
-  // 0 = Proyectos, 1 = Tareas sueltas
-  int _selectedTab = 0;
   final Set<String> _expandedProjectIds = {};
 
   void _crearTareaEnProyecto(ProyectoModel proyecto) {
@@ -81,7 +79,7 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
         ),
         content: Text(
           '¿Estás seguro de que deseas eliminar "${proyecto.nombre}"?\n\n'
-          'Las tareas asociadas NO se eliminarán; se moverán a la sección de "Tareas sueltas".',
+          'Las tareas asociadas a este proyecto serán desvinculadas.',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
         ),
         actions: [
@@ -139,104 +137,79 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildSegmentedTabSelector(context),
+        _buildHeader(context),
         const SizedBox(height: 12),
         Expanded(
-          child: _selectedTab == 0
-              ? _buildProyectosList(context)
-              : _buildTareasSueltasList(context),
+          child: _buildProyectosList(context),
         ),
       ],
     );
   }
 
   // ===========================================================================
-  // Segmented Control Claymórfico: "Proyectos" vs "Tareas sueltas"
+  // Cabecera de Proyectos con Acción de Nuevo Proyecto
   // ===========================================================================
 
-  Widget _buildSegmentedTabSelector(BuildContext context) {
+  Widget _buildHeader(BuildContext context) {
+    final count = widget.controller.proyectos.length;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: AppContainer(
-              borderRadius: 20,
-              padding: const EdgeInsets.all(4),
-              baseColor: AppTheme.surfaceDark,
-              child: Row(
-                children: [
-                  _buildTabOption(
-                    title: 'Proyectos (${widget.controller.proyectos.length})',
-                    icon: Icons.folder_rounded,
-                    isSelected: _selectedTab == 0,
-                    onTap: () => setState(() => _selectedTab = 0),
-                  ),
-                  _buildTabOption(
-                    title: 'Tareas sueltas (${widget.controller.tareasSueltas.length})',
-                    icon: Icons.checklist_rounded,
-                    isSelected: _selectedTab == 1,
-                    onTap: () => setState(() => _selectedTab = 1),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          AppContainer(
-            borderRadius: 16,
-            padding: const EdgeInsets.all(10),
-            baseColor: AppTheme.surfaceDark,
-            onTap: _selectedTab == 0
-                ? widget.onCrearProyecto
-                : widget.onCrearTarea,
-            child: Icon(
-              Icons.add_rounded,
-              color: AppTheme.primaryLiquid,
-              size: 22,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabOption({
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            gradient: isSelected ? AppTheme.actionGradient : null,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Row(
             children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isSelected ? AppTheme.ctaTextColor : AppTheme.textSecondary,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryLiquid.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.folder_special_rounded,
+                  size: 18,
+                  color: AppTheme.primaryLiquid,
+                ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 10),
               Text(
-                title,
+                'Proyectos ($count)',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color:
-                      isSelected ? AppTheme.ctaTextColor : AppTheme.textSecondary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: -0.2,
                 ),
               ),
             ],
           ),
-        ),
+          if (widget.onCrearProyecto != null)
+            AppContainer(
+              borderRadius: 14,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              baseColor: AppTheme.surfaceDark,
+              onTap: widget.onCrearProyecto,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.add_rounded,
+                    color: AppTheme.primaryLiquid,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Nuevo proyecto',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryLiquid,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -546,52 +519,7 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
     );
   }
 
-  // ===========================================================================
-  // Lista de Tareas Sueltas (Backlog sin proyecto)
-  // ===========================================================================
 
-  Widget _buildTareasSueltasList(BuildContext context) {
-    final tareas = widget.controller.tareasSueltas;
-
-    if (tareas.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.task_alt_rounded,
-              size: 52,
-              color: AppTheme.textSecondary.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No hay tareas sueltas pendientes',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16.0, 6.0, 16.0, 100.0),
-      itemCount: tareas.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final tarea = tareas[index];
-        return AppContainer(
-          borderRadius: 16,
-          padding: const EdgeInsets.all(12),
-          baseColor: AppTheme.surfaceDark,
-          child: _buildTareaItem(context, tarea),
-        );
-      },
-    );
-  }
 
   // ===========================================================================
   // Fila de Tarea Individual con Checkbox Reactivo y Checklist desplegable

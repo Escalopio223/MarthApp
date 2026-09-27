@@ -464,7 +464,7 @@ void main() {
       expect(find.byIcon(Icons.cake_rounded), findsOneWidget);
     });
 
-    testWidgets('ProyectosBacklogView renders projects and switches to backlog',
+    testWidgets('ProyectosBacklogView renders projects and only project-related content',
         (tester) async {
       final now = DateTime.now();
       mockRepo.proyectos = [
@@ -511,12 +511,10 @@ void main() {
 
       expect(find.text('Pintar Casa'), findsOneWidget);
       expect(find.text('0/1 (0%)'), findsOneWidget);
+      expect(find.text('Proyectos (1)'), findsOneWidget);
 
-      // Cambiar a pestaña tareas sueltas
-      await tester.tap(find.textContaining('Tareas sueltas'));
-      await tester.pump();
-
-      expect(find.text('Tarea sin proyecto'), findsOneWidget);
+      // Las tareas sueltas no deben mostrarse en la sección de proyectos
+      expect(find.text('Tarea sin proyecto'), findsNothing);
     });
 
     testWidgets('RepartoTareasBoardView renders member columns with minute counter',
