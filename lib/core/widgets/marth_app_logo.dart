@@ -40,6 +40,7 @@ class MarthAppLogo extends StatelessWidget {
     Gradient? gradient,
     double? strokeWidth,
     bool withGlow = true,
+    bool withShadow = true,
   }) {
     return _MarthAppLogoBadge(
       key: key,
@@ -49,6 +50,7 @@ class MarthAppLogo extends StatelessWidget {
       gradient: gradient,
       strokeWidth: strokeWidth,
       withGlow: withGlow,
+      withShadow: withShadow,
     );
   }
 
@@ -115,6 +117,7 @@ class MarthAppLogo extends StatelessWidget {
 class _MarthAppLogoBadge extends MarthAppLogo {
   final double badgeSize;
   final double logoSize;
+  final bool withShadow;
 
   const _MarthAppLogoBadge({
     super.key,
@@ -124,33 +127,44 @@ class _MarthAppLogoBadge extends MarthAppLogo {
     super.gradient,
     super.strokeWidth,
     super.withGlow,
+    this.withShadow = true,
   }) : super(size: logoSize);
 
   @override
   Widget build(BuildContext context) {
+    final theme = AppTheme.of(context);
+    final shadowColor = theme.shadowDark;
+    final glowColor = color ?? theme.accentPrimary;
+
     return Container(
       width: badgeSize,
       height: badgeSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppTheme.surfaceDark.withValues(alpha: 0.8),
+        color: theme.bgSurface.withValues(alpha: 0.8),
         border: Border.all(
           color: AppTheme.glassBorderColor,
           width: 1.2,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.neumorphicDarkShadow.withValues(alpha: 0.6),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-          if (withGlow)
-            BoxShadow(
-              color: AppTheme.primaryLiquid.withValues(alpha: 0.25),
-              blurRadius: 20,
-              spreadRadius: 1,
-            ),
-        ],
+        boxShadow: withShadow
+            ? [
+                BoxShadow(
+                  color: shadowColor.withValues(
+                    alpha: theme.isDark ? 0.45 : 0.20,
+                  ),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+                if (withGlow)
+                  BoxShadow(
+                    color: glowColor.withValues(
+                      alpha: theme.isDark ? 0.25 : 0.15,
+                    ),
+                    blurRadius: 18,
+                    spreadRadius: 1,
+                  ),
+              ]
+            : null,
       ),
       child: Center(
         child: MarthAppLogo(

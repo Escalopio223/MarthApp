@@ -4,6 +4,7 @@ import 'package:marth_app/core/widgets/app_background.dart';
 import 'package:marth_app/core/widgets/app_button.dart';
 import 'package:marth_app/core/widgets/app_card.dart';
 import 'package:marth_app/core/widgets/app_container.dart';
+import 'package:marth_app/core/widgets/marth_app_logo.dart';
 
 void main() {
   group('AppCard Claymorphic Tests', () {
@@ -253,6 +254,63 @@ void main() {
             w.constraints?.minHeight == double.infinity,
       );
       expect(containerFinder, findsOneWidget);
+    });
+  });
+
+  group('MarthAppLogo.badge Shadow and Scaling Tests', () {
+    testWidgets('renders with box shadows when withShadow is true',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: MarthAppLogo.badge(
+                badgeSize: 50.6,
+                logoSize: 30.0,
+                withShadow: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final matchingDecoratedBoxes = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .where((box) =>
+              box.decoration is BoxDecoration &&
+              (box.decoration as BoxDecoration).shape == BoxShape.circle);
+      expect(matchingDecoratedBoxes, isNotEmpty);
+
+      final decoration = matchingDecoratedBoxes.first.decoration as BoxDecoration;
+      expect(decoration.boxShadow, isNotNull);
+      expect(decoration.boxShadow!.length, greaterThanOrEqualTo(1));
+    });
+
+    testWidgets('renders without box shadows when withShadow is false',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: MarthAppLogo.badge(
+                badgeSize: 50.6,
+                logoSize: 30.0,
+                withShadow: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final matchingDecoratedBoxes = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .where((box) =>
+              box.decoration is BoxDecoration &&
+              (box.decoration as BoxDecoration).shape == BoxShape.circle);
+      expect(matchingDecoratedBoxes, isNotEmpty);
+
+      final decoration = matchingDecoratedBoxes.first.decoration as BoxDecoration;
+      expect(decoration.boxShadow, isNull);
     });
   });
 }

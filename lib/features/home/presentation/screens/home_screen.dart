@@ -184,6 +184,9 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
+          toolbarHeight: 64.4,
+          clipBehavior: Clip.none,
+          forceMaterialTransparency: true,
           title: _buildAppBarTitle(),
           actions: [
             // Selector de entorno colocado en la barra superior
@@ -194,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (mounted) setState(() {});
               },
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 9),
             _buildSettingsIconButton(context),
           ],
         ),
@@ -245,8 +248,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.only(left: 4.0),
       child: MarthAppLogo.badge(
-        badgeSize: 44,
-        logoSize: 26,
+        badgeSize: 50.6,
+        logoSize: 30.0,
         color: AppTheme.primaryLiquid,
       ),
     );
@@ -260,20 +263,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.only(right: 16.0),
       child: AppContainer(
-        borderRadius: 24,
+        borderRadius: 28,
         padding: const EdgeInsets.all(2),
         baseColor: AppTheme.surfaceDark,
         onTap: () => _openSettings(context),
         child: currentProfile != null
             ? UserAvatar.fromProfile(
                 profile: currentProfile,
-                size: 38,
+                size: 44,
                 showGlow: true,
               )
             : UserAvatar(
                 avatarData: const AvatarData.initials(),
                 username: email?.split('@').first ?? 'Usuario',
-                size: 38,
+                size: 44,
               ),
       ),
     );

@@ -41,20 +41,20 @@ class EnvironmentSelectorChip extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: () => _showEnvironmentPickerSheet(context),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(23),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: AppTheme.surfaceDark.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(23),
                 border: Border.all(
                   color: themeColor.withValues(alpha: 0.7),
-                  width: 1.2,
+                  width: 1.4,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: themeColor.withValues(alpha: 0.20),
-                    blurRadius: 8,
+                    blurRadius: 9,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -62,25 +62,25 @@ class EnvironmentSelectorChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(iconData, size: 16, color: themeColor),
-                  const SizedBox(width: 6),
+                  Icon(iconData, size: 18.5, color: themeColor),
+                  const SizedBox(width: 7),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 110),
+                    constraints: const BoxConstraints(maxWidth: 126),
                     child: Text(
                       displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppTheme.textPrimary,
-                        fontSize: 13,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 5),
                   Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    size: 16,
+                    size: 18.5,
                     color: AppTheme.textSecondary,
                   ),
                 ],

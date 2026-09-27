@@ -28,6 +28,7 @@ import 'package:marth_app/features/leisure/presentation/controllers/leisure_cont
 import 'package:marth_app/features/leisure/presentation/screens/leisure_screen.dart';
 import 'package:marth_app/features/planificador/presentation/screens/planificador_screen.dart';
 import 'package:marth_app/features/profile/presentation/controllers/profile_controller.dart';
+import 'package:marth_app/features/profile/presentation/widgets/user_avatar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FakeAuthRepo implements IAuthRepository {
@@ -389,7 +390,7 @@ void main() {
     );
 
     testWidgets(
-      'AppBar renders large logo, user avatar and EnvironmentSelectorChip in top menu',
+      'AppBar renders 15% larger logo, user avatar, toolbarHeight 64.4, clipBehavior Clip.none and EnvironmentSelectorChip',
       (tester) async {
         await tester.pumpWidget(createTestApp(initialIndex: 0));
         await tester.pumpAndSettle();
@@ -399,6 +400,16 @@ void main() {
 
         // Large logo badge is present
         expect(find.byType(MarthAppLogo), findsOneWidget);
+
+        // AppBar dimensions and unclipped shadow properties
+        final appBar = tester.widget<AppBar>(find.byType(AppBar));
+        expect(appBar.toolbarHeight, equals(64.4));
+        expect(appBar.clipBehavior, equals(Clip.none));
+        expect(appBar.forceMaterialTransparency, isTrue);
+
+        // UserAvatar in action button scaled to 44
+        final userAvatar = tester.widget<UserAvatar>(find.byType(UserAvatar));
+        expect(userAvatar.size, equals(44.0));
       },
     );
 
