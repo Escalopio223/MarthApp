@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'checklist_item_model.dart';
 import 'recurrence_rule.dart';
 import 'tarea_model.dart';
 
@@ -56,8 +57,8 @@ class TaskFormBasicPayload {
   /// Notas, instrucciones o comentarios extendidos de la tarea.
   final String? notas;
 
-  /// Lista de subtareas o checklist (contrato preparado para futura implementación).
-  final List<String> subtasks;
+  /// Lista de subtareas o checklist interactivo de la tarea.
+  final List<ChecklistItemModel> subtasks;
 
   /// Indica si la tarea tiene una alerta o recordatorio programado.
   final bool hasReminder;
@@ -131,7 +132,7 @@ class TaskFormBasicPayload {
       proyectoId: tarea.proyectoId,
       etiqueta: tarea.etiqueta,
       notas: null,
-      subtasks: tarea.checklist.map((c) => c.titulo).toList(),
+      subtasks: tarea.checklist,
       hasReminder: tarea.recordatorios.isNotEmpty,
       reminderMinutesBefore: null,
       reminderDateTime: tarea.recordatorios.isNotEmpty
@@ -201,7 +202,7 @@ class TaskFormBasicPayload {
     bool clearEtiqueta = false,
     String? notas,
     bool clearNotas = false,
-    List<String>? subtasks,
+    List<ChecklistItemModel>? subtasks,
     bool? hasReminder,
     int? reminderMinutesBefore,
     bool clearReminderMinutes = false,
@@ -251,7 +252,7 @@ class TaskFormBasicPayload {
       'proyecto_id': proyectoId,
       'etiqueta': etiqueta,
       'notas': (notas != null && notas!.trim().isNotEmpty) ? notas!.trim() : null,
-      'subtasks': subtasks,
+      'subtasks': subtasks.map((s) => s.toJson()).toList(),
       'has_reminder': hasReminder,
       'reminder_minutes_before': reminderMinutesBefore,
       'reminder_date_time': reminderDateTime?.toIso8601String(),

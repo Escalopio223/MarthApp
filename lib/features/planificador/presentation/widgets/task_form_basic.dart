@@ -6,6 +6,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
+import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recurrence_rule.dart';
 import '../../domain/models/tarea_model.dart';
@@ -114,7 +115,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
   String? _proyectoId;
   String? _etiqueta;
   late final TextEditingController _notasController;
-  List<String> _subtasks = [];
+  List<ChecklistItemModel> _subtasks = [];
   bool _hasReminder = false;
   int? _reminderMinutesBefore = 15;
 
@@ -153,7 +154,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     _proyectoId = payload.proyectoId;
     _etiqueta = payload.etiqueta;
     _notasController = TextEditingController(text: payload.notas ?? '');
-    _subtasks = List<String>.from(payload.subtasks);
+    _subtasks = List<ChecklistItemModel>.from(payload.subtasks);
     _hasReminder = payload.hasReminder;
     _reminderMinutesBefore = payload.reminderMinutesBefore ?? 15;
 

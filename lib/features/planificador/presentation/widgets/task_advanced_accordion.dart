@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/etiqueta_tarea.dart';
 import '../../domain/models/proyecto_model.dart';
+import 'subtask_list.dart';
 
 /// Componente colapsable / expandible de Opciones Avanzadas para el formulario de tareas.
 /// Mantiene la persistencia de todos los inputs y selecciones internas incluso cuando
@@ -18,8 +20,8 @@ class TaskAdvancedAccordion extends StatefulWidget {
   final String? etiqueta;
   final ValueChanged<String?> onEtiquetaChanged;
   final TextEditingController notasController;
-  final List<String> subtasks;
-  final ValueChanged<List<String>> onSubtasksChanged;
+  final List<ChecklistItemModel> subtasks;
+  final ValueChanged<List<ChecklistItemModel>> onSubtasksChanged;
   final bool hasReminder;
   final ValueChanged<bool> onHasReminderChanged;
   final int? reminderMinutesBefore;
@@ -50,18 +52,11 @@ class TaskAdvancedAccordion extends StatefulWidget {
 
 class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
   late bool _isExpanded;
-  final TextEditingController _subtaskInputController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _isExpanded = widget.initiallyExpanded || _hasConfiguredFields();
-  }
-
-  @override
-  void dispose() {
-    _subtaskInputController.dispose();
-    super.dispose();
   }
 
   bool _hasConfiguredFields() {
@@ -604,133 +599,13 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
   }
 
   // ===========================================================================
-  // 4. Placeholder para Subtareas / Checklist
+  // 4. Lista interactiva de Subtareas / Checklist con Drag & Drop
   // ===========================================================================
   Widget _buildSubtasksSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.checklist_rounded, size: 16, color: AppTheme.primaryLiquid),
-            const SizedBox(width: 6),
-            Text(
-              'SUBTAREAS / CHECKLIST',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.white12, width: 0.6),
-              ),
-              child: Text(
-                '${widget.subtasks.length}',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryLiquid,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-
-        // Campo de entrada rápida para añadir subtarea
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _subtaskInputController,
-                textCapitalization: TextCapitalization.sentences,
-                style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  hintText: 'Añadir un paso o subtarea...',
-                  hintStyle: TextStyle(
-                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                    fontSize: 12,
-                  ),
-                  filled: true,
-                  fillColor: AppTheme.surfaceDark,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: AppTheme.cardBorderColor, width: 0.8),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: AppTheme.primaryLiquid, width: 1.2),
-                  ),
-                ),
-                onSubmitted: (_) => _addSubtask(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.add_circle_rounded, size: 26),
-              color: AppTheme.primaryLiquid,
-              tooltip: 'Añadir subtarea',
-              onPressed: _addSubtask,
-            ),
-          ],
-        ),
-
-        // Lista de subtareas añadidas
-        if (widget.subtasks.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          ...widget.subtasks.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final text = entry.value;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 5),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceDark,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white10, width: 0.6),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_box_outline_blank_rounded, size: 16, color: Colors.white38),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      text,
-                      style: TextStyle(fontSize: 12.5, color: AppTheme.textPrimary),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      final updated = List<String>.from(widget.subtasks)..removeAt(idx);
-                      widget.onSubtasksChanged(updated);
-                    },
-                    child: const Icon(Icons.close_rounded, size: 16, color: Colors.white38),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ],
+    return SubtaskList(
+      items: widget.subtasks,
+      onChanged: widget.onSubtasksChanged,
     );
-  }
-
-  void _addSubtask() {
-    final text = _subtaskInputController.text.trim();
-    if (text.isEmpty) return;
-    HapticFeedback.selectionClick();
-    final updated = List<String>.from(widget.subtasks)..add(text);
-    widget.onSubtasksChanged(updated);
-    _subtaskInputController.clear();
   }
 
   // ===========================================================================

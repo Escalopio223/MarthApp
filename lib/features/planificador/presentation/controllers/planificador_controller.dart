@@ -749,13 +749,7 @@ class PlanificadorController extends ChangeNotifier {
 
     final descripcionFinal = payload.etiqueta ?? payload.notas ?? payload.descripcion;
 
-    final checklist = payload.subtasks.map((texto) {
-      return ChecklistItemModel(
-        id: 'chk_${DateTime.now().millisecondsSinceEpoch}_${texto.hashCode.abs()}',
-        titulo: texto,
-        completado: false,
-      );
-    }).toList();
+    final checklist = payload.subtasks;
 
     final recordatorios = <RecordatorioTareaModel>[];
     if (payload.hasReminder) {
@@ -796,14 +790,6 @@ class PlanificadorController extends ChangeNotifier {
 
     final descripcionFinal = payload.etiqueta ?? payload.notas ?? payload.descripcion;
 
-    final checklist = payload.subtasks.map((texto) {
-      return ChecklistItemModel(
-        id: 'chk_${DateTime.now().millisecondsSinceEpoch}_${texto.hashCode.abs()}',
-        titulo: texto,
-        completado: false,
-      );
-    }).toList();
-
     final tareaActualizada = tareaOriginal.copyWith(
       titulo: payload.titulo,
       descripcion: descripcionFinal,
@@ -815,7 +801,7 @@ class PlanificadorController extends ChangeNotifier {
       proyectoId: payload.proyectoId,
       clearProyectoId: payload.proyectoId == null,
       tiempoEstimadoMinutos: payload.tiempoEstimadoMinutos ?? 0,
-      checklist: checklist.isNotEmpty ? checklist : tareaOriginal.checklist,
+      checklist: payload.subtasks,
     );
     await actualizarTarea(tareaActualizada);
   }
