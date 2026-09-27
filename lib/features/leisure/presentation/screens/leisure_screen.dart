@@ -58,6 +58,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
 
   @override
   void dispose() {
+    widget.controller.abortInFlightRequests();
     widget.controller.removeListener(_onControllerChange);
     widget.environmentController?.removeListener(_onEnvironmentChange);
     _searchFieldController.dispose();

@@ -22,9 +22,20 @@ class TmdbService {
         _apiKey = apiKey ?? LeisureConfig.tmdbApiKey,
         _baseUrl = baseUrl ?? LeisureConfig.tmdbBaseUrl;
 
+  http.Client? _activeClient;
+
   /// Cierra el cliente si fue instanciado internamente
   void dispose() {
+    abortActiveRequests();
     _client.close();
+  }
+
+  /// Aborta peticiones HTTP activas en vuelo
+  void abortActiveRequests() {
+    try {
+      _activeClient?.close();
+    } catch (_) {}
+    _activeClient = null;
   }
 
   /// Construye los headers y query parameters comunes

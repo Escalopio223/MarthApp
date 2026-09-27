@@ -59,6 +59,13 @@ class LeisureRepository implements ILeisureRepository {
     return user.id;
   }
 
+  /// Aborta inmediatamente peticiones asíncronas en vuelo a servicios externos (Open Library, IGDB, TMDB)
+  void abortActiveRequests() {
+    _openLibraryService.abortActiveRequests();
+    _igdbService.abortActiveRequests();
+    _tmdbService.abortActiveRequests();
+  }
+
   // ===========================================================================
   // 1. CATÁLOGO Y APIS EXTERNAS CON ESTRATEGIA DE CACHÉ
   // ===========================================================================

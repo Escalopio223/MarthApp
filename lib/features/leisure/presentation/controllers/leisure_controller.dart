@@ -13,6 +13,7 @@ import '../../domain/models/leisure_user_item_model.dart';
 import '../../domain/models/streaming_provider_dto.dart';
 import '../../domain/models/tv_season_details_dto.dart';
 import '../../domain/repositories/i_leisure_repository.dart';
+import '../../domain/services/leisure_abort_controller.dart';
 import '../../infrastructure/repositories/leisure_repository.dart';
 
 /// Controlador reactivo central del módulo de Ocio (Leisure):
@@ -37,6 +38,9 @@ class LeisureController extends ChangeNotifier {
   String _searchQuery = '';
   Timer? _debounceTimer;
   int _activeSearchId = 0;
+
+  LeisureAbortController? _activeCatalogAbortController;
+  LeisureAbortController? _activeSearchAbortController;
 
   List<LeisureMediaDetails> _catalogItems = [];
   List<LeisureMediaDetails> _searchResults = [];
@@ -128,16 +132,48 @@ class LeisureController extends ChangeNotifier {
     }
   }
 
+  /// Aborta inmediatamente cualquier petición asíncrona en vuelo (catálogo o búsqueda)
+  /// evitando que llamadas lentas sobrescriban el estado al cambiar de pestaña o pantalla.
+  void abortInFlightRequests() {
+    _activeCatalogAbortController?.abort();
+    _activeCatalogAbortController = null;
+    _activeSearchAbortController?.abort();
+    _activeSearchAbortController = null;
+    _debounceTimer?.cancel();
+    _activeSearchId++;
+    final repo = _repository;
+    if (repo is LeisureRepository) {
+      repo.abortActiveRequests();
+    }
+    _isLoading = false;
+    _isSearching = false;
+    notifyListeners();
+  }
+
   /// Cambia la categoría de medio (Películas, Series, Libros, Videojuegos)
   Future<void> setMediaType(LeisureMediaType type) async {
     if (_selectedType == type) return;
+
+    // 1. Cortar y abortar inmediatamente la petición en vuelo del medio anterior
+    abortInFlightRequests();
+
     _selectedType = type;
     if (type != LeisureMediaType.movie && type != LeisureMediaType.tv) {
       _selectedProviderId = null;
     }
     _searchQuery = '';
     _searchResults = [];
-    _debounceTimer?.cancel();
+    _isSearching = false;
+
+    // 2. Si el nuevo medio ya está en caché, mostrarlo al instante; de lo contrario, limpiar catálogo para no mezclar medios
+    final targetCacheKey = '${type.toValue()}_${_selectedRegion}_${_selectedProviderId ?? "all"}';
+    if (_cachedCatalogs.containsKey(targetCacheKey) && _cachedCatalogs[targetCacheKey]!.isNotEmpty) {
+      _catalogItems = _cachedCatalogs[targetCacheKey]!;
+      _isLoading = false;
+    } else {
+      _catalogItems = [];
+      _isLoading = true;
+    }
     notifyListeners();
 
     await loadCatalog();
@@ -169,13 +205,23 @@ class LeisureController extends ChangeNotifier {
 
   /// Carga el catálogo principal según el tipo y proveedor seleccionado
   Future<void> loadCatalog({bool forceRefresh = false}) async {
+    // 1. Abortar cualquier carga previa de catálogo que siga en vuelo
+    _activeCatalogAbortController?.abort();
+    final abortController = LeisureAbortController();
+    _activeCatalogAbortController = abortController;
+
+    final targetType = _selectedType;
+    final targetRegion = _selectedRegion;
+    final targetProviderId = _selectedProviderId;
     final cacheKey =
-        '${_selectedType.toValue()}_${_selectedRegion}_${_selectedProviderId ?? "all"}';
+        '${targetType.toValue()}_${targetRegion}_${targetProviderId ?? "all"}';
+
     if (!forceRefresh &&
         _cachedCatalogs.containsKey(cacheKey) &&
         _cachedCatalogs[cacheKey]!.isNotEmpty) {
       _catalogItems = _cachedCatalogs[cacheKey]!;
       _errorMessage = null;
+      _isLoading = false;
       notifyListeners();
       return;
     }
@@ -185,24 +231,47 @@ class LeisureController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (_selectedProviderId != null &&
-          (_selectedType == LeisureMediaType.movie || _selectedType == LeisureMediaType.tv)) {
-        _catalogItems = await _repository.getMediaByProvider(
-          type: _selectedType,
-          providerId: _selectedProviderId!,
-          region: _selectedRegion,
+      List<LeisureMediaDetails> items;
+      if (targetProviderId != null &&
+          (targetType == LeisureMediaType.movie || targetType == LeisureMediaType.tv)) {
+        items = await _repository.getMediaByProvider(
+          type: targetType,
+          providerId: targetProviderId,
+          region: targetRegion,
         );
-      } else if (_selectedType == LeisureMediaType.movie) {
-        _catalogItems = await _repository.getNowPlayingMovies(region: _selectedRegion);
+      } else if (targetType == LeisureMediaType.movie) {
+        items = await _repository.getNowPlayingMovies(region: targetRegion);
       } else {
-        _catalogItems = await _repository.getPopularMedia(type: _selectedType);
+        items = await _repository.getPopularMedia(type: targetType);
       }
-      _cachedCatalogs[cacheKey] = _catalogItems;
+
+      // 2. VERIFICACIÓN ESTRICTA DEL ABORT CONTROLLER:
+      // Si la petición fue abortada o el usuario saltó a otra categoría o filtros,
+      // cortar de raíz: no mutar catálogo ni apagar loading de la nueva sección.
+      if (abortController.isAborted ||
+          _selectedType != targetType ||
+          _selectedRegion != targetRegion ||
+          _selectedProviderId != targetProviderId) {
+        if (items.isNotEmpty) {
+          _cachedCatalogs[cacheKey] = items;
+        }
+        return;
+      }
+
+      _catalogItems = items;
+      _cachedCatalogs[cacheKey] = items;
+      _errorMessage = null;
     } catch (e) {
-      _errorMessage = 'Error al cargar el catálogo de ${_selectedType.label}: $e';
+      if (abortController.isAborted || _selectedType != targetType) {
+        return;
+      }
+      _errorMessage = 'Error al cargar el catálogo de ${targetType.label}: $e';
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      // Solo desactivar loading si esta carga sigue siendo la activa y válida para el tipo actual
+      if (!abortController.isAborted && _selectedType == targetType) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -241,25 +310,39 @@ class LeisureController extends ChangeNotifier {
     });
   }
 
-  /// Ejecuta la búsqueda cancelando resultados obsoletos mediante searchId
+  /// Ejecuta la búsqueda cancelando resultados obsoletos mediante searchId y abortController
   Future<void> _executeSearch(String query) async {
+    _activeSearchAbortController?.abort();
+    final abortController = LeisureAbortController();
+    _activeSearchAbortController = abortController;
+
     final searchId = ++_activeSearchId;
+    final targetType = _selectedType;
+
     try {
       final results = await _repository.searchMedia(
         query: query,
-        type: _selectedType,
+        type: targetType,
       );
-      if (searchId == _activeSearchId) {
-        _searchResults = results;
-        _isSearching = false;
-        notifyListeners();
+
+      if (abortController.isAborted ||
+          searchId != _activeSearchId ||
+          _selectedType != targetType) {
+        return;
       }
+
+      _searchResults = results;
+      _isSearching = false;
+      notifyListeners();
     } catch (e) {
-      if (searchId == _activeSearchId) {
-        _errorMessage = 'Error en la búsqueda: $e';
-        _isSearching = false;
-        notifyListeners();
+      if (abortController.isAborted ||
+          searchId != _activeSearchId ||
+          _selectedType != targetType) {
+        return;
       }
+      _errorMessage = 'Error en la búsqueda: $e';
+      _isSearching = false;
+      notifyListeners();
     }
   }
 
@@ -743,7 +826,7 @@ class LeisureController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
+    abortInFlightRequests();
     super.dispose();
   }
 }

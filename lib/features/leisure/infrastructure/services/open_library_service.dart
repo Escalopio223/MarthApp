@@ -23,8 +23,19 @@ class OpenLibraryService {
   })  : _client = client ?? http.Client(),
         _baseUrl = baseUrl ?? LeisureConfig.openLibraryBaseUrl;
 
+  http.Client? _activeClient;
+
   void dispose() {
+    abortActiveRequests();
     _client.close();
+  }
+
+  /// Aborta inmediatamente cualquier petición HTTP activa en vuelo de Open Library
+  void abortActiveRequests() {
+    try {
+      _activeClient?.close();
+    } catch (_) {}
+    _activeClient = null;
   }
 
   Map<String, String> get _headers {
@@ -157,6 +168,10 @@ class OpenLibraryService {
 
   /// Busca libros agrupados canónicamente por obra
   Future<List<LeisureMediaDetails>> searchBooks(String query, {int limit = 20, int page = 1}) async {
+    abortActiveRequests();
+    final client = http.Client();
+    _activeClient = client;
+
     final uri = Uri.parse('$_baseUrl/search.json').replace(queryParameters: {
       'q': query,
       'fields': 'key,title,author_name,cover_i,first_publish_year,ratings_average,ratings_count,subject,subtitle',
@@ -164,18 +179,30 @@ class OpenLibraryService {
       'page': page.toString(),
     });
 
-    final response = await _client
-        .get(uri, headers: _headers)
-        .timeout(_timeout);
+    try {
+      final response = await client
+          .get(uri, headers: _headers)
+          .timeout(_timeout);
 
-    if (response.statusCode != 200) {
-      throw HttpException('Error Open Library search (${response.statusCode}): ${response.body}');
+      if (client != _activeClient) return [];
+
+      if (response.statusCode != 200) {
+        throw HttpException('Error Open Library search (${response.statusCode}): ${response.body}');
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final docs = (data['docs'] as List?) ?? [];
+
+      return docs.map((doc) => _parseSearchDoc(doc as Map<String, dynamic>)).toList();
+    } catch (e) {
+      if (client != _activeClient) return [];
+      rethrow;
+    } finally {
+      if (_activeClient == client) {
+        _activeClient = null;
+      }
+      client.close();
     }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final docs = (data['docs'] as List?) ?? [];
-
-    return docs.map((doc) => _parseSearchDoc(doc as Map<String, dynamic>)).toList();
   }
 
   /// Obtiene los libros populares o destacados.
@@ -183,81 +210,118 @@ class OpenLibraryService {
   /// calificaciones y años normalizados en menos de 1 segundo.
   /// Dispone de fallbacks a trending diario, materias y colección de contingencia.
   Future<List<LeisureMediaDetails>> getPopularBooks({int page = 1, int limit = 20}) async {
-    // 1. Endpoint principal: Búsqueda de superventas y libros populares con ratings indexados
+    abortActiveRequests();
+    final client = http.Client();
+    _activeClient = client;
+
+    bool isAborted() => client != _activeClient;
+
     try {
-      final uri = Uri.parse('$_baseUrl/search.json').replace(queryParameters: {
-        'q': 'bestseller',
-        'limit': limit.toString(),
-        'page': page.toString(),
-        'fields': 'key,title,author_name,cover_i,first_publish_year,ratings_average,ratings_count,subject,subtitle',
-      });
-      final response = await _client.get(uri, headers: _headers).timeout(const Duration(seconds: 10));
+      // 1. Endpoint principal: Búsqueda de superventas y libros populares con ratings indexados
+      try {
+        final uri = Uri.parse('$_baseUrl/search.json').replace(queryParameters: {
+          'q': 'bestseller',
+          'limit': limit.toString(),
+          'page': page.toString(),
+          'fields': 'key,title,author_name,cover_i,first_publish_year,ratings_average,ratings_count,subject,subtitle',
+        });
+        final response = await client.get(uri, headers: _headers).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final docs = (data['docs'] as List?) ?? [];
-        if (docs.isNotEmpty) {
-          return docs.map((doc) => _parseSearchDoc(doc as Map<String, dynamic>)).toList();
-        }
-      }
-    } catch (_) {
-      // Si falla o hay timeout en search, pasar a trending diario
-    }
+        if (isAborted()) return [];
 
-    // 2. Fallback: Trending diario de Open Library
-    try {
-      final uri = Uri.parse('$_baseUrl/trending/daily.json');
-      final response = await _client.get(uri, headers: _headers).timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final works = (data['works'] as List?) ?? [];
-        if (works.isNotEmpty) {
-          final startIndex = (page - 1) * limit;
-          if (startIndex < works.length) {
-            final pageItems = works.skip(startIndex).take(limit).toList();
-            return pageItems.map((w) => _parseSearchDoc(w as Map<String, dynamic>)).toList();
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final docs = (data['docs'] as List?) ?? [];
+          if (docs.isNotEmpty) {
+            return docs.map((doc) => _parseSearchDoc(doc as Map<String, dynamic>)).toList();
           }
         }
+      } catch (_) {
+        if (isAborted()) return [];
       }
-    } catch (_) {}
 
-    // 3. Fallback: Materia bestseller
-    try {
-      final offset = (page - 1) * limit;
-      final uri = Uri.parse('$_baseUrl/subjects/bestseller.json').replace(queryParameters: {
-        'limit': limit.toString(),
-        'offset': offset.toString(),
-      });
-      final response = await _client.get(uri, headers: _headers).timeout(_timeout);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final works = (data['works'] as List?) ?? [];
-        if (works.isNotEmpty) {
-          return works.map((w) => _parseSearchDoc(w as Map<String, dynamic>)).toList();
+      if (isAborted()) return [];
+
+      // 2. Fallback: Trending diario de Open Library
+      try {
+        final uri = Uri.parse('$_baseUrl/trending/daily.json');
+        final response = await client.get(uri, headers: _headers).timeout(_timeout);
+
+        if (isAborted()) return [];
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final works = (data['works'] as List?) ?? [];
+          if (works.isNotEmpty) {
+            final startIndex = (page - 1) * limit;
+            if (startIndex < works.length) {
+              final pageItems = works.skip(startIndex).take(limit).toList();
+              return pageItems.map((w) => _parseSearchDoc(w as Map<String, dynamic>)).toList();
+            }
+          }
         }
+      } catch (_) {
+        if (isAborted()) return [];
       }
-    } catch (_) {}
 
-    // 4. Fallback: Materia ficción
-    try {
-      final offset = (page - 1) * limit;
-      final uri = Uri.parse('$_baseUrl/subjects/fiction.json').replace(queryParameters: {
-        'limit': limit.toString(),
-        'offset': offset.toString(),
-      });
-      final response = await _client.get(uri, headers: _headers).timeout(_timeout);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final works = (data['works'] as List?) ?? [];
-        if (works.isNotEmpty) {
-          return works.map((w) => _parseSearchDoc(w as Map<String, dynamic>)).toList();
+      if (isAborted()) return [];
+
+      // 3. Fallback: Materia bestseller
+      try {
+        final offset = (page - 1) * limit;
+        final uri = Uri.parse('$_baseUrl/subjects/bestseller.json').replace(queryParameters: {
+          'limit': limit.toString(),
+          'offset': offset.toString(),
+        });
+        final response = await client.get(uri, headers: _headers).timeout(_timeout);
+
+        if (isAborted()) return [];
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final works = (data['works'] as List?) ?? [];
+          if (works.isNotEmpty) {
+            return works.map((w) => _parseSearchDoc(w as Map<String, dynamic>)).toList();
+          }
         }
+      } catch (_) {
+        if (isAborted()) return [];
       }
-    } catch (_) {}
 
-    // 5. Contingencia segura: Devolver libros canónicos predeterminados
-    return fallbackPopularBooks;
+      if (isAborted()) return [];
+
+      // 4. Fallback: Materia ficción
+      try {
+        final offset = (page - 1) * limit;
+        final uri = Uri.parse('$_baseUrl/subjects/fiction.json').replace(queryParameters: {
+          'limit': limit.toString(),
+          'offset': offset.toString(),
+        });
+        final response = await client.get(uri, headers: _headers).timeout(_timeout);
+
+        if (isAborted()) return [];
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final works = (data['works'] as List?) ?? [];
+          if (works.isNotEmpty) {
+            return works.map((w) => _parseSearchDoc(w as Map<String, dynamic>)).toList();
+          }
+        }
+      } catch (_) {
+        if (isAborted()) return [];
+      }
+
+      if (isAborted()) return [];
+
+      // 5. Contingencia segura: Devolver libros canónicos predeterminados
+      return fallbackPopularBooks;
+    } finally {
+      if (_activeClient == client) {
+        _activeClient = null;
+      }
+      client.close();
+    }
   }
 
   /// Obtiene los metadatos completos de una obra (`/works/{work_id}.json`)

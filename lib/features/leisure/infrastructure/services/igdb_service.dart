@@ -32,6 +32,15 @@ class IgdbService {
   })  : _functions = functions ?? (supabaseClient ?? _safeGetClient())?.functions,
         _httpClient = httpClient ?? http.Client();
 
+  http.Client? _activeClient;
+
+  void abortActiveRequests() {
+    try {
+      _activeClient?.close();
+    } catch (_) {}
+    _activeClient = null;
+  }
+
   static SupabaseClient? _safeGetClient() {
     try {
       return Supabase.instance.client;

@@ -149,13 +149,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onTabSelected(int index) {
     if (_currentTabIndex == index) return;
+
+    // Si salimos de la pestaña de Ocio (índice 1), abortar peticiones asíncronas en vuelo
+    if (_currentTabIndex == 1 && index != 1) {
+      _leisureController.abortInFlightRequests();
+    }
+
     setState(() {
       _currentTabIndex = index;
       _loadedIndices.add(index);
     });
+
+    // Si entramos a Ocio y el catálogo está vacío y sin carga activa (por ejemplo, cancelada previamente), recargarlo
+    if (index == 1 && _leisureController.catalogItems.isEmpty && !_leisureController.isLoading) {
+      _leisureController.loadCatalog();
+    }
   }
 
   Future<void> _openSettings(BuildContext context) async {
+    // Abortar peticiones de ocio pendientes al abrir ajustes
+    _leisureController.abortInFlightRequests();
+
     await Navigator.push(
       context,
       MaterialPageRoute(
