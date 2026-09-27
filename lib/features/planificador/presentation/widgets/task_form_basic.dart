@@ -585,19 +585,21 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     final hasError = _validationError != null;
 
     return Container(
+      constraints: const BoxConstraints(minHeight: 136),
       decoration: BoxDecoration(
         color: AppTheme.darkBackground,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: hasError
               ? AppTheme.accentCoral
-              : Colors.white.withValues(alpha: 0.08),
+              : Colors.white.withValues(alpha: 0.1),
           width: hasError ? 1.4 : 1.0,
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _tituloController,
@@ -606,48 +608,50 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
             textCapitalization: TextCapitalization.sentences,
             style: TextStyle(
               color: AppTheme.textPrimary,
-              fontSize: 15.5,
+              fontSize: 16.5,
               fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
               hintText: '¿Qué hay que hacer?',
               hintStyle: TextStyle(
                 color: AppTheme.textSecondary.withValues(alpha: 0.45),
-                fontSize: 15.5,
+                fontSize: 16.5,
                 fontWeight: FontWeight.normal,
               ),
               isDense: true,
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(vertical: 4),
               border: InputBorder.none,
             ),
             onChanged: _onTituloChanged,
             onSubmitted: (_) => _handleSubmit(),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Divider(
             height: 1,
             thickness: 1,
-            color: Colors.white.withValues(alpha: 0.05),
+            color: Colors.white.withValues(alpha: 0.07),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           TextField(
             controller: _descripcionController,
             enabled: !_isSubmitting,
-            minLines: 1,
-            maxLines: 3,
+            minLines: 2,
+            maxLines: 4,
             textCapitalization: TextCapitalization.sentences,
             style: TextStyle(
-              color: AppTheme.textPrimary.withValues(alpha: 0.88),
-              fontSize: 13,
+              color: AppTheme.textPrimary.withValues(alpha: 0.9),
+              fontSize: 13.5,
+              height: 1.4,
             ),
             decoration: InputDecoration(
               hintText: 'Añadir descripción o notas (opcional)...',
               hintStyle: TextStyle(
                 color: AppTheme.textSecondary.withValues(alpha: 0.4),
-                fontSize: 13,
+                fontSize: 13.5,
+                height: 1.4,
               ),
               isDense: true,
-              contentPadding: EdgeInsets.zero,
+              contentPadding: const EdgeInsets.symmetric(vertical: 4),
               border: InputBorder.none,
             ),
           ),
