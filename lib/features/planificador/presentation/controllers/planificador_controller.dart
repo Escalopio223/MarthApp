@@ -737,7 +737,7 @@ class PlanificadorController extends ChangeNotifier {
     );
   }
 
-  /// Crea una tarea a partir de un [TaskFormBasicPayload] emitido por el nuevo formulario básico.
+  /// Crea una tarea a partir de un [TaskFormBasicPayload] emitido por el nuevo formulario básico y avanzado.
   Future<void> crearTareaDesdePayload(
     TaskFormBasicPayload payload, {
     String? proyectoId,
@@ -746,12 +746,41 @@ class PlanificadorController extends ChangeNotifier {
     if (validationError != null) {
       throw ArgumentError(validationError);
     }
+
+    final descripcionFinal = payload.etiqueta ?? payload.notas ?? payload.descripcion;
+
+    final checklist = payload.subtasks.map((texto) {
+      return ChecklistItemModel(
+        id: 'chk_${DateTime.now().millisecondsSinceEpoch}_${texto.hashCode.abs()}',
+        titulo: texto,
+        completado: false,
+      );
+    }).toList();
+
+    final recordatorios = <RecordatorioTareaModel>[];
+    if (payload.hasReminder) {
+      final notifDate = payload.reminderDateTime ??
+          (payload.fechaEjecucion != null && payload.reminderMinutesBefore != null
+              ? payload.fechaEjecucion!.subtract(Duration(minutes: payload.reminderMinutesBefore!))
+              : DateTime.now());
+      recordatorios.add(
+        RecordatorioTareaModel(
+          id: 'rec_${DateTime.now().millisecondsSinceEpoch}',
+          tareaId: '',
+          fechaNotificacion: notifDate,
+        ),
+      );
+    }
+
     await crearTarea(
-      proyectoId: proyectoId,
+      proyectoId: payload.proyectoId ?? proyectoId,
       titulo: payload.titulo,
-      descripcion: payload.descripcion,
+      descripcion: descripcionFinal,
       fechaLimite: payload.fechaEjecucion,
       asignadoA: payload.asignadoA,
+      tiempoEstimadoMinutos: payload.tiempoEstimadoMinutos ?? 0,
+      checklist: checklist,
+      recordatorios: recordatorios,
     );
   }
 
@@ -764,14 +793,29 @@ class PlanificadorController extends ChangeNotifier {
     if (validationError != null) {
       throw ArgumentError(validationError);
     }
+
+    final descripcionFinal = payload.etiqueta ?? payload.notas ?? payload.descripcion;
+
+    final checklist = payload.subtasks.map((texto) {
+      return ChecklistItemModel(
+        id: 'chk_${DateTime.now().millisecondsSinceEpoch}_${texto.hashCode.abs()}',
+        titulo: texto,
+        completado: false,
+      );
+    }).toList();
+
     final tareaActualizada = tareaOriginal.copyWith(
       titulo: payload.titulo,
-      descripcion: payload.descripcion,
-      clearDescripcion: payload.descripcion == null,
+      descripcion: descripcionFinal,
+      clearDescripcion: descripcionFinal == null,
       fechaLimite: payload.fechaEjecucion,
       clearFechaLimite: payload.fechaEjecucion == null,
       asignadoA: payload.asignadoA,
       clearAsignadoA: payload.asignadoA == null,
+      proyectoId: payload.proyectoId,
+      clearProyectoId: payload.proyectoId == null,
+      tiempoEstimadoMinutos: payload.tiempoEstimadoMinutos ?? 0,
+      checklist: checklist.isNotEmpty ? checklist : tareaOriginal.checklist,
     );
     await actualizarTarea(tareaActualizada);
   }

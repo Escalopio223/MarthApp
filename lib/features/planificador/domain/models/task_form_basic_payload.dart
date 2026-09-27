@@ -11,14 +11,18 @@ enum TaskFormMode {
   bool get isEdit => this == TaskFormMode.edit;
 }
 
-/// Payload base con tipado estricto para el formulario de tareas (creación y edición).
-/// Desacoplado de la persistencia directa para emitir un estado limpio y validado.
+/// Payload unificado con tipado estricto para el formulario de tareas (básico + avanzado).
+/// Desacoplado de la persistencia directa para emitir un estado limpio, enriquecido y validado.
 @immutable
 class TaskFormBasicPayload {
+  // ===========================================================================
+  // 1. Campos Básicos
+  // ===========================================================================
+
   /// Título obligatorio de la tarea.
   final String titulo;
 
-  /// Descripción o notas opcionales.
+  /// Descripción o contexto principal de la tarea.
   final String? descripcion;
 
   /// Fecha de ejecución programada (por defecto la fecha actual en modo creación).
@@ -36,6 +40,34 @@ class TaskFormBasicPayload {
   /// Configuración de la regla de recurrencia si [isRecurring] está activo.
   final RecurrenceRule? recurrenceRule;
 
+  // ===========================================================================
+  // 2. Campos Avanzados Opcionales (Acordeón)
+  // ===========================================================================
+
+  /// Duración o tiempo estimado de la tarea en minutos (ej. 15, 30, 60...).
+  final int? tiempoEstimadoMinutos;
+
+  /// ID del proyecto asociado al que pertenece la tarea.
+  final String? proyectoId;
+
+  /// Categoría o etiqueta taxonómica (ej. "Limpieza", "Cocina", "Compras").
+  final String? etiqueta;
+
+  /// Notas, instrucciones o comentarios extendidos de la tarea.
+  final String? notas;
+
+  /// Lista de subtareas o checklist (contrato preparado para futura implementación).
+  final List<String> subtasks;
+
+  /// Indica si la tarea tiene una alerta o recordatorio programado.
+  final bool hasReminder;
+
+  /// Minutos previos a la fecha de ejecución para disparar la alerta (ej. 15, 30, 60).
+  final int? reminderMinutesBefore;
+
+  /// Fecha y hora exacta de recordatorio personalizado si no es relativa a la fecha de ejecución.
+  final DateTime? reminderDateTime;
+
   const TaskFormBasicPayload({
     required this.titulo,
     this.descripcion,
@@ -44,12 +76,21 @@ class TaskFormBasicPayload {
     this.asignadoA,
     this.isRecurring = false,
     this.recurrenceRule,
+    this.tiempoEstimadoMinutos,
+    this.proyectoId,
+    this.etiqueta,
+    this.notas,
+    this.subtasks = const [],
+    this.hasReminder = false,
+    this.reminderMinutesBefore,
+    this.reminderDateTime,
   });
 
   /// Factory para inicializar el payload en modo creación con valores predeterminados.
   factory TaskFormBasicPayload.initialForCreate({
     DateTime? defaultDate,
     String? defaultAssigneeId,
+    String? defaultProyectoId,
   }) {
     final now = DateTime.now();
     final today = defaultDate ?? DateTime(now.year, now.month, now.day);
@@ -61,6 +102,14 @@ class TaskFormBasicPayload {
       asignadoA: defaultAssigneeId,
       isRecurring: false,
       recurrenceRule: null,
+      tiempoEstimadoMinutos: null,
+      proyectoId: defaultProyectoId,
+      etiqueta: null,
+      notas: null,
+      subtasks: const [],
+      hasReminder: false,
+      reminderMinutesBefore: null,
+      reminderDateTime: null,
     );
   }
 
@@ -77,7 +126,39 @@ class TaskFormBasicPayload {
       asignadoA: tarea.asignadoA,
       isRecurring: false,
       recurrenceRule: null,
+      tiempoEstimadoMinutos:
+          tarea.tiempoEstimadoMinutos > 0 ? tarea.tiempoEstimadoMinutos : null,
+      proyectoId: tarea.proyectoId,
+      etiqueta: tarea.etiqueta,
+      notas: null,
+      subtasks: tarea.checklist.map((c) => c.titulo).toList(),
+      hasReminder: tarea.recordatorios.isNotEmpty,
+      reminderMinutesBefore: null,
+      reminderDateTime: tarea.recordatorios.isNotEmpty
+          ? tarea.recordatorios.first.fechaNotificacion
+          : null,
     );
+  }
+
+  /// Indica si alguna opción avanzada ha sido configurada por el usuario.
+  bool get hasAdvancedOptionsConfigured =>
+      (tiempoEstimadoMinutos != null && tiempoEstimadoMinutos! > 0) ||
+      proyectoId != null ||
+      etiqueta != null ||
+      (notas != null && notas!.trim().isNotEmpty) ||
+      subtasks.isNotEmpty ||
+      hasReminder;
+
+  /// Contador de opciones avanzadas activas para mostrar en el badge del acordeón.
+  int get advancedOptionsCount {
+    int count = 0;
+    if (tiempoEstimadoMinutos != null && tiempoEstimadoMinutos! > 0) count++;
+    if (proyectoId != null) count++;
+    if (etiqueta != null) count++;
+    if (notas != null && notas!.trim().isNotEmpty) count++;
+    if (subtasks.isNotEmpty) count++;
+    if (hasReminder) count++;
+    return count;
   }
 
   /// Valida el payload asegurando que los campos requeridos cumplan las reglas de negocio.
@@ -89,6 +170,9 @@ class TaskFormBasicPayload {
     if (isRecurring && recurrenceRule != null) {
       final ruleError = recurrenceRule!.validate();
       if (ruleError != null) return ruleError;
+    }
+    if (tiempoEstimadoMinutos != null && tiempoEstimadoMinutos! < 0) {
+      return 'El tiempo estimado no puede ser negativo.';
     }
     return null;
   }
@@ -109,6 +193,20 @@ class TaskFormBasicPayload {
     bool? isRecurring,
     RecurrenceRule? recurrenceRule,
     bool clearRecurrenceRule = false,
+    int? tiempoEstimadoMinutos,
+    bool clearTiempoEstimado = false,
+    String? proyectoId,
+    bool clearProyectoId = false,
+    String? etiqueta,
+    bool clearEtiqueta = false,
+    String? notas,
+    bool clearNotas = false,
+    List<String>? subtasks,
+    bool? hasReminder,
+    int? reminderMinutesBefore,
+    bool clearReminderMinutes = false,
+    DateTime? reminderDateTime,
+    bool clearReminderDateTime = false,
   }) {
     return TaskFormBasicPayload(
       titulo: titulo ?? this.titulo,
@@ -120,6 +218,20 @@ class TaskFormBasicPayload {
       recurrenceRule: clearRecurrenceRule
           ? null
           : (recurrenceRule ?? this.recurrenceRule),
+      tiempoEstimadoMinutos: clearTiempoEstimado
+          ? null
+          : (tiempoEstimadoMinutos ?? this.tiempoEstimadoMinutos),
+      proyectoId: clearProyectoId ? null : (proyectoId ?? this.proyectoId),
+      etiqueta: clearEtiqueta ? null : (etiqueta ?? this.etiqueta),
+      notas: clearNotas ? null : (notas ?? this.notas),
+      subtasks: subtasks ?? this.subtasks,
+      hasReminder: hasReminder ?? this.hasReminder,
+      reminderMinutesBefore: clearReminderMinutes
+          ? null
+          : (reminderMinutesBefore ?? this.reminderMinutesBefore),
+      reminderDateTime: clearReminderDateTime
+          ? null
+          : (reminderDateTime ?? this.reminderDateTime),
     );
   }
 
@@ -135,6 +247,14 @@ class TaskFormBasicPayload {
       'asignado_a': asignadoA,
       'is_recurring': isRecurring,
       'recurrence_rule': recurrenceRule?.toJson(),
+      'tiempo_estimado_minutos': tiempoEstimadoMinutos,
+      'proyecto_id': proyectoId,
+      'etiqueta': etiqueta,
+      'notas': (notas != null && notas!.trim().isNotEmpty) ? notas!.trim() : null,
+      'subtasks': subtasks,
+      'has_reminder': hasReminder,
+      'reminder_minutes_before': reminderMinutesBefore,
+      'reminder_date_time': reminderDateTime?.toIso8601String(),
     };
   }
 
@@ -148,7 +268,15 @@ class TaskFormBasicPayload {
         other.tieneHora == tieneHora &&
         other.asignadoA == asignadoA &&
         other.isRecurring == isRecurring &&
-        other.recurrenceRule == recurrenceRule;
+        other.recurrenceRule == recurrenceRule &&
+        other.tiempoEstimadoMinutos == tiempoEstimadoMinutos &&
+        other.proyectoId == proyectoId &&
+        other.etiqueta == etiqueta &&
+        other.notas == notas &&
+        listEquals(other.subtasks, subtasks) &&
+        other.hasReminder == hasReminder &&
+        other.reminderMinutesBefore == reminderMinutesBefore &&
+        other.reminderDateTime == reminderDateTime;
   }
 
   @override
@@ -160,10 +288,18 @@ class TaskFormBasicPayload {
         asignadoA,
         isRecurring,
         recurrenceRule,
+        tiempoEstimadoMinutos,
+        proyectoId,
+        etiqueta,
+        notas,
+        Object.hashAll(subtasks),
+        hasReminder,
+        reminderMinutesBefore,
+        reminderDateTime,
       );
 
   @override
   String toString() {
-    return 'TaskFormBasicPayload(titulo: "$titulo", fechaEjecucion: $fechaEjecucion, tieneHora: $tieneHora, asignadoA: $asignadoA, isRecurring: $isRecurring, recurrenceRule: $recurrenceRule)';
+    return 'TaskFormBasicPayload(titulo: "$titulo", fechaEjecucion: $fechaEjecucion, tiempoEstimado: $tiempoEstimadoMinutos, proyectoId: $proyectoId, etiqueta: $etiqueta, subtasks: ${subtasks.length}, hasReminder: $hasReminder)';
   }
 }

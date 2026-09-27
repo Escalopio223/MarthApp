@@ -6,10 +6,12 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
+import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recurrence_rule.dart';
 import '../../domain/models/tarea_model.dart';
 import '../../domain/models/task_form_basic_payload.dart';
 import 'recurring_rule_form_widget.dart';
+import 'task_advanced_accordion.dart';
 
 enum _QuickDateChoice { hoy, manana, personalizada, sinFecha }
 
@@ -21,6 +23,7 @@ class TaskFormBasic extends StatefulWidget {
   final TaskFormBasicPayload? initialPayload;
   final TareaModel? initialTarea;
   final List<EnvironmentMemberModel> miembros;
+  final List<ProyectoModel> proyectos;
   final String? usuarioActualId;
   final Future<void> Function(TaskFormBasicPayload payload) onSubmit;
   final VoidCallback? onCancel;
@@ -34,6 +37,7 @@ class TaskFormBasic extends StatefulWidget {
     this.initialPayload,
     this.initialTarea,
     this.miembros = const [],
+    this.proyectos = const [],
     this.usuarioActualId,
     required this.onSubmit,
     this.onCancel,
@@ -49,6 +53,7 @@ class TaskFormBasic extends StatefulWidget {
     TaskFormBasicPayload? initialPayload,
     TareaModel? initialTarea,
     required List<EnvironmentMemberModel> miembros,
+    List<ProyectoModel> proyectos = const [],
     String? usuarioActualId,
     required Future<void> Function(TaskFormBasicPayload payload) onSubmit,
     String? submitButtonText,
@@ -70,6 +75,7 @@ class TaskFormBasic extends StatefulWidget {
             initialPayload: initialPayload,
             initialTarea: initialTarea,
             miembros: miembros,
+            proyectos: proyectos,
             usuarioActualId: usuarioActualId,
             submitButtonText: submitButtonText,
             title: title,
@@ -103,6 +109,15 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
   bool _isRecurring = false;
   late RecurrenceRule _recurrenceRule;
 
+  // Campos avanzados con persistencia al colapsar
+  int? _tiempoEstimadoMinutos;
+  String? _proyectoId;
+  String? _etiqueta;
+  late final TextEditingController _notasController;
+  List<String> _subtasks = [];
+  bool _hasReminder = false;
+  int? _reminderMinutesBefore = 15;
+
   bool _isSubmitting = false;
   String? _validationError;
   String? _submitError;
@@ -132,6 +147,15 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
         );
     _fechaEjecucion = payload.fechaEjecucion;
     _tieneHora = payload.tieneHora;
+
+    // Inicializar campos avanzados desde payload inicial
+    _tiempoEstimadoMinutos = payload.tiempoEstimadoMinutos;
+    _proyectoId = payload.proyectoId;
+    _etiqueta = payload.etiqueta;
+    _notasController = TextEditingController(text: payload.notas ?? '');
+    _subtasks = List<String>.from(payload.subtasks);
+    _hasReminder = payload.hasReminder;
+    _reminderMinutesBefore = payload.reminderMinutesBefore ?? 15;
 
     if (_fechaEjecucion != null && _tieneHora) {
       _horaEjecucion = TimeOfDay(
@@ -171,6 +195,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
   void dispose() {
     _tituloController.dispose();
     _descripcionController.dispose();
+    _notasController.dispose();
     super.dispose();
   }
 
@@ -333,6 +358,15 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
       asignadoA: _asignadoAId,
       isRecurring: _isRecurring,
       recurrenceRule: _isRecurring ? _recurrenceRule : null,
+      tiempoEstimadoMinutos: _tiempoEstimadoMinutos,
+      proyectoId: _proyectoId,
+      etiqueta: _etiqueta,
+      notas: _notasController.text.trim().isNotEmpty
+          ? _notasController.text.trim()
+          : null,
+      subtasks: _subtasks,
+      hasReminder: _hasReminder,
+      reminderMinutesBefore: _hasReminder ? _reminderMinutesBefore : null,
     );
 
     // 3. Validación de contrato del payload
@@ -429,9 +463,41 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
 
             // 4. Preparación de recurrencia (isRecurring toggle)
             _buildRecurrenciaSection(),
+            const SizedBox(height: 18),
+
+            // 5. Opciones avanzadas (Acordeón colapsable con persistencia total de inputs)
+            TaskAdvancedAccordion(
+              initiallyExpanded: false,
+              tiempoEstimadoMinutos: _tiempoEstimadoMinutos,
+              onTiempoEstimadoChanged: (val) {
+                setState(() => _tiempoEstimadoMinutos = val);
+              },
+              proyectos: widget.proyectos,
+              proyectoId: _proyectoId,
+              onProyectoChanged: (val) {
+                setState(() => _proyectoId = val);
+              },
+              etiqueta: _etiqueta,
+              onEtiquetaChanged: (val) {
+                setState(() => _etiqueta = val);
+              },
+              notasController: _notasController,
+              subtasks: _subtasks,
+              onSubtasksChanged: (val) {
+                setState(() => _subtasks = val);
+              },
+              hasReminder: _hasReminder,
+              onHasReminderChanged: (val) {
+                setState(() => _hasReminder = val);
+              },
+              reminderMinutesBefore: _reminderMinutesBefore,
+              onReminderMinutesChanged: (val) {
+                setState(() => _reminderMinutesBefore = val);
+              },
+            ),
             const SizedBox(height: 24),
 
-            // 5. Botón de acción principal con protección anti-doble clic
+            // 6. Botón de acción principal con protección anti-doble clic
             _buildSubmitButton(isCreate),
           ],
         ),
