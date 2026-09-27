@@ -148,6 +148,7 @@ class TaskFormBasicPayload {
       etiqueta != null ||
       (notas != null && notas!.trim().isNotEmpty) ||
       subtasks.isNotEmpty ||
+      isRecurring ||
       hasReminder;
 
   /// Contador de opciones avanzadas activas para mostrar en el badge del acordeón.
@@ -158,6 +159,7 @@ class TaskFormBasicPayload {
     if (etiqueta != null) count++;
     if (notas != null && notas!.trim().isNotEmpty) count++;
     if (subtasks.isNotEmpty) count++;
+    if (isRecurring) count++;
     if (hasReminder) count++;
     return count;
   }

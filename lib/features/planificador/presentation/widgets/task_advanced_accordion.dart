@@ -5,6 +5,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/etiqueta_tarea.dart';
 import '../../domain/models/proyecto_model.dart';
+import '../../domain/models/recurrence_rule.dart';
+import 'recurring_rule_form_widget.dart';
 import 'subtask_list.dart';
 
 /// Componente colapsable / expandible de Opciones Avanzadas para el formulario de tareas.
@@ -22,6 +24,10 @@ class TaskAdvancedAccordion extends StatefulWidget {
   final TextEditingController notasController;
   final List<ChecklistItemModel> subtasks;
   final ValueChanged<List<ChecklistItemModel>> onSubtasksChanged;
+  final bool isRecurring;
+  final ValueChanged<bool> onIsRecurringChanged;
+  final RecurrenceRule? recurrenceRule;
+  final ValueChanged<RecurrenceRule> onRecurrenceRuleChanged;
   final bool hasReminder;
   final ValueChanged<bool> onHasReminderChanged;
   final int? reminderMinutesBefore;
@@ -40,6 +46,10 @@ class TaskAdvancedAccordion extends StatefulWidget {
     required this.notasController,
     this.subtasks = const [],
     required this.onSubtasksChanged,
+    this.isRecurring = false,
+    required this.onIsRecurringChanged,
+    this.recurrenceRule,
+    required this.onRecurrenceRuleChanged,
     this.hasReminder = false,
     required this.onHasReminderChanged,
     this.reminderMinutesBefore,
@@ -65,6 +75,7 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
         widget.etiqueta != null ||
         widget.notasController.text.trim().isNotEmpty ||
         widget.subtasks.isNotEmpty ||
+        widget.isRecurring ||
         widget.hasReminder;
   }
 
@@ -75,6 +86,7 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
     if (widget.etiqueta != null) count++;
     if (widget.notasController.text.trim().isNotEmpty) count++;
     if (widget.subtasks.isNotEmpty) count++;
+    if (widget.isRecurring) count++;
     if (widget.hasReminder) count++;
     return count;
   }
@@ -126,15 +138,19 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
                         _buildTaxonomiaSection(),
                         const SizedBox(height: 16),
 
-                        // 3. Bloque de Notas y Comentarios extendidos
+                        // 3. Tarea Recurrente (Repetición periódica automática)
+                        _buildRecurrenciaSection(),
+                        const SizedBox(height: 16),
+
+                        // 4. Bloque de Notas y Comentarios extendidos
                         _buildNotasSection(),
                         const SizedBox(height: 16),
 
-                        // 4. Placeholder para Subtareas / Checklist
+                        // 5. Subtareas / Checklist interactivo
                         _buildSubtasksSection(),
                         const SizedBox(height: 16),
 
-                        // 5. Placeholder para Recordatorio
+                        // 6. Recordatorio de alerta
                         _buildRecordatorioSection(),
                       ],
                     ),
@@ -187,7 +203,7 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
                   Text(
                     activeCount > 0
                         ? '$activeCount ${activeCount == 1 ? "opción configurada" : "opciones configuradas"}'
-                        : 'Tiempo, proyecto, categoría, notas y recordatorio',
+                        : 'Tiempo, proyecto, categoría, recurrencia, notas y recordatorio',
                     style: TextStyle(
                       fontSize: 11,
                       color: activeCount > 0
@@ -535,7 +551,103 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
   }
 
   // ===========================================================================
-  // 3. Bloque de Notas / Comentarios
+  // 3. Tarea Recurrente (Repetición periódica)
+  // ===========================================================================
+  Widget _buildRecurrenciaSection() {
+    final effectiveRule = widget.recurrenceRule ??
+        RecurrenceRule.weekly(daysOfWeek: [DateTime.now().weekday]);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: widget.isRecurring
+                  ? AppTheme.primaryLiquid.withValues(alpha: 0.6)
+                  : AppTheme.cardBorderColor,
+              width: widget.isRecurring ? 1.2 : 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: widget.isRecurring
+                      ? AppTheme.primaryLiquid.withValues(alpha: 0.2)
+                      : AppTheme.darkBackground,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.repeat_rounded,
+                  size: 18,
+                  color: widget.isRecurring ? AppTheme.primaryLiquid : AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tarea recurrente',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      widget.isRecurring
+                          ? effectiveRule.toHumanReadable()
+                          : 'Configurar repetición periódica automática',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch.adaptive(
+                value: widget.isRecurring,
+                activeTrackColor: AppTheme.primaryLiquid,
+                activeThumbColor: Colors.white,
+                onChanged: (val) {
+                  HapticFeedback.selectionClick();
+                  widget.onIsRecurringChanged(val);
+                },
+              ),
+            ],
+          ),
+        ),
+
+        // Subformulario desplegable si la recurrencia está activa
+        AnimatedSize(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeInOutCubic,
+          child: widget.isRecurring
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: RecurringRuleFormWidget(
+                    rule: effectiveRule,
+                    onChanged: (rule) {
+                      widget.onRecurrenceRuleChanged(rule);
+                    },
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // 4. Bloque de Notas / Comentarios
   // ===========================================================================
   Widget _buildNotasSection() {
     return Column(

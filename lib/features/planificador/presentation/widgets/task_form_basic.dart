@@ -11,7 +11,6 @@ import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recurrence_rule.dart';
 import '../../domain/models/tarea_model.dart';
 import '../../domain/models/task_form_basic_payload.dart';
-import 'recurring_rule_form_widget.dart';
 import 'task_advanced_accordion.dart';
 
 enum _QuickDateChoice { hoy, manana, personalizada, sinFecha }
@@ -462,11 +461,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
             _buildAsignacionSection(),
             const SizedBox(height: 18),
 
-            // 4. Preparación de recurrencia (isRecurring toggle)
-            _buildRecurrenciaSection(),
-            const SizedBox(height: 18),
-
-            // 5. Opciones avanzadas (Acordeón colapsable con persistencia total de inputs)
+            // 4. Opciones avanzadas (Acordeón colapsable con persistencia total de inputs)
             TaskAdvancedAccordion(
               initiallyExpanded: false,
               tiempoEstimadoMinutos: _tiempoEstimadoMinutos,
@@ -486,6 +481,14 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
               subtasks: _subtasks,
               onSubtasksChanged: (val) {
                 setState(() => _subtasks = val);
+              },
+              isRecurring: _isRecurring,
+              onIsRecurringChanged: (val) {
+                setState(() => _isRecurring = val);
+              },
+              recurrenceRule: _recurrenceRule,
+              onRecurrenceRuleChanged: (rule) {
+                setState(() => _recurrenceRule = rule);
               },
               hasReminder: _hasReminder,
               onHasReminderChanged: (val) {
@@ -1094,99 +1097,6 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildRecurrenciaSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppTheme.darkBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _isRecurring
-                  ? AppTheme.primaryLiquid.withValues(alpha: 0.6)
-                  : AppTheme.cardBorderColor,
-              width: _isRecurring ? 1.2 : 0.8,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _isRecurring
-                      ? AppTheme.primaryLiquid.withValues(alpha: 0.2)
-                      : AppTheme.surfaceDark,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.repeat_rounded,
-                  size: 20,
-                  color: _isRecurring ? AppTheme.primaryLiquid : AppTheme.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tarea recurrente',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _isRecurring
-                          ? _recurrenceRule.toHumanReadable()
-                          : 'Configurar repetición periódica automática',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.textSecondary.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Switch.adaptive(
-                value: _isRecurring,
-                activeTrackColor: AppTheme.primaryLiquid,
-                activeThumbColor: Colors.white,
-                onChanged: _isSubmitting
-                    ? null
-                    : (val) {
-                        HapticFeedback.selectionClick();
-                        setState(() => _isRecurring = val);
-                      },
-              ),
-            ],
-          ),
-        ),
-
-        // Subformulario inline de configuración de recurrencia
-        AnimatedSize(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeInOutCubic,
-          child: _isRecurring
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 10.0),
-                  child: RecurringRuleFormWidget(
-                    rule: _recurrenceRule,
-                    onChanged: (newRule) {
-                      setState(() => _recurrenceRule = newRule);
-                    },
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-      ],
     );
   }
 
