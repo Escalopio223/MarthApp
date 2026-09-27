@@ -6,8 +6,10 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../profile/domain/models/avatar_data.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
+import '../../domain/models/recurrence_rule.dart';
 import '../../domain/models/tarea_model.dart';
 import '../../domain/models/task_form_basic_payload.dart';
+import 'recurring_rule_form_widget.dart';
 
 enum _QuickDateChoice { hoy, manana, personalizada, sinFecha }
 
@@ -99,6 +101,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
 
   String? _asignadoAId;
   bool _isRecurring = false;
+  late RecurrenceRule _recurrenceRule;
 
   bool _isSubmitting = false;
   String? _validationError;
@@ -123,6 +126,10 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
 
     _asignadoAId = payload.asignadoA;
     _isRecurring = payload.isRecurring;
+    _recurrenceRule = payload.recurrenceRule ??
+        RecurrenceRule.weekly(
+          daysOfWeek: [DateTime.now().weekday],
+        );
     _fechaEjecucion = payload.fechaEjecucion;
     _tieneHora = payload.tieneHora;
 
@@ -325,6 +332,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
       tieneHora: _tieneHora && fechaFinal != null,
       asignadoA: _asignadoAId,
       isRecurring: _isRecurring,
+      recurrenceRule: _isRecurring ? _recurrenceRule : null,
     );
 
     // 3. Validación de contrato del payload
@@ -1023,71 +1031,95 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
   }
 
   Widget _buildRecurrenciaSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.darkBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _isRecurring
-              ? AppTheme.primaryLiquid.withValues(alpha: 0.6)
-              : AppTheme.cardBorderColor,
-          width: _isRecurring ? 1.2 : 0.8,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.darkBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
               color: _isRecurring
-                  ? AppTheme.primaryLiquid.withValues(alpha: 0.2)
-                  : AppTheme.surfaceDark,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              Icons.repeat_rounded,
-              size: 20,
-              color: _isRecurring ? AppTheme.primaryLiquid : AppTheme.textSecondary,
+                  ? AppTheme.primaryLiquid.withValues(alpha: 0.6)
+                  : AppTheme.cardBorderColor,
+              width: _isRecurring ? 1.2 : 0.8,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tarea recurrente',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _isRecurring
+                      ? AppTheme.primaryLiquid.withValues(alpha: 0.2)
+                      : AppTheme.surfaceDark,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Anclaje para el motor de reglas (feat/tasks-recurring-rules)',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary.withValues(alpha: 0.7),
-                  ),
+                child: Icon(
+                  Icons.repeat_rounded,
+                  size: 20,
+                  color: _isRecurring ? AppTheme.primaryLiquid : AppTheme.textSecondary,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tarea recurrente',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _isRecurring
+                          ? _recurrenceRule.toHumanReadable()
+                          : 'Configurar repetición periódica automática',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch.adaptive(
+                value: _isRecurring,
+                activeTrackColor: AppTheme.primaryLiquid,
+                activeThumbColor: Colors.white,
+                onChanged: _isSubmitting
+                    ? null
+                    : (val) {
+                        HapticFeedback.selectionClick();
+                        setState(() => _isRecurring = val);
+                      },
+              ),
+            ],
           ),
-          Switch.adaptive(
-            value: _isRecurring,
-            activeTrackColor: AppTheme.primaryLiquid,
-            activeThumbColor: Colors.white,
-            onChanged: _isSubmitting
-                ? null
-                : (val) {
-                    HapticFeedback.selectionClick();
-                    setState(() => _isRecurring = val);
-                  },
-          ),
-        ],
-      ),
+        ),
+
+        // Subformulario inline de configuración de recurrencia
+        AnimatedSize(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeInOutCubic,
+          child: _isRecurring
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: RecurringRuleFormWidget(
+                    rule: _recurrenceRule,
+                    onChanged: (newRule) {
+                      setState(() => _recurrenceRule = newRule);
+                    },
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 

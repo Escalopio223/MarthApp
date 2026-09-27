@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'recurrence_rule.dart';
 import 'tarea_model.dart';
 
 /// Modo de visualización y operación del formulario de tareas.
@@ -29,9 +30,11 @@ class TaskFormBasicPayload {
   /// ID del miembro del entorno asignado o null para "Sin asignar".
   final String? asignadoA;
 
-  /// Flag booleano de recurrencia que servirá de anclaje para el futuro
-  /// motor de reglas periódicas (`feat/tasks-recurring-rules`).
+  /// Flag booleano de recurrencia.
   final bool isRecurring;
+
+  /// Configuración de la regla de recurrencia si [isRecurring] está activo.
+  final RecurrenceRule? recurrenceRule;
 
   const TaskFormBasicPayload({
     required this.titulo,
@@ -40,6 +43,7 @@ class TaskFormBasicPayload {
     this.tieneHora = false,
     this.asignadoA,
     this.isRecurring = false,
+    this.recurrenceRule,
   });
 
   /// Factory para inicializar el payload en modo creación con valores predeterminados.
@@ -56,6 +60,7 @@ class TaskFormBasicPayload {
       tieneHora: false,
       asignadoA: defaultAssigneeId,
       isRecurring: false,
+      recurrenceRule: null,
     );
   }
 
@@ -70,7 +75,8 @@ class TaskFormBasicPayload {
       fechaEjecucion: tarea.fechaLimite,
       tieneHora: tieneHora,
       asignadoA: tarea.asignadoA,
-      isRecurring: false, // Base para feat/tasks-recurring-rules
+      isRecurring: false,
+      recurrenceRule: null,
     );
   }
 
@@ -79,6 +85,10 @@ class TaskFormBasicPayload {
   String? validate() {
     if (titulo.trim().isEmpty) {
       return 'El título de la tarea es obligatorio.';
+    }
+    if (isRecurring && recurrenceRule != null) {
+      final ruleError = recurrenceRule!.validate();
+      if (ruleError != null) return ruleError;
     }
     return null;
   }
@@ -97,6 +107,8 @@ class TaskFormBasicPayload {
     String? asignadoA,
     bool clearAsignadoA = false,
     bool? isRecurring,
+    RecurrenceRule? recurrenceRule,
+    bool clearRecurrenceRule = false,
   }) {
     return TaskFormBasicPayload(
       titulo: titulo ?? this.titulo,
@@ -105,6 +117,9 @@ class TaskFormBasicPayload {
       tieneHora: tieneHora ?? this.tieneHora,
       asignadoA: clearAsignadoA ? null : (asignadoA ?? this.asignadoA),
       isRecurring: isRecurring ?? this.isRecurring,
+      recurrenceRule: clearRecurrenceRule
+          ? null
+          : (recurrenceRule ?? this.recurrenceRule),
     );
   }
 
@@ -119,6 +134,7 @@ class TaskFormBasicPayload {
       'tiene_hora': tieneHora,
       'asignado_a': asignadoA,
       'is_recurring': isRecurring,
+      'recurrence_rule': recurrenceRule?.toJson(),
     };
   }
 
@@ -131,7 +147,8 @@ class TaskFormBasicPayload {
         other.fechaEjecucion == fechaEjecucion &&
         other.tieneHora == tieneHora &&
         other.asignadoA == asignadoA &&
-        other.isRecurring == isRecurring;
+        other.isRecurring == isRecurring &&
+        other.recurrenceRule == recurrenceRule;
   }
 
   @override
@@ -142,10 +159,11 @@ class TaskFormBasicPayload {
         tieneHora,
         asignadoA,
         isRecurring,
+        recurrenceRule,
       );
 
   @override
   String toString() {
-    return 'TaskFormBasicPayload(titulo: "$titulo", fechaEjecucion: $fechaEjecucion, tieneHora: $tieneHora, asignadoA: $asignadoA, isRecurring: $isRecurring)';
+    return 'TaskFormBasicPayload(titulo: "$titulo", fechaEjecucion: $fechaEjecucion, tieneHora: $tieneHora, asignadoA: $asignadoA, isRecurring: $isRecurring, recurrenceRule: $recurrenceRule)';
   }
 }
