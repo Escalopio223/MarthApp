@@ -9,6 +9,7 @@ import '../../domain/models/evento_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
 import '../../domain/models/tarea_model.dart';
+import '../../domain/models/task_form_basic_payload.dart';
 import '../../domain/repositories/i_planificador_repository.dart';
 import '../../infrastructure/repositories/planificador_repository.dart';
 import '../../../../core/services/local_notification_service.dart';
@@ -734,6 +735,45 @@ class PlanificadorController extends ChangeNotifier {
       asignadoA: asignadoA,
       fechaLimite: fechaLimite ?? DateTime.now(),
     );
+  }
+
+  /// Crea una tarea a partir de un [TaskFormBasicPayload] emitido por el nuevo formulario básico.
+  Future<void> crearTareaDesdePayload(
+    TaskFormBasicPayload payload, {
+    String? proyectoId,
+  }) async {
+    final validationError = payload.validate();
+    if (validationError != null) {
+      throw ArgumentError(validationError);
+    }
+    await crearTarea(
+      proyectoId: proyectoId,
+      titulo: payload.titulo,
+      descripcion: payload.descripcion,
+      fechaLimite: payload.fechaEjecucion,
+      asignadoA: payload.asignadoA,
+    );
+  }
+
+  /// Actualiza una tarea existente a partir de un [TaskFormBasicPayload] validado.
+  Future<void> actualizarTareaDesdePayload(
+    TareaModel tareaOriginal,
+    TaskFormBasicPayload payload,
+  ) async {
+    final validationError = payload.validate();
+    if (validationError != null) {
+      throw ArgumentError(validationError);
+    }
+    final tareaActualizada = tareaOriginal.copyWith(
+      titulo: payload.titulo,
+      descripcion: payload.descripcion,
+      clearDescripcion: payload.descripcion == null,
+      fechaLimite: payload.fechaEjecucion,
+      clearFechaLimite: payload.fechaEjecucion == null,
+      asignadoA: payload.asignadoA,
+      clearAsignadoA: payload.asignadoA == null,
+    );
+    await actualizarTarea(tareaActualizada);
   }
 
   Future<void> actualizarTarea(TareaModel tarea) async {
