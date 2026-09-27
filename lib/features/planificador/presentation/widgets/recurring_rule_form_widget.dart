@@ -69,12 +69,11 @@ class RecurringRuleFormWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'FRECUENCIA',
+          'Frecuencia',
           style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-            color: AppTheme.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary.withValues(alpha: 0.85),
           ),
         ),
         const SizedBox(height: 8),
@@ -150,12 +149,11 @@ class RecurringRuleFormWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'REPETIR LOS DÍAS',
+          'Repetir los días',
           style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-            color: AppTheme.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary.withValues(alpha: 0.85),
           ),
         ),
         const SizedBox(height: 8),
@@ -228,12 +226,11 @@ class RecurringRuleFormWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'INTERVALO PERSONALIZADO',
+          'Intervalo personalizado',
           style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-            color: AppTheme.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary.withValues(alpha: 0.85),
           ),
         ),
         const SizedBox(height: 8),
@@ -360,12 +357,11 @@ class RecurringRuleFormWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'CONDICIÓN DE TÉRMINO',
+          'Condición de término',
           style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-            color: AppTheme.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary.withValues(alpha: 0.85),
           ),
         ),
         const SizedBox(height: 8),

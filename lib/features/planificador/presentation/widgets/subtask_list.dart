@@ -148,17 +148,16 @@ class _SubtaskListState extends State<SubtaskList> {
               children: [
                 Icon(
                   Icons.checklist_rounded,
-                  size: 16,
+                  size: 14,
                   color: AppTheme.primaryLiquid,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'SUBTAREAS / CHECKLIST',
+                  'Subtareas / Checklist',
                   style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.0,
-                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.85),
                   ),
                 ),
               ],

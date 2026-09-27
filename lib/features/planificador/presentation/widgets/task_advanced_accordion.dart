@@ -103,12 +103,12 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.darkBackground,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isExpanded || activeCount > 0
-              ? AppTheme.secondaryLilac.withValues(alpha: 0.45)
-              : AppTheme.cardBorderColor,
-          width: _isExpanded ? 1.2 : 0.8,
+              ? AppTheme.secondaryLilac.withValues(alpha: 0.35)
+              : Colors.white.withValues(alpha: 0.08),
+          width: 1.0,
         ),
       ),
       child: Column(
@@ -165,7 +165,7 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
   Widget _buildAccordionHeader(int activeCount) {
     return InkWell(
       onTap: _toggleExpanded,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
@@ -174,13 +174,13 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: _isExpanded || activeCount > 0
-                    ? AppTheme.secondaryLilac.withValues(alpha: 0.2)
+                    ? AppTheme.secondaryLilac.withValues(alpha: 0.18)
                     : AppTheme.surfaceDark,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.tune_rounded,
-                size: 18,
+                size: 16,
                 color: _isExpanded || activeCount > 0
                     ? AppTheme.secondaryLilac
                     : AppTheme.textSecondary,
@@ -203,12 +203,12 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
                   Text(
                     activeCount > 0
                         ? '$activeCount ${activeCount == 1 ? "opción configurada" : "opciones configuradas"}'
-                        : 'Tiempo, proyecto, categoría, recurrencia, notas y recordatorio',
+                        : 'Proyecto, etiquetas, subtareas, repetición...',
                     style: TextStyle(
                       fontSize: 11,
                       color: activeCount > 0
                           ? AppTheme.secondaryLilac
-                          : AppTheme.textSecondary.withValues(alpha: 0.7),
+                          : AppTheme.textSecondary.withValues(alpha: 0.65),
                       fontWeight: activeCount > 0 ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
@@ -264,15 +264,14 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
       children: [
         Row(
           children: [
-            Icon(Icons.timer_outlined, size: 15, color: AppTheme.secondaryLilac),
+            Icon(Icons.timer_outlined, size: 14, color: AppTheme.secondaryLilac),
             const SizedBox(width: 6),
             Text(
-              'ESTIMACIÓN DE TIEMPO',
+              'Estimación de tiempo',
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                color: AppTheme.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary.withValues(alpha: 0.85),
               ),
             ),
             if (currentMin != null && currentMin > 0) ...[
@@ -360,15 +359,14 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
         if (widget.proyectos.isNotEmpty) ...[
           Row(
             children: [
-              Icon(Icons.folder_outlined, size: 15, color: AppTheme.primaryLiquid),
+              Icon(Icons.folder_outlined, size: 14, color: AppTheme.primaryLiquid),
               const SizedBox(width: 6),
               Text(
-                'PROYECTO ASOCIADO',
+                'Proyecto asociado',
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                  color: AppTheme.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.85),
                 ),
               ),
             ],
@@ -410,15 +408,14 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
         // Selector de Categoría / Etiqueta
         Row(
           children: [
-            Icon(Icons.label_outlined, size: 15, color: AppTheme.accentEmerald),
+            Icon(Icons.label_outlined, size: 14, color: AppTheme.accentEmerald),
             const SizedBox(width: 6),
             Text(
-              'CATEGORÍA / ETIQUETA',
+              'Categoría / Etiqueta',
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                color: AppTheme.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary.withValues(alpha: 0.85),
               ),
             ),
           ],
@@ -655,15 +652,14 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
       children: [
         Row(
           children: [
-            Icon(Icons.notes_rounded, size: 15, color: AppTheme.textSecondary),
+            Icon(Icons.notes_rounded, size: 14, color: AppTheme.textSecondary),
             const SizedBox(width: 6),
             Text(
-              'NOTAS / CONTEXTO ADICIONAL',
+              'Notas adicionales',
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                color: AppTheme.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary.withValues(alpha: 0.85),
               ),
             ),
           ],

@@ -121,7 +121,6 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
   bool _isSubmitting = false;
   String? _validationError;
   String? _submitError;
-  bool _showNotesField = false;
 
   @override
   void initState() {
@@ -137,7 +136,6 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
 
     _tituloController = TextEditingController(text: payload.titulo);
     _descripcionController = TextEditingController(text: payload.descripcion ?? '');
-    _showNotesField = payload.descripcion != null && payload.descripcion!.trim().isNotEmpty;
 
     _asignadoAId = payload.asignadoA;
     _isRecurring = payload.isRecurring;
@@ -399,7 +397,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
   @override
   Widget build(BuildContext context) {
     final isCreate = widget.mode.isCreate;
-    final defaultTitle = isCreate ? 'Nueva Tarea' : 'Editar Tarea';
+    final defaultTitle = isCreate ? 'Nueva tarea' : 'Editar tarea';
     final effectiveTitle = widget.title ?? defaultTitle;
 
     return Container(
@@ -409,12 +407,12 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
             ? const BorderRadius.vertical(top: Radius.circular(28))
             : BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.cardBorderColor,
+          color: Colors.white.withValues(alpha: 0.08),
           width: 1.0,
         ),
         boxShadow: AppTheme.clayRaisedShadows(baseColor: AppTheme.surfaceDark),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -427,7 +425,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withValues(alpha: 0.35),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -435,33 +433,29 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
               const SizedBox(height: 12),
             ],
 
-            // Cabecera: Icono, Título y botón cerrar
+            // Cabecera ligera y limpia: Icono minimalista, Título y botón cerrar
             _buildHeader(effectiveTitle, isCreate),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Banner visual de error de validación o submit
             if (_validationError != null || _submitError != null) ...[
               _buildErrorBanner(_validationError ?? _submitError!),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
             ],
 
-            // 1. Campo de texto principal (Título obligatorio)
-            _buildTituloField(),
-            const SizedBox(height: 10),
+            // Tarjeta unificada de entrada: Título + Descripción ligera
+            _buildHeroInputCard(),
+            const SizedBox(height: 14),
 
-            // Campo opcional expandible para notas/descripción adicional
-            _buildNotasSection(),
-            const SizedBox(height: 18),
-
-            // 2. Selector de fecha de ejecución y hora opcional
+            // Selector compacto de fecha y hora
             _buildFechaYHoraSection(),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
-            // 3. Selector de asignación a miembros del entorno
+            // Selector compacto de asignación a miembros del entorno
             _buildAsignacionSection(),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
-            // 4. Opciones avanzadas (Acordeón colapsable con persistencia total de inputs)
+            // Opciones avanzadas (Acordeón colapsable con persistencia total de inputs)
             TaskAdvancedAccordion(
               initiallyExpanded: false,
               tiempoEstimadoMinutos: _tiempoEstimadoMinutos,
@@ -499,9 +493,9 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
                 setState(() => _reminderMinutesBefore = val);
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
 
-            // 6. Botón de acción principal con protección anti-doble clic
+            // Botón de acción principal
             _buildSubmitButton(isCreate),
           ],
         ),
@@ -516,40 +510,36 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                gradient: AppTheme.actionGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryLiquid.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+                color: AppTheme.primaryLiquid.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 isCreate ? Icons.add_task_rounded : Icons.edit_note_rounded,
-                color: Colors.white,
-                size: 20,
+                color: AppTheme.primaryLiquid,
+                size: 18,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Text(
               title,
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary,
-                letterSpacing: -0.3,
+                letterSpacing: -0.2,
               ),
             ),
           ],
         ),
         if (widget.onCancel != null)
           IconButton(
-            icon: const Icon(Icons.close_rounded, size: 22),
-            color: AppTheme.textSecondary,
+            icon: const Icon(Icons.close_rounded, size: 20),
+            color: AppTheme.textSecondary.withValues(alpha: 0.8),
+            splashRadius: 18,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             tooltip: 'Cerrar',
             onPressed: _isSubmitting ? null : widget.onCancel,
           ),
@@ -562,7 +552,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppTheme.accentCoral.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: AppTheme.accentCoral.withValues(alpha: 0.5),
           width: 1.0,
@@ -573,7 +563,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
           const Icon(
             Icons.error_outline_rounded,
             color: AppTheme.accentCoral,
-            size: 20,
+            size: 18,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -581,7 +571,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
               message,
               style: const TextStyle(
                 color: AppTheme.accentCoral,
-                fontSize: 13,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -591,191 +581,78 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     );
   }
 
-  Widget _buildTituloField() {
+  Widget _buildHeroInputCard() {
     final hasError = _validationError != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              '¿QUÉ HAY QUE HACER?',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.1,
-                color: hasError ? AppTheme.accentCoral : AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Text(
-              '*',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.accentCoral,
-              ),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.darkBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasError
+              ? AppTheme.accentCoral
+              : Colors.white.withValues(alpha: 0.08),
+          width: hasError ? 1.4 : 1.0,
         ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _tituloController,
-          autofocus: widget.mode.isCreate,
-          enabled: !_isSubmitting,
-          textCapitalization: TextCapitalization.sentences,
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-          decoration: InputDecoration(
-            hintText: 'Ej. Fregar los platos, Comprar café...',
-            hintStyle: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha: 0.55),
-              fontSize: 15,
-              fontWeight: FontWeight.normal,
-            ),
-            filled: true,
-            fillColor: AppTheme.darkBackground,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: hasError ? AppTheme.accentCoral : AppTheme.cardBorderColor,
-                width: hasError ? 1.4 : 0.8,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: hasError ? AppTheme.accentCoral : AppTheme.cardBorderColor,
-                width: hasError ? 1.4 : 0.8,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(
-                color: hasError ? AppTheme.accentCoral : AppTheme.primaryLiquid,
-                width: 1.6,
-              ),
-            ),
-          ),
-          onChanged: _onTituloChanged,
-          onSubmitted: (_) => _handleSubmit(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotasSection() {
-    if (!_showNotesField) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          onPressed: () {
-            HapticFeedback.selectionClick();
-            setState(() => _showNotesField = true);
-          },
-          icon: Icon(
-            Icons.add_comment_outlined,
-            size: 15,
-            color: AppTheme.secondaryLilac,
-          ),
-          label: Text(
-            'Añadir notas o descripción adicional',
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _tituloController,
+            autofocus: widget.mode.isCreate,
+            enabled: !_isSubmitting,
+            textCapitalization: TextCapitalization.sentences,
             style: TextStyle(
-              fontSize: 12,
+              color: AppTheme.textPrimary,
+              fontSize: 15.5,
               fontWeight: FontWeight.w600,
-              color: AppTheme.secondaryLilac,
             ),
-          ),
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'NOTAS / DESCRIPCIÓN (OPCIONAL)',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-                color: AppTheme.textSecondary,
+            decoration: InputDecoration(
+              hintText: '¿Qué hay que hacer?',
+              hintStyle: TextStyle(
+                color: AppTheme.textSecondary.withValues(alpha: 0.45),
+                fontSize: 15.5,
+                fontWeight: FontWeight.normal,
               ),
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              border: InputBorder.none,
             ),
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() {
-                  _descripcionController.clear();
-                  _showNotesField = false;
-                });
-              },
-              child: Text(
-                'Ocultar',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.textSecondary.withValues(alpha: 0.8),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: _descripcionController,
-          enabled: !_isSubmitting,
-          maxLines: 2,
-          minLines: 1,
-          textCapitalization: TextCapitalization.sentences,
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 14,
+            onChanged: _onTituloChanged,
+            onSubmitted: (_) => _handleSubmit(),
           ),
-          decoration: InputDecoration(
-            hintText: 'Detalles, instrucciones o recordatorios para la tarea...',
-            hintStyle: TextStyle(
-              color: AppTheme.textSecondary.withValues(alpha: 0.5),
+          const SizedBox(height: 10),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: Colors.white.withValues(alpha: 0.05),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _descripcionController,
+            enabled: !_isSubmitting,
+            minLines: 1,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            style: TextStyle(
+              color: AppTheme.textPrimary.withValues(alpha: 0.88),
               fontSize: 13,
             ),
-            filled: true,
-            fillColor: AppTheme.darkBackground,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 10,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: AppTheme.cardBorderColor,
-                width: 0.8,
+            decoration: InputDecoration(
+              hintText: 'Añadir descripción o notas (opcional)...',
+              hintStyle: TextStyle(
+                color: AppTheme.textSecondary.withValues(alpha: 0.4),
+                fontSize: 13,
               ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: AppTheme.secondaryLilac,
-                width: 1.4,
-              ),
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              border: InputBorder.none,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -783,56 +660,171 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'FECHA DE EJECUCIÓN',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.1,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Selectores de fecha rápida
         Row(
           children: [
-            _buildDateChip(
-              label: 'Hoy',
-              icon: Icons.today_rounded,
-              isSelected: _quickDateChoice == _QuickDateChoice.hoy,
-              onTap: () => _selectQuickDate(_QuickDateChoice.hoy),
+            Icon(
+              Icons.calendar_today_rounded,
+              size: 13,
+              color: AppTheme.textSecondary.withValues(alpha: 0.7),
             ),
-            const SizedBox(width: 8),
-            _buildDateChip(
-              label: 'Mañana',
-              icon: Icons.event_rounded,
-              isSelected: _quickDateChoice == _QuickDateChoice.manana,
-              onTap: () => _selectQuickDate(_QuickDateChoice.manana),
-            ),
-            const SizedBox(width: 8),
-            _buildDateChip(
-              label: _quickDateChoice == _QuickDateChoice.personalizada && _fechaEjecucion != null
-                  ? '${_fechaEjecucion!.day}/${_fechaEjecucion!.month}/${_fechaEjecucion!.year}'
-                  : 'Elegir fecha',
-              icon: Icons.calendar_month_rounded,
-              isSelected: _quickDateChoice == _QuickDateChoice.personalizada,
-              onTap: _abrirSelectorFechaPersonalizada,
-            ),
-            const SizedBox(width: 8),
-            _buildDateChip(
-              label: 'Sin fecha',
-              icon: Icons.inbox_rounded,
-              isSelected: _quickDateChoice == _QuickDateChoice.sinFecha,
-              onTap: () => _selectQuickDate(_QuickDateChoice.sinFecha),
+            const SizedBox(width: 6),
+            Text(
+              'Cuándo',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary.withValues(alpha: 0.85),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
-
-        // Selector táctil de hora opcional
-        if (_fechaEjecucion != null) _buildHoraSelector(),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              _buildDateChip(
+                label: 'Hoy',
+                icon: Icons.today_rounded,
+                isSelected: _quickDateChoice == _QuickDateChoice.hoy,
+                onTap: () => _selectQuickDate(_QuickDateChoice.hoy),
+              ),
+              const SizedBox(width: 6),
+              _buildDateChip(
+                label: 'Mañana',
+                icon: Icons.event_rounded,
+                isSelected: _quickDateChoice == _QuickDateChoice.manana,
+                onTap: () => _selectQuickDate(_QuickDateChoice.manana),
+              ),
+              const SizedBox(width: 6),
+              _buildDateChip(
+                label: _quickDateChoice == _QuickDateChoice.personalizada && _fechaEjecucion != null
+                    ? '${_fechaEjecucion!.day} ${_mesAbrev(_fechaEjecucion!.month)}'
+                    : 'Elegir fecha',
+                icon: Icons.calendar_month_rounded,
+                isSelected: _quickDateChoice == _QuickDateChoice.personalizada,
+                onTap: _abrirSelectorFechaPersonalizada,
+              ),
+              const SizedBox(width: 6),
+              _buildDateChip(
+                label: 'Sin fecha',
+                icon: Icons.inbox_outlined,
+                isSelected: _quickDateChoice == _QuickDateChoice.sinFecha,
+                onTap: () => _selectQuickDate(_QuickDateChoice.sinFecha),
+              ),
+              if (_fechaEjecucion != null) ...[
+                Container(
+                  height: 18,
+                  width: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+                _buildHoraChip(),
+              ],
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildHoraChip() {
+    final horaTexto = _horaEjecucion != null
+        ? '${_horaEjecucion!.hour.toString().padLeft(2, '0')}:${_horaEjecucion!.minute.toString().padLeft(2, '0')}'
+        : null;
+
+    if (!_tieneHora) {
+      return GestureDetector(
+        onTap: _isSubmitting ? null : _abrirSelectorHora,
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.darkBackground,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.access_time_rounded,
+                size: 13,
+                color: AppTheme.secondaryLilac,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                '+ Hora',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.secondaryLilac,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryLilac.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppTheme.secondaryLilac.withValues(alpha: 0.7),
+          width: 1.0,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: _isSubmitting ? null : _abrirSelectorHora,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.access_time_filled_rounded,
+                  size: 13,
+                  color: AppTheme.secondaryLilac,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  horaTexto ?? 'Hora',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryLilac,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: _isSubmitting ? null : _limpiarHora,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.secondaryLilac.withValues(alpha: 0.2),
+              ),
+              child: Icon(
+                Icons.close_rounded,
+                size: 11,
+                color: AppTheme.secondaryLilac,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -842,150 +834,44 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: _isSubmitting ? null : onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
-          decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: _isSubmitting ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryLiquid.withValues(alpha: 0.16)
+              : AppTheme.darkBackground,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
             color: isSelected
-                ? AppTheme.primaryLiquid.withValues(alpha: 0.16)
-                : AppTheme.darkBackground,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? AppTheme.primaryLiquid
-                  : AppTheme.cardBorderColor,
-              width: isSelected ? 1.4 : 0.8,
+                ? AppTheme.primaryLiquid
+                : Colors.white.withValues(alpha: 0.08),
+            width: isSelected ? 1.2 : 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? AppTheme.primaryLiquid : AppTheme.textSecondary,
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isSelected
-                    ? AppTheme.primaryLiquid
-                    : AppTheme.textSecondary,
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? AppTheme.primaryLiquid : AppTheme.textSecondary,
               ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? AppTheme.primaryLiquid
-                        : AppTheme.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHoraSelector() {
-    final horaTexto = _horaEjecucion != null
-        ? '${_horaEjecucion!.hour.toString().padLeft(2, '0')}:${_horaEjecucion!.minute.toString().padLeft(2, '0')}'
-        : null;
-
-    return Row(
-      children: [
-        Icon(
-          Icons.access_time_rounded,
-          size: 16,
-          color: _tieneHora ? AppTheme.secondaryLilac : AppTheme.textSecondary,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Hora opcional:',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(width: 10),
-        if (!_tieneHora)
-          GestureDetector(
-            onTap: _isSubmitting ? null : _abrirSelectorHora,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppTheme.darkBackground,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppTheme.cardBorderColor,
-                  width: 0.8,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.add_circle_outline_rounded,
-                    size: 14,
-                    color: AppTheme.secondaryLilac,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Añadir hora',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.secondaryLilac,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.secondaryLilac.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.secondaryLilac,
-                width: 1.2,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: _isSubmitting ? null : _abrirSelectorHora,
-                  child: Text(
-                    horaTexto ?? 'Definida',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondaryLilac,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: _isSubmitting ? null : _limpiarHora,
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 14,
-                    color: AppTheme.secondaryLilac,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
     );
   }
 
@@ -993,14 +879,23 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'ASIGNAR A',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.1,
-            color: AppTheme.textSecondary,
-          ),
+        Row(
+          children: [
+            Icon(
+              Icons.person_outline_rounded,
+              size: 13,
+              color: AppTheme.textSecondary.withValues(alpha: 0.7),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Asignar a',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -1012,16 +907,16 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
               _buildMemberChip(
                 userId: null,
                 nombre: 'Sin asignar',
-                icon: Icons.person_outline_rounded,
+                icon: Icons.person_off_outlined,
                 isSelected: _asignadoAId == null,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
 
               // Miembros del entorno
               ...widget.miembros.map((m) {
                 final isSelected = _asignadoAId == m.userId;
                 return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
+                  padding: const EdgeInsets.only(right: 6.0),
                   child: _buildMemberChip(
                     userId: m.userId,
                     nombre: m.username,
@@ -1052,18 +947,19 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
               setState(() => _asignadoAId = userId);
             },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        duration: const Duration(milliseconds: 140),
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.secondaryAccent.withValues(alpha: 0.18)
+              ? AppTheme.secondaryLilac.withValues(alpha: 0.18)
               : AppTheme.darkBackground,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: isSelected
-                ? AppTheme.secondaryAccent
-                : AppTheme.cardBorderColor,
-            width: isSelected ? 1.4 : 0.8,
+                ? AppTheme.secondaryLilac
+                : Colors.white.withValues(alpha: 0.08),
+            width: isSelected ? 1.2 : 0.8,
           ),
         ),
         child: Row(
@@ -1072,32 +968,38 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
             if (icon != null)
               Icon(
                 icon,
-                size: 16,
+                size: 13,
                 color: isSelected
-                    ? AppTheme.secondaryAccent
-                    : AppTheme.textSecondary,
+                    ? AppTheme.secondaryLilac
+                    : AppTheme.textSecondary.withValues(alpha: 0.8),
               )
             else
               UserAvatar(
                 avatarData: avatarData ?? const AvatarData.initials(),
                 username: nombre,
-                size: 18,
+                size: 16,
               ),
             const SizedBox(width: 6),
             Text(
               nombre,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 color: isSelected
-                    ? AppTheme.secondaryAccent
-                    : AppTheme.textSecondary,
+                    ? AppTheme.secondaryLilac
+                    : AppTheme.textSecondary.withValues(alpha: 0.85),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _mesAbrev(int mes) {
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    if (mes >= 1 && mes <= 12) return meses[mes - 1];
+    return '';
   }
 
   Widget _buildSubmitButton(bool isCreate) {
