@@ -11,9 +11,10 @@ import '../../domain/models/evento_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
-import 'crear_tarea_rapida_dialog.dart';
 import 'editar_evento_dialog.dart';
 import 'editar_tarea_dialog.dart';
+import 'task_form_basic.dart';
+import '../../domain/models/task_form_basic_payload.dart';
 
 /// Vista principal "Hoy" para el módulo Planificador:
 /// - Feed vertical scrolleable enfocado en: "¿Qué hay que hacer hoy y quién lo hace?"
@@ -146,11 +147,17 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
           'Tarea rápida',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
-        onPressed: () => CrearTareaRapidaDialog.show(
+        onPressed: () => TaskFormBasic.showModal(
           context,
-          controller: controller,
+          mode: TaskFormMode.create,
+          initialPayload: TaskFormBasicPayload.initialForCreate(
+            defaultDate: DateTime.now(),
+            defaultAssigneeId: usuarioActualId,
+          ),
           miembros: miembros,
+          proyectos: controller.proyectos,
           usuarioActualId: usuarioActualId,
+          onSubmit: (payload) => controller.crearTareaDesdePayload(payload),
         ),
       ),
     );

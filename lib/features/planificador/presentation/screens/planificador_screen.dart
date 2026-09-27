@@ -12,7 +12,8 @@ import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import '../widgets/checklist_editor_section.dart';
-import '../widgets/crear_tarea_rapida_dialog.dart';
+import '../widgets/task_form_basic.dart';
+import '../../domain/models/task_form_basic_payload.dart';
 import '../widgets/recordatorios_selector_widget.dart';
 import '../widgets/planificador_hoy_view.dart';
 import '../widgets/planificador_planificacion_view.dart';
@@ -277,12 +278,17 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
   // ===========================================================================
 
   void _mostrarDialogoCrearTarea(BuildContext context) {
-    CrearTareaRapidaDialog.show(
+    TaskFormBasic.showModal(
       context,
-      controller: _controller,
-      usuarioActualId: _currentUserId,
+      mode: TaskFormMode.create,
+      initialPayload: TaskFormBasicPayload.initialForCreate(
+        defaultDate: _controller.selectedDate,
+        defaultAssigneeId: _currentUserId,
+      ),
       miembros: _environmentController?.activeMembers ?? const [],
-      fechaInicial: _controller.selectedDate,
+      proyectos: _controller.proyectos,
+      usuarioActualId: _currentUserId,
+      onSubmit: (payload) => _controller.crearTareaDesdePayload(payload),
     );
   }
 

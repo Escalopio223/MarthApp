@@ -7,9 +7,10 @@ import '../../../environments/domain/models/environment_member_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
-import 'crear_tarea_rapida_dialog.dart';
 import 'editar_proyecto_dialog.dart';
 import 'editar_tarea_dialog.dart';
+import 'task_form_basic.dart';
+import '../../domain/models/task_form_basic_payload.dart';
 
 /// Vista de Proyectos y Backlog de Tareas sueltas con barras de progreso y checkboxes reactivos
 class ProyectosBacklogView extends StatefulWidget {
@@ -41,12 +42,17 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
     setState(() {
       _expandedProjectIds.add(proyecto.id);
     });
-    CrearTareaRapidaDialog.show(
+    TaskFormBasic.showModal(
       context,
-      controller: widget.controller,
+      mode: TaskFormMode.create,
+      initialPayload: TaskFormBasicPayload.initialForCreate(
+        defaultProyectoId: proyecto.id,
+        defaultAssigneeId: widget.usuarioActualId,
+      ),
       miembros: widget.miembros,
+      proyectos: widget.controller.proyectos,
       usuarioActualId: widget.usuarioActualId,
-      proyectoIdInicial: proyecto.id,
+      onSubmit: (payload) => widget.controller.crearTareaDesdePayload(payload, proyectoId: proyecto.id),
     );
   }
 
