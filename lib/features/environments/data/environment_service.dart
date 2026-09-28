@@ -251,23 +251,41 @@ class EnvironmentService implements IEnvironmentRepository {
   Future<List<EnvironmentInvitationModel>> getPendingInvitations(
     String userId,
   ) async {
+    // 1. Intentar RPC optimizado atómico
+    try {
+      final rpcRes = await _client.rpc('get_pending_environment_invitations');
+      if (rpcRes is List) {
+        return rpcRes.map((item) {
+          final map = Map<String, dynamic>.from(item as Map);
+          return EnvironmentInvitationModel.fromJson(map);
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint(
+        '[EnvironmentService] RPC get_pending_environment_invitations no disponible, usando fallback: $e',
+      );
+    }
+
+    // 2. Consulta estándar con join a perfiles y entornos
     try {
       final res = await _client
           .from('environment_invitations')
           .select(
-            '*, environments(name), sender_profile:profiles!environment_invitations_sender_id_fkey(username)',
+            '*, environments(name), sender_profile:profiles!environment_invitations_sender_id_fkey(username, avatar_type, avatar_url, avatar_icon, avatar_bg_color)',
           )
           .eq('receiver_id', userId)
           .eq('status', 'pending')
           .order('created_at', ascending: false);
 
       final List<dynamic> list = res as List<dynamic>;
-      return list.map((item) {
+      final invitations = list.map((item) {
         final map = Map<String, dynamic>.from(item as Map);
         return EnvironmentInvitationModel.fromJson(map);
       }).toList();
+
+      return await _enrichInvitationsWithMembers(invitations);
     } catch (e) {
-      // Si la foreign key de join con alias no coincide en mock o backend, fallback a consulta directa
+      // 3. Fallback a consulta directa
       try {
         final fallback = await _client
             .from('environment_invitations')
@@ -277,13 +295,15 @@ class EnvironmentService implements IEnvironmentRepository {
             .order('created_at', ascending: false);
 
         final List<dynamic> list = fallback as List<dynamic>;
-        return list
+        final invitations = list
             .map(
               (item) => EnvironmentInvitationModel.fromJson(
                 Map<String, dynamic>.from(item as Map),
               ),
             )
             .toList();
+
+        return await _enrichInvitationsWithMembers(invitations);
       } catch (fallbackErr) {
         debugPrint(
           '[EnvironmentService] Error al obtener invitaciones ($userId): $fallbackErr',
@@ -291,6 +311,39 @@ class EnvironmentService implements IEnvironmentRepository {
         return [];
       }
     }
+  }
+
+  Future<List<EnvironmentInvitationModel>> _enrichInvitationsWithMembers(
+    List<EnvironmentInvitationModel> invitations,
+  ) async {
+    if (invitations.isEmpty) return invitations;
+
+    final enriched = <EnvironmentInvitationModel>[];
+    for (final inv in invitations) {
+      if (inv.members.isNotEmpty) {
+        enriched.add(inv);
+        continue;
+      }
+      try {
+        final members = await getEnvironmentMembers(inv.environmentId);
+        var senderAvatar = inv.senderAvatarData;
+        final senderMember = members.cast<EnvironmentMemberModel?>().firstWhere(
+          (m) => m?.userId == inv.senderId,
+          orElse: () => null,
+        );
+        if (senderMember != null) {
+          senderAvatar = senderMember.avatarData;
+        }
+
+        enriched.add(inv.copyWith(
+          members: members,
+          senderAvatarData: senderAvatar,
+        ));
+      } catch (_) {
+        enriched.add(inv);
+      }
+    }
+    return enriched;
   }
 
   @override

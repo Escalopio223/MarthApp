@@ -3,6 +3,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/liquid_banner.dart';
 import '../../../friends/domain/models/profile_model.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
+import '../../../profile/presentation/widgets/user_avatar.dart';
+import '../../domain/models/environment_member_model.dart';
 import '../../domain/models/environment_model.dart';
 import '../controllers/environment_controller.dart';
 import 'friend_invite_tile.dart';
@@ -52,6 +54,7 @@ class InviteFriendModal extends StatefulWidget {
 class _InviteFriendModalState extends State<InviteFriendModal> {
   final Set<String> _pendingInvitedUserIds = {};
   final Set<String> _loadingUserIds = {};
+  List<EnvironmentMemberModel> _currentMembers = [];
   bool _isLoadingPending = true;
   String? _localError;
   String? _localSuccess;
@@ -64,11 +67,19 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
 
   Future<void> _loadPendingInvitations() async {
     try {
-      final ids = await widget.environmentController
+      final idsFuture = widget.environmentController
           .getPendingInvitedUserIds(widget.environment.id);
+      final membersFuture = widget.environmentController
+          .getMembers(widget.environment.id);
+
+      final results = await Future.wait([idsFuture, membersFuture]);
+      final ids = results[0] as List<String>;
+      final members = results[1] as List<EnvironmentMemberModel>;
+
       if (!mounted) return;
       setState(() {
         _pendingInvitedUserIds.addAll(ids);
+        _currentMembers = members;
         _isLoadingPending = false;
       });
     } catch (_) {
@@ -222,6 +233,80 @@ class _InviteFriendModalState extends State<InviteFriendModal> {
               onClose: () => setState(() => _localSuccess = null),
             ),
             const SizedBox(height: 10),
+          ],
+
+          // Integrantes actuales del entorno (fotos y nombres)
+          if (_currentMembers.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.glassBorderColor.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.people_alt_rounded,
+                    size: 13,
+                    color: AppTheme.accentEmerald,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Integrantes (${_currentMembers.length}):',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _currentMembers.map((m) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                UserAvatar(
+                                  avatarData: m.avatarData,
+                                  username: m.username,
+                                  size: 18,
+                                  showBorder: false,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  m.username,
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (m.isOwner) ...[
+                                  const SizedBox(width: 3),
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    color: Colors.amber,
+                                    size: 11,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
           ],
 
           const Divider(color: Color(0x1FFFFFFF), height: 16),
