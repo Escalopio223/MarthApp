@@ -8,7 +8,6 @@ import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'editar_proyecto_dialog.dart';
-import 'editar_tarea_dialog.dart';
 import 'task_form_basic.dart';
 import '../../domain/models/task_form_basic_payload.dart';
 
@@ -590,12 +589,15 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  EditarTareaDialog.show(
+                  TaskFormBasic.showModal(
                     context,
-                    tarea: tarea,
-                    controller: widget.controller,
+                    mode: TaskFormMode.edit,
+                    initialTarea: tarea,
                     miembros: widget.miembros,
+                    proyectos: widget.controller.proyectos,
                     usuarioActualId: widget.usuarioActualId,
+                    onSubmit: (payload) => widget.controller.actualizarTareaDesdePayload(tarea, payload),
+                    onDelete: () => widget.controller.eliminarTarea(tarea.id),
                   );
                 },
                 child: Column(
@@ -634,12 +636,15 @@ class _ProyectosBacklogViewState extends State<ProyectosBacklogView> {
               GestureDetector(
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  EditarTareaDialog.show(
+                  TaskFormBasic.showModal(
                     context,
-                    tarea: tarea,
-                    controller: widget.controller,
+                    mode: TaskFormMode.edit,
+                    initialTarea: tarea,
                     miembros: widget.miembros,
+                    proyectos: widget.controller.proyectos,
                     usuarioActualId: widget.usuarioActualId,
+                    onSubmit: (payload) => widget.controller.actualizarTareaDesdePayload(tarea, payload),
+                    onDelete: () => widget.controller.eliminarTarea(tarea.id),
                   );
                 },
                 child: Container(

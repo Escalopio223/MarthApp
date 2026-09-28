@@ -12,7 +12,6 @@ import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'editar_evento_dialog.dart';
-import 'editar_tarea_dialog.dart';
 import 'task_form_basic.dart';
 import '../../domain/models/task_form_basic_payload.dart';
 import '../../domain/services/reparto_equitativo_service.dart';
@@ -1452,12 +1451,15 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
                 _toggleSeleccionTarea(tarea.id);
               }
             } else {
-              EditarTareaDialog.show(
+              TaskFormBasic.showModal(
                 context,
-                tarea: tarea,
-                controller: controller,
+                mode: TaskFormMode.edit,
+                initialTarea: tarea,
                 miembros: miembros,
+                proyectos: controller.proyectos,
                 usuarioActualId: usuarioActualId,
+                onSubmit: (payload) => controller.actualizarTareaDesdePayload(tarea, payload),
+                onDelete: () => controller.eliminarTarea(tarea.id),
               );
             }
           },
@@ -1954,12 +1956,15 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
       onSelected: (value) async {
         HapticFeedback.lightImpact();
         if (value == 'editar') {
-          EditarTareaDialog.show(
+          TaskFormBasic.showModal(
             context,
-            tarea: tarea,
-            controller: controller,
+            mode: TaskFormMode.edit,
+            initialTarea: tarea,
             miembros: miembros,
+            proyectos: controller.proyectos,
             usuarioActualId: usuarioActualId,
+            onSubmit: (payload) => controller.actualizarTareaDesdePayload(tarea, payload),
+            onDelete: () => controller.eliminarTarea(tarea.id),
           );
         } else if (value == 'eliminar') {
           final confirmar = await showDialog<bool>(

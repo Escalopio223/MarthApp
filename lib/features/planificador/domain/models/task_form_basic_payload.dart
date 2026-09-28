@@ -119,9 +119,26 @@ class TaskFormBasicPayload {
     final tieneHora = tarea.fechaLimite != null &&
         (tarea.fechaLimite!.hour != 0 || tarea.fechaLimite!.minute != 0);
 
+    final etiqueta = tarea.etiqueta;
+    String? descripcionTextual = tarea.descripcion;
+
+    if (etiqueta != null && descripcionTextual != null) {
+      final clean = descripcionTextual.trim();
+      if (clean.toLowerCase() == etiqueta.toLowerCase() ||
+          clean.toLowerCase() == '#${etiqueta.toLowerCase()}') {
+        descripcionTextual = null;
+      } else if (clean.startsWith('[tag:') && clean.contains(']')) {
+        final afterTag = clean.substring(clean.indexOf(']') + 1).trim();
+        descripcionTextual = afterTag.isNotEmpty ? afterTag : null;
+      } else if (clean.startsWith('#$etiqueta ')) {
+        final afterTag = clean.substring(etiqueta.length + 2).trim();
+        descripcionTextual = afterTag.isNotEmpty ? afterTag : null;
+      }
+    }
+
     return TaskFormBasicPayload(
       titulo: tarea.titulo,
-      descripcion: tarea.descripcion,
+      descripcion: descripcionTextual,
       fechaEjecucion: tarea.fechaLimite,
       tieneHora: tieneHora,
       asignadoA: tarea.asignadoA,
@@ -130,9 +147,9 @@ class TaskFormBasicPayload {
       tiempoEstimadoMinutos:
           tarea.tiempoEstimadoMinutos > 0 ? tarea.tiempoEstimadoMinutos : null,
       proyectoId: tarea.proyectoId,
-      etiqueta: tarea.etiqueta,
+      etiqueta: etiqueta,
       notas: null,
-      subtasks: tarea.checklist,
+      subtasks: List<ChecklistItemModel>.from(tarea.checklist),
       hasReminder: tarea.recordatorios.isNotEmpty,
       reminderMinutesBefore: null,
       reminderDateTime: tarea.recordatorios.isNotEmpty

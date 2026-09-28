@@ -17,7 +17,8 @@ import 'package:marth_app/features/planificador/presentation/widgets/agenda_cale
 import 'package:marth_app/features/planificador/presentation/widgets/crear_tarea_rapida_dialog.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/editar_evento_dialog.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/editar_proyecto_dialog.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/editar_tarea_dialog.dart';
+import 'package:marth_app/features/planificador/domain/models/task_form_basic_payload.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/task_form_basic.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/planificador_hoy_view.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/proyectos_backlog_view.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/reparto_tareas_board_view.dart';
@@ -851,8 +852,12 @@ void main() {
       expect(tareaCreada.tiempoEstimadoMinutos, equals(0));
     });
 
-    testWidgets('EditarTareaDialog allows renaming, setting etiqueta, and saving',
+    testWidgets('TaskFormBasic in edit mode allows renaming, setting etiqueta, and saving',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       final now = DateTime.now();
       controller.setEntorno('env-1');
 
@@ -887,12 +892,15 @@ void main() {
           home: Scaffold(
             body: Builder(
               builder: (ctx) => ElevatedButton(
-                onPressed: () => EditarTareaDialog.show(
+                onPressed: () => TaskFormBasic.showModal(
                   ctx,
-                  tarea: tareaOriginal,
-                  controller: controller,
-                  usuarioActualId: 'usr-1',
+                  mode: TaskFormMode.edit,
+                  initialTarea: tareaOriginal,
                   miembros: miembros,
+                  proyectos: controller.proyectos,
+                  usuarioActualId: 'usr-1',
+                  onSubmit: (payload) => controller.actualizarTareaDesdePayload(tareaOriginal, payload),
+                  onDelete: () => controller.eliminarTarea(tareaOriginal.id),
                 ),
                 child: const Text('Abrir Editar'),
               ),
@@ -904,24 +912,29 @@ void main() {
       await tester.tap(find.text('Abrir Editar'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Editar Tarea'), findsOneWidget);
-      expect(find.text('Categoría'), findsOneWidget);
-      expect(find.text('Fecha'), findsOneWidget);
-      expect(find.text('Asignación'), findsOneWidget);
-      expect(find.text('Tiempo'), findsOneWidget);
-      expect(find.text('Postergar para mañana'), findsNothing);
+      expect(find.text('Editar tarea'), findsOneWidget);
+      expect(find.text('¿Qué hay que hacer?'), findsOneWidget);
+      expect(find.text('Cuándo'), findsOneWidget);
+      expect(find.text('Asignar a'), findsOneWidget);
+      expect(find.text('Opciones avanzadas'), findsOneWidget);
 
-      // Renombrar tarea y seleccionar etiqueta Cocina
+      // Renombrar tarea
       await tester.enterText(find.byType(TextField).first, 'Fregar platos y sartenes');
       await tester.pump();
 
+      // Expandir opciones avanzadas y seleccionar etiqueta Cocina
+      await tester.tap(find.text('Opciones avanzadas'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Cocina'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cocina'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Guardar cambios
-      await tester.ensureVisible(find.text('Guardar Cambios'));
+      await tester.ensureVisible(find.text('Guardar cambios'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar Cambios'));
+      await tester.tap(find.text('Guardar cambios'));
       await tester.pumpAndSettle();
 
       expect(mockRepo.tareas.any((t) => t.titulo == 'Fregar platos y sartenes'), isTrue);
@@ -1099,7 +1112,7 @@ void main() {
       expect(tarea.comentarios.first.texto, equals('Ya compré las cosas'));
     });
 
-    testWidgets('Comments can be added to task and EditarTareaDialog displays subtareas and comments', (tester) async {
+    testWidgets('Comments can be added to task and TaskFormBasic displays subtareas in edit mode', (tester) async {
       controller.setEntorno('env-1');
 
       final task = TareaModel(
@@ -1129,11 +1142,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: EditarTareaDialog(
-              tarea: task,
-              controller: controller,
+            body: TaskFormBasic(
+              mode: TaskFormMode.edit,
+              initialTarea: task,
               usuarioActualId: 'usr-1',
               miembros: const [],
+              onSubmit: (_) async {},
             ),
           ),
         ),
@@ -1141,13 +1155,15 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Check Subtareas title and item
-      expect(find.text('Subtareas'), findsOneWidget);
-      expect(find.text('Comprar pan'), findsOneWidget);
+      // Comprobar título rescatado
+      expect(find.text('Tarea con comentarios'), findsOneWidget);
 
-      // Check Comentarios title and existing comment
-      expect(find.text('COMENTARIOS (1)'), findsOneWidget);
-      expect(find.text('Por favor pan integral'), findsOneWidget);
+      // Abrir Opciones avanzadas para verificar subtareas
+      await tester.tap(find.text('Opciones avanzadas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Subtareas / Checklist'), findsOneWidget);
+      expect(find.text('Comprar pan'), findsOneWidget);
 
       // Add a new comment via controller
       await controller.agregarComentario(
@@ -1162,7 +1178,7 @@ void main() {
       expect(updatedTask.comentarios.last.texto, equals('Listo, compré el integral'));
     });
 
-    testWidgets('AgendaCalendarView renders subtareas and comments badges, and tapping opens EditarTareaDialog', (tester) async {
+    testWidgets('AgendaCalendarView renders subtareas and comments badges, and tapping opens TaskFormBasic in edit mode', (tester) async {
       final now = DateTime.now();
       controller.setEntorno('env-1');
       controller.selectDate(now);
@@ -1210,14 +1226,13 @@ void main() {
       expect(find.text('0/1 subtareas'), findsOneWidget);
       expect(find.text('1'), findsWidgets); // Comment badge counter
 
-      // Tap on the task card to open EditarTareaDialog
+      // Tap on the task card to open TaskFormBasic in edit mode
       await tester.tap(find.text('Llevar coche a revisión'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Verify EditarTareaDialog is displayed
-      expect(find.text('Editar Tarea'), findsOneWidget);
-      expect(find.text('Subtareas'), findsOneWidget);
+      // Verify TaskFormBasic in edit mode is displayed
+      expect(find.text('Editar tarea'), findsOneWidget);
     });
 
     testWidgets('Reparto allows selecting and deselecting participants, and shows/hides columns', (tester) async {
@@ -1289,7 +1304,7 @@ void main() {
       expect(controller.participantesIds.length, equals(2));
     });
 
-    testWidgets('Hoy view renders responsible logo on card and EditarTareaDialog displays responsible banner with logo and name', (tester) async {
+    testWidgets('Hoy view renders responsible logo on card and TaskFormBasic displays assigned member in edit mode', (tester) async {
       final now = DateTime.now();
       controller.setEntorno('env-1');
 
@@ -1340,10 +1355,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Comprobar que en EditarTareaDialog aparece el banner del responsable con logo y nombre
-      expect(find.text('RESPONSABLE DE LA TAREA'), findsOneWidget);
-      expect(find.text('Alberto (Tú)'), findsOneWidget);
-      expect(find.text('Asignada'), findsOneWidget);
+      // Comprobar que en TaskFormBasic aparece en modo edición con el responsable seleccionado
+      expect(find.text('Editar tarea'), findsOneWidget);
+      expect(find.text('Alberto'), findsWidgets);
     });
 
     testWidgets('EditarEventoDialog renders RecordatoriosSelectorWidget with quick chips',
@@ -1550,7 +1564,7 @@ void main() {
     });
 
     testWidgets(
-        'EditarTareaDialog displays project selector and allows changing project',
+        'TaskFormBasic displays project selector and allows changing project in edit mode',
         (tester) async {
       final now = DateTime.now();
       final proyecto1 = ProyectoModel(
@@ -1589,10 +1603,13 @@ void main() {
           home: Scaffold(
             body: Builder(
               builder: (ctx) => ElevatedButton(
-                onPressed: () => EditarTareaDialog.show(
+                onPressed: () => TaskFormBasic.showModal(
                   ctx,
-                  tarea: tarea,
-                  controller: controller,
+                  mode: TaskFormMode.edit,
+                  initialTarea: tarea,
+                  miembros: const [],
+                  proyectos: controller.proyectos,
+                  onSubmit: (payload) => controller.actualizarTareaDesdePayload(tarea, payload),
                 ),
                 child: const Text('Abrir Editar Tarea'),
               ),
@@ -1604,6 +1621,10 @@ void main() {
       await tester.tap(find.text('Abrir Editar Tarea'));
       await tester.pumpAndSettle();
 
+      // Open advanced options
+      await tester.tap(find.text('Opciones avanzadas'));
+      await tester.pumpAndSettle();
+
       expect(find.text('Proyecto A'), findsOneWidget);
       expect(find.text('Proyecto B'), findsOneWidget);
 
@@ -1613,9 +1634,9 @@ void main() {
       await tester.tap(find.text('Proyecto B'));
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Guardar Cambios'));
+      await tester.ensureVisible(find.text('Guardar cambios'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar Cambios'));
+      await tester.tap(find.text('Guardar cambios'));
       await tester.pumpAndSettle();
 
       final tareaActualizada =
@@ -1623,7 +1644,7 @@ void main() {
       expect(tareaActualizada.proyectoId, 'p-b');
     });
 
-    testWidgets('EditarTareaDialog auto-saves pending comment when clicking Guardar Cambios without pressing send', (tester) async {
+    testWidgets('TaskFormBasic saves edited description when clicking Guardar cambios in edit mode', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -1632,7 +1653,7 @@ void main() {
 
       // Agregamos la tarea al controlador
       await controller.crearTarea(
-        titulo: 'Tarea para probar guardado de comentarios',
+        titulo: 'Tarea para probar guardado de notas',
       );
       final tareaEnCtrl = controller.tareas.first;
 
@@ -1640,36 +1661,33 @@ void main() {
         MaterialApp(
           theme: ThemeData.dark(),
           home: Scaffold(
-            body: EditarTareaDialog(
-              tarea: tareaEnCtrl,
-              controller: controller,
+            body: TaskFormBasic(
+              mode: TaskFormMode.edit,
+              initialTarea: tareaEnCtrl,
               usuarioActualId: 'usr-1',
               miembros: const [],
+              onSubmit: (payload) => controller.actualizarTareaDesdePayload(tareaEnCtrl, payload),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Encontrar el campo de texto de comentarios
-      final commentInput = find.widgetWithText(TextField, 'Escribe un comentario...');
-      expect(commentInput, findsOneWidget);
-
-      // Escribir un comentario pero NO pulsar el botón del avión
-      await tester.enterText(commentInput, 'Comentario pendiente importante');
+      // Encontrar el campo de texto de descripción
+      final descInput = find.byType(TextField).at(1);
+      await tester.enterText(descInput, 'Nota o descripción importante');
       await tester.pumpAndSettle();
 
-      // Pulsar directamente "Guardar Cambios"
-      await tester.ensureVisible(find.text('Guardar Cambios'));
+      // Pulsar directamente "Guardar cambios"
+      await tester.ensureVisible(find.text('Guardar cambios'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar Cambios'));
+      await tester.tap(find.text('Guardar cambios'));
       await tester.pumpAndSettle();
 
-      // Verificar que el comentario se guardó en el controlador y la tarea
+      // Verificar que la descripción se guardó en el controlador y la tarea
       final tareaActualizada =
           controller.tareas.firstWhere((t) => t.id == tareaEnCtrl.id);
-      expect(tareaActualizada.comentarios.length, equals(1));
-      expect(tareaActualizada.comentarios.first.texto, equals('Comentario pendiente importante'));
+      expect(tareaActualizada.descripcion, equals('Nota o descripción importante'));
     });
   });
 }

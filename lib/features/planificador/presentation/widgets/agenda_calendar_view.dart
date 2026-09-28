@@ -9,7 +9,8 @@ import '../../../environments/domain/models/environment_member_model.dart';
 import '../../domain/models/agenda_item_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'editar_evento_dialog.dart';
-import 'editar_tarea_dialog.dart';
+import '../../domain/models/task_form_basic_payload.dart';
+import 'task_form_basic.dart';
 
 /// Vista de Agenda y Calendario interactivo (mensual y semanal)
 /// con diferenciación gráfica clara entre eventos, cumpleaños y tareas con vencimiento.
@@ -669,12 +670,15 @@ class AgendaCalendarView extends StatelessWidget {
           onTap: tarea != null
               ? () {
                   HapticFeedback.lightImpact();
-                  EditarTareaDialog.show(
+                  TaskFormBasic.showModal(
                     context,
-                    tarea: tarea,
-                    controller: controller,
+                    mode: TaskFormMode.edit,
+                    initialTarea: tarea,
                     miembros: miembros,
+                    proyectos: controller.proyectos,
                     usuarioActualId: usuarioActualId,
+                    onSubmit: (payload) => controller.actualizarTareaDesdePayload(tarea, payload),
+                    onDelete: () => controller.eliminarTarea(tarea.id),
                   );
                 }
               : null,

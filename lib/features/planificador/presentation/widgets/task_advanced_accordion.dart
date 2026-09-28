@@ -66,18 +66,9 @@ class _TaskAdvancedAccordionState extends State<TaskAdvancedAccordion> {
   @override
   void initState() {
     super.initState();
-    _isExpanded = widget.initiallyExpanded || _hasConfiguredFields();
+    _isExpanded = widget.initiallyExpanded;
   }
 
-  bool _hasConfiguredFields() {
-    return (widget.tiempoEstimadoMinutos != null && widget.tiempoEstimadoMinutos! > 0) ||
-        widget.proyectoId != null ||
-        widget.etiqueta != null ||
-        widget.notasController.text.trim().isNotEmpty ||
-        widget.subtasks.isNotEmpty ||
-        widget.isRecurring ||
-        widget.hasReminder;
-  }
 
   int _countConfiguredFields() {
     int count = 0;

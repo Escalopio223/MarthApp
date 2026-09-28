@@ -65,9 +65,16 @@ class TareaModel {
   String? get etiqueta {
     if (descripcion == null || descripcion!.trim().isEmpty) return null;
     final d = descripcion!.trim();
-    if (d.startsWith('#')) return d.substring(1).trim();
-    if (d.startsWith('[tag:') && d.endsWith(']')) {
-      return d.substring(5, d.length - 1).trim();
+    if (d.startsWith('#')) {
+      final space = d.indexOf(' ');
+      if (space != -1) return d.substring(1, space).trim();
+      return d.substring(1).trim();
+    }
+    if (d.startsWith('[tag:')) {
+      final endTag = d.indexOf(']');
+      if (endTag != -1) {
+        return d.substring(5, endTag).trim();
+      }
     }
     if (!d.contains('\n') && d.length <= 30) {
       return d;

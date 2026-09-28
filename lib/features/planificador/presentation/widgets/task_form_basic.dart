@@ -26,6 +26,7 @@ class TaskFormBasic extends StatefulWidget {
   final List<ProyectoModel> proyectos;
   final String? usuarioActualId;
   final Future<void> Function(TaskFormBasicPayload payload) onSubmit;
+  final Future<void> Function()? onDelete;
   final VoidCallback? onCancel;
   final String? submitButtonText;
   final String? title;
@@ -40,6 +41,7 @@ class TaskFormBasic extends StatefulWidget {
     this.proyectos = const [],
     this.usuarioActualId,
     required this.onSubmit,
+    this.onDelete,
     this.onCancel,
     this.submitButtonText,
     this.title,
@@ -56,6 +58,7 @@ class TaskFormBasic extends StatefulWidget {
     List<ProyectoModel> proyectos = const [],
     String? usuarioActualId,
     required Future<void> Function(TaskFormBasicPayload payload) onSubmit,
+    Future<void> Function()? onDelete,
     String? submitButtonText,
     String? title,
   }) {
@@ -79,6 +82,7 @@ class TaskFormBasic extends StatefulWidget {
             usuarioActualId: usuarioActualId,
             submitButtonText: submitButtonText,
             title: title,
+            onDelete: onDelete,
             onCancel: () => Navigator.pop(modalContext),
             onSubmit: (payload) async {
               await onSubmit(payload);
@@ -119,6 +123,7 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
   int? _reminderMinutesBefore = 15;
 
   bool _isSubmitting = false;
+  bool _isDeleting = false;
   String? _validationError;
   String? _submitError;
 
@@ -394,6 +399,81 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
     }
   }
 
+  Future<void> _handleDelete() async {
+    if (_isDeleting || _isSubmitting || widget.onDelete == null) return;
+
+    final titulo = _tituloController.text.trim();
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          '¿Eliminar tarea?',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          '¿Estás seguro de que quieres eliminar "${titulo.isNotEmpty ? titulo : "esta tarea"}"? Esta acción no se puede deshacer.',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentCoral,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    HapticFeedback.heavyImpact();
+
+    try {
+      await widget.onDelete!();
+      if (mounted) {
+        if (widget.isModal) {
+          Navigator.pop(context);
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tarea "${titulo.isNotEmpty ? titulo : "eliminada"}" eliminada'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.surfaceDark,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+          _submitError = 'Error al eliminar la tarea: $e';
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCreate = widget.mode.isCreate;
@@ -535,16 +615,31 @@ class _TaskFormBasicState extends State<TaskFormBasic> {
             ),
           ],
         ),
-        if (widget.onCancel != null)
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 20),
-            color: AppTheme.textSecondary.withValues(alpha: 0.8),
-            splashRadius: 18,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            tooltip: 'Cerrar',
-            onPressed: _isSubmitting ? null : widget.onCancel,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isCreate && widget.onDelete != null)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                color: AppTheme.accentCoral,
+                splashRadius: 18,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Eliminar tarea',
+                onPressed: (_isSubmitting || _isDeleting) ? null : _handleDelete,
+              ),
+            if (widget.onCancel != null)
+              IconButton(
+                icon: const Icon(Icons.close_rounded, size: 20),
+                color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                splashRadius: 18,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Cerrar',
+                onPressed: (_isSubmitting || _isDeleting) ? null : widget.onCancel,
+              ),
+          ],
+        ),
       ],
     );
   }

@@ -747,7 +747,17 @@ class PlanificadorController extends ChangeNotifier {
       throw ArgumentError(validationError);
     }
 
-    final descripcionFinal = payload.etiqueta ?? payload.notas ?? payload.descripcion;
+    String? descripcionFinal;
+    final textoDesc = payload.descripcion ?? payload.notas;
+    if (payload.etiqueta != null && payload.etiqueta!.isNotEmpty) {
+      if (textoDesc != null && textoDesc.isNotEmpty) {
+        descripcionFinal = '[tag:${payload.etiqueta}] $textoDesc';
+      } else {
+        descripcionFinal = payload.etiqueta;
+      }
+    } else {
+      descripcionFinal = textoDesc;
+    }
 
     final checklist = payload.subtasks;
 
@@ -756,7 +766,7 @@ class PlanificadorController extends ChangeNotifier {
       final notifDate = payload.reminderDateTime ??
           (payload.fechaEjecucion != null && payload.reminderMinutesBefore != null
               ? payload.fechaEjecucion!.subtract(Duration(minutes: payload.reminderMinutesBefore!))
-              : DateTime.now());
+              : (payload.fechaEjecucion ?? DateTime.now()));
       recordatorios.add(
         RecordatorioTareaModel(
           id: 'rec_${DateTime.now().millisecondsSinceEpoch}',
@@ -788,7 +798,34 @@ class PlanificadorController extends ChangeNotifier {
       throw ArgumentError(validationError);
     }
 
-    final descripcionFinal = payload.etiqueta ?? payload.notas ?? payload.descripcion;
+    String? descripcionFinal;
+    final textoDesc = payload.descripcion ?? payload.notas;
+    if (payload.etiqueta != null && payload.etiqueta!.isNotEmpty) {
+      if (textoDesc != null && textoDesc.isNotEmpty) {
+        descripcionFinal = '[tag:${payload.etiqueta}] $textoDesc';
+      } else {
+        descripcionFinal = payload.etiqueta;
+      }
+    } else {
+      descripcionFinal = textoDesc;
+    }
+
+    final recordatorios = <RecordatorioTareaModel>[];
+    if (payload.hasReminder) {
+      final notifDate = payload.reminderDateTime ??
+          (payload.fechaEjecucion != null && payload.reminderMinutesBefore != null
+              ? payload.fechaEjecucion!.subtract(Duration(minutes: payload.reminderMinutesBefore!))
+              : (payload.fechaEjecucion ?? DateTime.now()));
+      recordatorios.add(
+        RecordatorioTareaModel(
+          id: tareaOriginal.recordatorios.isNotEmpty
+              ? tareaOriginal.recordatorios.first.id
+              : 'rec_${DateTime.now().millisecondsSinceEpoch}',
+          tareaId: tareaOriginal.id,
+          fechaNotificacion: notifDate,
+        ),
+      );
+    }
 
     final tareaActualizada = tareaOriginal.copyWith(
       titulo: payload.titulo,
@@ -802,6 +839,8 @@ class PlanificadorController extends ChangeNotifier {
       clearProyectoId: payload.proyectoId == null,
       tiempoEstimadoMinutos: payload.tiempoEstimadoMinutos ?? 0,
       checklist: payload.subtasks,
+      recordatorios: recordatorios,
+      updatedAt: DateTime.now(),
     );
     await actualizarTarea(tareaActualizada);
   }
