@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/supabase_config.dart';
 import 'core/constants/app_constants.dart';
 import 'core/services/local_notification_service.dart';
+import 'core/services/notification_navigation_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
@@ -107,6 +108,7 @@ class _MarthAppState extends State<MarthApp> {
           return AnnotatedRegion<SystemUiOverlayStyle>(
             value: overlayStyle,
             child: MaterialApp(
+              navigatorKey: NotificationNavigationService.navigatorKey,
               title: AppConstants.appName,
               debugShowCheckedModeBanner: false,
               theme: _themeController.currentTheme.themeData,

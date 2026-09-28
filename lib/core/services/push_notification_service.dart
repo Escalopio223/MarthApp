@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'local_notification_service.dart';
+import 'notification_navigation_service.dart';
 
 /// Manejador de notificaciones en segundo plano (Background/Terminated).
 /// Debe ser una función de nivel superior con la anotación @pragma('vm:entry-point').
@@ -15,7 +18,24 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   } catch (_) {
     // Si ya está inicializado o en plataforma no soportada
   }
-  debugPrint('[PushNotificationService] Push en segundo plano recibido: ${message.messageId} - ${message.notification?.title}');
+  debugPrint('[PushNotificationService] Push en segundo plano recibido: ${message.messageId} - ${message.notification?.title} - data: ${message.data}');
+
+  // Si se trata de un mensaje data-only con contenido visible que despierta el proceso en background
+  if (message.notification == null && message.data.isNotEmpty) {
+    final title = message.data['title']?.toString();
+    final body = message.data['body']?.toString() ?? '';
+    if (title != null && title.isNotEmpty) {
+      try {
+        await LocalNotificationService.instance.mostrarNotificacionInmediata(
+          title: title,
+          body: body,
+          payload: jsonEncode(message.data),
+        );
+      } catch (e) {
+        debugPrint('[PushNotificationService] Error al mostrar alerta background: $e');
+      }
+    }
+  }
 }
 
 /// Servicio singleton para la gestión global de notificaciones push vía FCM y Supabase.
@@ -34,14 +54,17 @@ class PushNotificationService {
   String? get currentToken => _currentToken;
   bool get isInitialized => _isInitialized;
 
-  /// Asegura el registro explícito del canal nativo en Android (API 26+) con importancia máxima
-  Future<void> _inicializarCanalAndroid() async {
+  /// Asegura el registro explícito de canales nativos en Android (API 26+) con importancia máxima
+  Future<void> _inicializarCanalesAndroid() async {
     if (!kIsWeb && Platform.isAndroid) {
       try {
-        await _nativeChannel.invokeMethod('createNotificationChannel');
-        debugPrint('[PushNotificationService] Canal Android "marthapp_notifications" registrado con prioridad máxima.');
+        await _nativeChannel.invokeMethod('createNotificationChannels');
+        debugPrint('[PushNotificationService] Canales Android registrados con prioridad máxima.');
       } catch (e) {
-        debugPrint('[PushNotificationService] Advertencia al registrar canal Android: $e');
+        try {
+          await _nativeChannel.invokeMethod('createNotificationChannel');
+        } catch (_) {}
+        debugPrint('[PushNotificationService] Registro de canal completado con fallback: $e');
       }
     }
   }
@@ -51,10 +74,10 @@ class PushNotificationService {
     if (_isInitialized) return;
 
     try {
-      // 1. Inicializar canal nativo obligatorio en Android 8.0+ (API 26+)
-      await _inicializarCanalAndroid();
+      // 1. Inicializar canales nativos obligatorios en Android 8.0+ (API 26+)
+      await _inicializarCanalesAndroid();
 
-      // 2. Registrar manejador de background
+      // 2. Registrar manejador de background de nivel superior
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       // 3. Solicitar permisos de notificación (Android 13+ y iOS)
@@ -68,9 +91,9 @@ class PushNotificationService {
         sound: true,
       );
 
-      debugPrint('[PushNotificationService] Estado de autorización: ${settings.authorizationStatus}');
+      debugPrint('[PushNotificationService] Estado de autorización FCM: ${settings.authorizationStatus}');
 
-      // 4. Configurar presentación en primer plano
+      // 4. Configurar presentación en primer plano (iOS)
       await _fcm.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
@@ -88,16 +111,22 @@ class PushNotificationService {
         sincronizarTokenConSupabase(token: newToken);
       });
 
-      // Configurar listeners de primer plano
+      // 6. Configurar listeners de primer plano
       FirebaseMessaging.onMessage.listen(_onForegroundMessageReceived);
 
-      // Configurar listener cuando el usuario abre la notificación desde background
+      // 7. Configurar listener cuando el usuario abre la notificación desde background
       FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationOpenedApp);
 
-      // Verificar si la app se abrió desde una notificación terminada
+      // 8. Verificar si la app se abrió desde una notificación en estado terminado (Killed state)
       final initialMessage = await _fcm.getInitialMessage();
       if (initialMessage != null) {
-        _onNotificationOpenedApp(initialMessage);
+        debugPrint('[PushNotificationService] App abierta desde estado TERMINADO con FCM: ${initialMessage.data}');
+        final payload = NotificationPayload.fromData(
+          data: initialMessage.data,
+          notificationTitle: initialMessage.notification?.title,
+          notificationBody: initialMessage.notification?.body,
+        );
+        NotificationNavigationService.instance.setPendingPayload(payload);
       }
 
       _isInitialized = true;
@@ -155,25 +184,37 @@ class PushNotificationService {
     }
   }
 
-  /// Maneja mensajes recibidos mientras la app está abierta en primer plano
+  /// Maneja mensajes recibidos mientras la app está abierta en primer plano.
+  /// En Android, FCM no renderiza heads-up banners en primer plano automáticamente,
+  /// por lo que invocamos explícitamente LocalNotificationService para garantizar la alerta.
   void _onForegroundMessageReceived(RemoteMessage message) {
     debugPrint('[PushNotificationService] Mensaje en primer plano: ${message.notification?.title} - ${message.notification?.body}');
-    // Los datos adicionales pueden ser consumidos por controladores o notificadores locales
+
+    if (!kIsWeb && Platform.isAndroid) {
+      final title = message.notification?.title ?? message.data['title']?.toString();
+      final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
+
+      if (title != null && title.isNotEmpty) {
+        LocalNotificationService.instance.mostrarNotificacionInmediata(
+          title: title,
+          body: body,
+          payload: jsonEncode(message.data),
+          channelId: 'marthapp_notifications',
+          channelName: 'Notificaciones MarthApp',
+        );
+      }
+    }
   }
 
-  /// Maneja el clic en la notificación cuando el usuario abre la app
+  /// Maneja el clic en la notificación cuando el usuario abre la app desde background
   void _onNotificationOpenedApp(RemoteMessage message) {
-    debugPrint('[PushNotificationService] Notificación abierta por usuario: ${message.data}');
-    final type = message.data['type'];
-    if (type == 'friend_request') {
-      // Redirigir o emitir evento para solicitudes de amistad
-    } else if (type == 'environment_invitation') {
-      // Redirigir o emitir evento para invitaciones
-    } else if (type == 'task_reminder' ||
-        type == 'reparto_sesion' ||
-        type == 'task_comment') {
-      // Redirigir a la pantalla del planificador / detalle de tarea
-    }
+    debugPrint('[PushNotificationService] Notificación abierta desde background: ${message.data}');
+    final payload = NotificationPayload.fromData(
+      data: message.data,
+      notificationTitle: message.notification?.title,
+      notificationBody: message.notification?.body,
+    );
+    NotificationNavigationService.instance.emitNotificationTapped(payload);
   }
 
   /// Libera listeners
@@ -181,3 +222,4 @@ class PushNotificationService {
     _tokenRefreshSub?.cancel();
   }
 }
+

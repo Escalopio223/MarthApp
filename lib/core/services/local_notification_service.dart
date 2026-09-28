@@ -10,6 +10,7 @@ import '../../features/planificador/domain/models/evento_model.dart';
 import '../../features/planificador/domain/models/recordatorio_tarea_model.dart';
 import '../../features/planificador/domain/models/tarea_model.dart';
 import 'notification_id_registry.dart';
+import 'notification_navigation_service.dart';
 
 /// Servicio central de notificaciones y alarmas locales del sistema operativo.
 /// Funciona de forma 100% offline (sin wifi ni datos), garantizando alertas
@@ -78,13 +79,29 @@ class LocalNotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // 4. Crear canal de notificación prioritario en Android (API 26+)
+    // 4. Capturar si la app fue lanzada mediante pulsación de una notificación local (Killed state)
+    try {
+      final launchDetails = await plugin.getNotificationAppLaunchDetails();
+      if (launchDetails != null &&
+          launchDetails.didNotificationLaunchApp &&
+          launchDetails.notificationResponse != null) {
+        final payloadStr = launchDetails.notificationResponse!.payload;
+        if (payloadStr != null && payloadStr.isNotEmpty) {
+          final payload = NotificationPayload.fromLocalPayload(payloadStr);
+          NotificationNavigationService.instance.setPendingPayload(payload);
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocalNotificationService] Error al evaluar launchDetails: $e');
+    }
+
+    // 5. Crear canales de notificación prioritarios en Android (API 26+)
     if (!kIsWeb && Platform.isAndroid) {
       final androidPlugin = plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
 
       if (androidPlugin != null) {
-        const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        const AndroidNotificationChannel remindersChannel = AndroidNotificationChannel(
           channelId,
           channelName,
           description: channelDescription,
@@ -93,7 +110,17 @@ class LocalNotificationService {
           enableVibration: true,
         );
 
-        await androidPlugin.createNotificationChannel(channel);
+        const AndroidNotificationChannel pushChannel = AndroidNotificationChannel(
+          'marthapp_notifications',
+          'Notificaciones MarthApp',
+          description: 'Canal de alta prioridad para avisos push y eventos de MarthApp',
+          importance: Importance.high,
+          playSound: true,
+          enableVibration: true,
+        );
+
+        await androidPlugin.createNotificationChannel(remindersChannel);
+        await androidPlugin.createNotificationChannel(pushChannel);
       }
     }
 
@@ -139,6 +166,55 @@ class LocalNotificationService {
   /// Callback cuando el usuario toca una notificación local en el dispositivo
   void _onNotificationTapped(NotificationResponse response) {
     debugPrint('[LocalNotificationService] Notificación pulsada: payload=${response.payload}');
+    final payload = NotificationPayload.fromLocalPayload(response.payload);
+    NotificationNavigationService.instance.emitNotificationTapped(payload);
+  }
+
+  /// Muestra una alerta visual/sonora inmediata tanto en primer plano como en segundo plano
+  Future<void> mostrarNotificacionInmediata({
+    required String title,
+    required String body,
+    String? payload,
+    String channelId = 'marthapp_notifications',
+    String channelName = 'Notificaciones MarthApp',
+  }) async {
+    if (kIsWeb) return;
+
+    final androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelName,
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      icon: 'ic_notification',
+      color: const Color(0xFF7CBCA2),
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final notifId = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+    try {
+      await _plugin.show(
+        id: notifId,
+        title: title,
+        body: body,
+        notificationDetails: details,
+        payload: payload,
+      );
+      debugPrint('[LocalNotificationService] Alerta inmediata mostrada con éxito: $title');
+    } catch (e) {
+      debugPrint('[LocalNotificationService] Error al mostrar alerta inmediata: $e');
+    }
   }
 
   /// Cancela cualquier timer de sincronización pendiente
