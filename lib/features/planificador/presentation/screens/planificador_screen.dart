@@ -21,7 +21,7 @@ import '../widgets/planificador_planificacion_view.dart';
 /// Pantalla contenedora principal del módulo Planificador:
 /// - Estructura ágil unificada en 2 vistas:
 ///   1. "Hoy": Foco diario ("¿Qué hay que hacer hoy y quién lo hace?")
-///   2. "Planificación": Calendario visual, proyectos del hogar y reparto equitativo
+///   2. "Planificación": Calendario visual y proyectos del hogar
 class PlanificadorScreen extends StatefulWidget {
   final PlanificadorController? controller;
   final EnvironmentController? environmentController;
@@ -156,7 +156,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                     setState(() => _currentSectionIndex = 1),
               ),
 
-              // Vista 2: "Planificación" (Calendario, proyectos y reparto)
+              // Vista 2: "Planificación" (Calendario y proyectos)
               PlanificadorPlanificacionView(
                 controller: _controller,
                 miembros: members,

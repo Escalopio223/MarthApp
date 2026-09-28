@@ -7,12 +7,10 @@ import '../../../environments/domain/models/environment_member_model.dart';
 import '../controllers/planificador_controller.dart';
 import 'agenda_calendar_view.dart';
 import 'proyectos_backlog_view.dart';
-import 'reparto_tareas_board_view.dart';
 
 /// Vista de "Planificación": agrupa la visión global de la casa:
 /// - Calendario interactivo (fechas clave, eventos y tareas programadas)
 /// - Proyectos del hogar (reformas, compras, objetivos) con barras de progreso aisladas
-/// - Reparto equitativo con botón directo de "Reparto Rápido" y tablero Drag & Drop
 class PlanificadorPlanificacionView extends StatefulWidget {
   final PlanificadorController controller;
   final List<EnvironmentMemberModel> miembros;
@@ -38,7 +36,7 @@ class PlanificadorPlanificacionView extends StatefulWidget {
 
 class _PlanificadorPlanificacionViewState
     extends State<PlanificadorPlanificacionView> {
-  // 0 = Calendario, 1 = Proyectos, 2 = Reparto
+  // 0 = Calendario, 1 = Proyectos
   int _currentSubTab = 0;
 
   @override
@@ -63,11 +61,6 @@ class _PlanificadorPlanificacionViewState
                   title: 'Proyectos',
                   icon: Icons.folder_special_rounded,
                   index: 1,
-                ),
-                _buildSubTabButton(
-                  title: 'Reparto',
-                  icon: Icons.balance_rounded,
-                  index: 2,
                 ),
               ],
             ),
@@ -97,9 +90,6 @@ class _PlanificadorPlanificacionViewState
                 onCrearProyecto: widget.onCrearProyecto,
                 onCrearTarea: widget.onCrearTarea,
               ),
-
-              // 2: Tablero de Reparto con acción rápida
-              _buildRepartoConAccionRapida(context),
             ],
           ),
         ),
@@ -151,82 +141,6 @@ class _PlanificadorPlanificacionViewState
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildRepartoConAccionRapida(BuildContext context) {
-    final miembrosIds = widget.miembros.map((m) => m.userId).toList();
-    final pendientes = widget.controller.tareasPendientes;
-
-    return Column(
-      children: [
-        // Barra superior con botón de Reparto Rápido en 1 toque
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'REPARTO DE TAREAS',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${pendientes.length} tareas pendientes en el hogar',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  HapticFeedback.mediumImpact();
-                  await widget.controller.ejecutarRepartoRapidoSemanal(
-                    miembrosIds,
-                  );
-                },
-                icon: const Icon(Icons.bolt_rounded, size: 16),
-                label: const Text('Reparto Rápido'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryLiquid,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // Tablero Kanban Drag & Drop existente
-        Expanded(
-          child: RepartoTareasBoardView(
-            controller: widget.controller,
-            miembros: widget.miembros,
-          ),
-        ),
-      ],
     );
   }
 }
