@@ -112,6 +112,8 @@ async function sendFcmMessage(
   try {
     const stringData: Record<string, string> = {
       click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      title: title || '',
+      body: body || '',
     };
     for (const [k, v] of Object.entries(dataPayload)) {
       stringData[k] = typeof v === 'string' ? v : String(v);
@@ -140,6 +142,29 @@ async function sendFcmMessage(
                 channel_id: 'marthapp_notifications',
                 icon: 'ic_notification',
                 color: '#7CBCA2',
+                priority: 'max',
+                default_sound: true,
+                default_vibrate_timings: true,
+                visibility: 'public',
+                click_action: 'FLUTTER_NOTIFICATION_CLICK',
+              },
+            },
+            apns: {
+              headers: {
+                'apns-priority': '10',
+                'apns-push-type': 'alert',
+              },
+              payload: {
+                aps: {
+                  alert: {
+                    title,
+                    body,
+                  },
+                  sound: 'default',
+                  badge: 1,
+                  'content-available': 1,
+                  category: 'FLUTTER_NOTIFICATION_CLICK',
+                },
               },
             },
           },

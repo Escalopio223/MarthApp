@@ -396,7 +396,7 @@ class _PlanificadorHoyViewState extends State<PlanificadorHoyView> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              evento.personaCumpleanos ?? evento.titulo,
+                              evento.nombrePersonaCumpleanos,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

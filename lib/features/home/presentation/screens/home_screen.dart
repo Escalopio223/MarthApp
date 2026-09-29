@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../core/services/notification_navigation_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_background.dart';
 import '../../../../core/widgets/app_container.dart';
@@ -56,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late int _currentTabIndex;
   late final Set<int> _loadedIndices;
+  StreamSubscription<NotificationPayload>? _notificationSub;
 
   @override
   void initState() {
@@ -103,6 +106,27 @@ class _HomeScreenState extends State<HomeScreen> {
         _planificadorController.setEntorno(activeEnv.id);
       }
     }
+
+    // Escucha activa de notificaciones pulsadas (Push & Local)
+    _notificationSub = NotificationNavigationService.instance.onNotificationTapped
+        .listen(_handleNotificationPayload);
+
+    // Drenar payload pendiente si la app arrancó desde una notificación (Killed state)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pending =
+          NotificationNavigationService.instance.consumePendingPayload();
+      if (pending != null && mounted) {
+        _handleNotificationPayload(pending);
+      }
+    });
+  }
+
+  void _handleNotificationPayload(NotificationPayload payload) {
+    NotificationNavigationService.instance.executeNavigation(
+      payload,
+      context: context,
+      onSelectTab: _onTabSelected,
+    );
   }
 
   void _onControllerUpdate() {
@@ -123,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _notificationSub?.cancel();
     _friendsController.removeListener(_onControllerUpdate);
     _profileController.removeListener(_onControllerUpdate);
     _environmentController.removeListener(_onEnvironmentChanged);

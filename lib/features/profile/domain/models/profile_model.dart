@@ -5,12 +5,14 @@ class ProfileModel {
   final String id;
   final String username;
   final AvatarData avatarData;
+  final DateTime? birthDate;
   final DateTime updatedAt;
 
   const ProfileModel({
     required this.id,
     required this.username,
     this.avatarData = const AvatarData.initials(),
+    this.birthDate,
     required this.updatedAt,
   });
 
@@ -19,7 +21,22 @@ class ProfileModel {
   String? get avatarIcon => avatarData.iconKey;
   String? get avatarBgColor => avatarData.bgColorHex;
 
+  /// Getters deprecados para compatibilidad transicional hacia la única fuente de verdad (birthDate)
+  @Deprecated('Usar birthDate como único campo canónico')
+  DateTime? get birthday => birthDate;
+
+  @Deprecated('Usar birthDate como único campo canónico')
+  DateTime? get fechaNacimiento => birthDate;
+
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
+    // Lectura canónica con fallback tolerante a campos deprecados
+    final rawDate = json['birth_date'] ??
+        json['birthday'] ??
+        json['fecha_nacimiento'] ??
+        json['cumpleanos'];
+    final parsedBirthDate =
+        rawDate != null ? DateTime.tryParse(rawDate.toString()) : null;
+
     return ProfileModel(
       id: json['id'] as String,
       username: json['username'] as String? ?? 'Usuario',
@@ -29,6 +46,7 @@ class ProfileModel {
         icon: json['avatar_icon'] as String?,
         bgColor: json['avatar_bg_color'] as String?,
       ),
+      birthDate: parsedBirthDate,
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : DateTime.now(),
@@ -40,6 +58,8 @@ class ProfileModel {
       'id': id,
       'username': username,
       ...avatarData.toDbMap(),
+      if (birthDate != null)
+        'birth_date': birthDate!.toIso8601String().split('T').first,
       'updated_at': updatedAt.toIso8601String(),
     };
   }
@@ -48,12 +68,14 @@ class ProfileModel {
     String? id,
     String? username,
     AvatarData? avatarData,
+    DateTime? birthDate,
     DateTime? updatedAt,
   }) {
     return ProfileModel(
       id: id ?? this.id,
       username: username ?? this.username,
       avatarData: avatarData ?? this.avatarData,
+      birthDate: birthDate ?? this.birthDate,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -65,8 +87,13 @@ class ProfileModel {
           runtimeType == other.runtimeType &&
           id == other.id &&
           username == other.username &&
-          avatarData == other.avatarData;
+          avatarData == other.avatarData &&
+          birthDate == other.birthDate;
 
   @override
-  int get hashCode => id.hashCode ^ username.hashCode ^ avatarData.hashCode;
+  int get hashCode =>
+      id.hashCode ^
+      username.hashCode ^
+      avatarData.hashCode ^
+      (birthDate?.hashCode ?? 0);
 }

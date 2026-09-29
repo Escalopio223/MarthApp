@@ -148,7 +148,74 @@ void main() {
       expect(eventoCumple.esCumpleanos, isTrue);
       expect(eventoCumple.esEventoGeneral, isFalse);
       expect(eventoCumple.diasParaCumpleanos, equals(0));
+      expect(eventoCumple.nombrePersonaCumpleanos, equals('Laura'));
       expect(eventoCumple.ideasRegalo, contains('libro'));
+    });
+
+    test('nombrePersonaCumpleanos cleans redundant prefixes like "Cumpleaños de"', () {
+      final now = DateTime.now();
+      final ev1 = EventoModel(
+        id: 'ev-felipe-1',
+        entornoId: 'env-1',
+        titulo: 'Cumpleaños de Felipe',
+        tipo: 'cumpleanos',
+        fechaInicio: DateTime(2024, 1, 1),
+        personaCumpleanos: null,
+        createdBy: 'usr-1',
+        createdAt: now,
+      );
+      expect(ev1.nombrePersonaCumpleanos, equals('Felipe'));
+
+      final ev2 = EventoModel(
+        id: 'ev-felipe-2',
+        entornoId: 'env-1',
+        titulo: 'Cumpleaños de Felipe',
+        tipo: 'cumpleanos',
+        fechaInicio: DateTime(2024, 1, 1),
+        personaCumpleanos: '',
+        createdBy: 'usr-1',
+        createdAt: now,
+      );
+      expect(ev2.nombrePersonaCumpleanos, equals('Felipe'));
+
+      final ev3 = EventoModel(
+        id: 'ev-felipe-3',
+        entornoId: 'env-1',
+        titulo: 'Cumpleaños de Felipe',
+        tipo: 'cumpleanos',
+        fechaInicio: DateTime(2024, 1, 1),
+        personaCumpleanos: 'Cumpleaños de Felipe',
+        createdBy: 'usr-1',
+        createdAt: now,
+      );
+      expect(ev3.nombrePersonaCumpleanos, equals('Felipe'));
+
+      final ev4 = EventoModel(
+        id: 'ev-felipe-4',
+        entornoId: 'env-1',
+        titulo: 'Cumpleaños de Felipe',
+        tipo: 'cumpleanos',
+        fechaInicio: DateTime(2024, 1, 1),
+        personaCumpleanos: 'Felipe',
+        createdBy: 'usr-1',
+        createdAt: now,
+      );
+      expect(ev4.nombrePersonaCumpleanos, equals('Felipe'));
+    });
+
+    test('diasParaCumpleanos recurs every year regardless of original year', () {
+      final now = DateTime.now();
+      final evPastYear = EventoModel(
+        id: 'ev-past',
+        entornoId: 'env-1',
+        titulo: 'Cumpleaños de Juan',
+        tipo: 'cumpleanos',
+        fechaInicio: DateTime(2020, now.month, now.day),
+        personaCumpleanos: 'Juan',
+        createdBy: 'usr-1',
+        createdAt: now,
+      );
+      expect(evPastYear.diasParaCumpleanos, equals(0));
     });
 
     test('EventoModel supports checklist, calculates progress and handles json', () {

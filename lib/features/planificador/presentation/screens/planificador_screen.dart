@@ -501,30 +501,13 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: titleController,
-                      autofocus: true,
-                      style: TextStyle(color: AppTheme.textPrimary),
-                      decoration: InputDecoration(
-                        hintText: tipo == 'cumpleanos'
-                            ? 'Título (ej. Cumple de Carlos)'
-                            : 'Nombre del evento (ej. Ir al médico)...',
-                        hintStyle: TextStyle(color: AppTheme.textSecondary),
-                        filled: true,
-                        fillColor: AppTheme.darkBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
                     if (tipo == 'cumpleanos') ...[
-                      const SizedBox(height: 10),
                       TextField(
                         controller: personaController,
+                        autofocus: true,
                         style: TextStyle(color: AppTheme.textPrimary),
                         decoration: InputDecoration(
-                          hintText: 'Nombre de la persona homenajeada...',
+                          hintText: 'Nombre de la persona (ej. Felipe)...',
                           hintStyle: TextStyle(color: AppTheme.textSecondary),
                           filled: true,
                           fillColor: AppTheme.darkBackground,
@@ -540,7 +523,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                         maxLines: 2,
                         style: TextStyle(color: AppTheme.textPrimary),
                         decoration: InputDecoration(
-                          hintText: 'Ideas de regalo...',
+                          hintText: 'Ideas de regalo (ej. Boniato, libros)...',
                           hintStyle: TextStyle(color: AppTheme.textSecondary),
                           filled: true,
                           fillColor: AppTheme.darkBackground,
@@ -550,16 +533,32 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                           ),
                         ),
                       ),
+                    ] else ...[
+                      TextField(
+                        controller: titleController,
+                        autofocus: true,
+                        style: TextStyle(color: AppTheme.textPrimary),
+                        decoration: InputDecoration(
+                          hintText: 'Nombre del evento (ej. Ir al médico)...',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary),
+                          filled: true,
+                          fillColor: AppTheme.darkBackground,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      ChecklistEditorSection(
+                        items: checklist,
+                        title: 'Subtareas',
+                        hintText: 'Añadir elemento (ej. Coger cartilla)...',
+                        onChanged: (nuevos) {
+                          setModalState(() => checklist = nuevos);
+                        },
+                      ),
                     ],
-                    const SizedBox(height: 14),
-                    ChecklistEditorSection(
-                      items: checklist,
-                      title: 'Subtareas',
-                      hintText: 'Añadir elemento (ej. Coger cartilla)...',
-                      onChanged: (nuevos) {
-                        setModalState(() => checklist = nuevos);
-                      },
-                    ),
                     const SizedBox(height: 16),
 
                     // Selector de recordatorios programados (igual que en tareas)
@@ -577,23 +576,38 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                         onPressed: isSaving
                             ? null
                             : () async {
-                                final title = titleController.text.trim();
-                                if (title.isEmpty) return;
+                                final isCumple = tipo == 'cumpleanos';
+                                final nombre = personaController.text.trim();
+                                if (isCumple && nombre.isEmpty) return;
+                                final title = isCumple ? '' : titleController.text.trim();
+                                if (!isCumple && title.isEmpty) return;
+
+                                // Si es cumpleaños y no se añadieron recordatorios específicos,
+                                // agregamos recordatorio por defecto para las 09:00 de ese día
+                                var recordatoriosAGuardar = List<RecordatorioTareaModel>.from(recordatorios);
+                                if (isCumple && recordatoriosAGuardar.isEmpty) {
+                                  recordatoriosAGuardar.add(
+                                    RecordatorioTareaModel(
+                                      id: 'rec_${DateTime.now().millisecondsSinceEpoch}',
+                                      tareaId: '',
+                                      fechaNotificacion: _controller.selectedDate,
+                                      horaNotificacion: '09:00',
+                                    ),
+                                  );
+                                }
 
                                 setModalState(() => isSaving = true);
                                 try {
                                   await _controller.crearEvento(
-                                    titulo: title,
+                                    titulo: isCumple ? '' : title,
                                     tipo: tipo,
                                     fechaInicio: _controller.selectedDate,
-                                    personaCumpleanos: tipo == 'cumpleanos'
-                                        ? personaController.text.trim()
-                                        : null,
-                                    ideasRegalo: tipo == 'cumpleanos'
+                                    personaCumpleanos: isCumple ? nombre : null,
+                                    ideasRegalo: isCumple && ideasController.text.trim().isNotEmpty
                                         ? ideasController.text.trim()
                                         : null,
-                                    checklist: checklist,
-                                    recordatorios: recordatorios,
+                                    checklist: isCumple ? const [] : checklist,
+                                    recordatorios: recordatoriosAGuardar,
                                   );
 
                                   if (ctx.mounted) {
@@ -606,7 +620,11 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                                                 color: Colors.greenAccent, size: 20),
                                             const SizedBox(width: 8),
                                             Expanded(
-                                              child: Text('Evento "$title" guardado'),
+                                              child: Text(
+                                                isCumple
+                                                    ? 'Cumpleaños de "$nombre" guardado'
+                                                    : 'Evento "$title" guardado',
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -620,8 +638,8 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                                     setModalState(() => isSaving = false);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Error al guardar evento: $e'),
-                                        backgroundColor: Colors.redAccent,
+                                        content: Text('Error al crear evento: $e'),
+                                        backgroundColor: AppTheme.accentCoral,
                                       ),
                                     );
                                   }
