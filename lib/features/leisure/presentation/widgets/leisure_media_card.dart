@@ -196,35 +196,6 @@ class LeisureMediaCard extends StatelessWidget {
                     ),
                   ),
 
-                // Badge F2P para videojuegos confirmados (Bottom Right)
-                if (media.isF2p)
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentEmerald.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(6),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: const Text(
-                        'F2P',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ),
-
                 // Badges de Plataformas de Streaming (Inferior Derecha para Películas y Series)
                 if (media.watchProviders.isNotEmpty)
                   Positioned(
@@ -233,38 +204,74 @@ class LeisureMediaCard extends StatelessWidget {
                     child: _buildProviderBadgesOverlay(),
                   ),
 
-                // Badge de Duración (Inferior Izquierda para Videojuegos)
+                // Badges para Videojuegos: F2P y Duración de Modo Historia (Inferior Derecha)
                 if (media.mediaType == LeisureMediaType.game &&
-                    media.gameDuration?.mainStoryHours != null)
+                    (media.isF2p || media.gameDuration?.mainStoryHours != null))
                   Positioned(
                     bottom: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppTheme.primaryLiquid.withValues(alpha: 0.45),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.timer_outlined,
-                              size: 10, color: AppTheme.primaryLiquid),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${media.gameDuration!.mainStoryHours}h',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
+                    right: 8,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (media.isF2p) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentEmerald
+                                  .withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(6),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: const Text(
+                              'F2P',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
+                          if (media.gameDuration?.mainStoryHours != null)
+                            const SizedBox(width: 4),
                         ],
-                      ),
+                        if (media.gameDuration?.mainStoryHours != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 5, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.75),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: AppTheme.primaryLiquid
+                                    .withValues(alpha: 0.45),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.timer_outlined,
+                                    size: 10, color: AppTheme.primaryLiquid),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '${media.gameDuration!.mainStoryHours}h',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                   ),
               ],

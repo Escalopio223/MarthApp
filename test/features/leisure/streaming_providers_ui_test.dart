@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/features/leisure/domain/models/book_edition_dto.dart';
+import 'package:marth_app/features/leisure/domain/models/game_duration_dto.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_environment_match_model.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_item_status.dart';
 import 'package:marth_app/features/leisure/domain/models/leisure_media_details.dart';
@@ -230,6 +231,57 @@ void main() {
       expect(find.text('El Club de la Lucha'), findsOneWidget);
       // Play icon fallback for logoPath=''
       expect(find.byIcon(Icons.play_circle_fill_rounded), findsNWidgets(2));
+    });
+
+    testWidgets('LeisureMediaCard renders game story duration on bottom-right and status on bottom-left without overlap', (tester) async {
+      const gameWithDuration = LeisureMediaDetails(
+        mediaId: 'game_123',
+        mediaType: LeisureMediaType.game,
+        title: 'Hollow Knight',
+        gameDuration: GameDurationDto(mainStoryHours: 27),
+      );
+
+      final userItem = LeisureUserItemModel(
+        id: 'ui_1',
+        userId: 'u_1',
+        mediaId: 'game_123',
+        mediaType: LeisureMediaType.game,
+        status: LeisureItemStatus.watched,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 180,
+              height: 280,
+              child: LeisureMediaCard(
+                media: gameWithDuration,
+                userItem: userItem,
+                isRouletteSelected: false,
+                onTap: () {},
+                onRouletteToggle: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final statusFinder = find.text(LeisureItemStatus.watched.label);
+      final durationFinder = find.text('27h');
+
+      expect(statusFinder, findsOneWidget);
+      expect(durationFinder, findsOneWidget);
+
+      final statusRect = tester.getRect(statusFinder);
+      final durationRect = tester.getRect(durationFinder);
+
+      // Verify status is on the left and duration is strictly on the right
+      expect(statusRect.left, lessThan(durationRect.left));
+      // Verify no horizontal overlap
+      expect(statusRect.right, lessThan(durationRect.left));
     });
 
     testWidgets('LeisureDetailSheet renders Dónde Ver section and supports region switching to US for Hulu', (tester) async {
