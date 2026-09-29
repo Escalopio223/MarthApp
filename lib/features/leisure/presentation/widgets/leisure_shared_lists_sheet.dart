@@ -227,13 +227,30 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Listas del Entorno',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryLiquid.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.format_list_bulleted_rounded,
+                            color: AppTheme.primaryLiquid,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Listas del Entorno',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     IconButton(
                       icon: const Icon(Icons.close_rounded),
@@ -422,7 +439,7 @@ class _LeisureSharedListsSheetState extends State<LeisureSharedListsSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    Icons.playlist_play_rounded,
+                    Icons.format_list_bulleted_rounded,
                     color: AppTheme.primaryLiquid,
                   ),
                 ),

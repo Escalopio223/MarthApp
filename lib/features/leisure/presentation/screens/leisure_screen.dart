@@ -76,7 +76,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'Selecciona títulos tocando el icono de dado en las tarjetas para tirar los dados.',
+            'Añade títulos a la tirada al azar tocando el icono de dado en las tarjetas.',
           ),
           backgroundColor: AppTheme.surfaceDark,
         ),
@@ -130,12 +130,12 @@ class _LeisureScreenState extends State<LeisureScreen> {
           ],
         ),
         actions: [
-          // Botón indicador de ruleta
+          // Botón indicador de tirada al azar
           Stack(
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                tooltip: 'Ruleta de Ocio',
+                tooltip: 'Tirada al azar',
                 icon: const Icon(Icons.casino_rounded),
                 color: controller.rouletteCount > 0
                     ? AppTheme.accentCoral
@@ -166,10 +166,10 @@ class _LeisureScreenState extends State<LeisureScreen> {
             ],
           ),
 
-          // Botón de Listas del Entorno
+          // Botón de Listas y Colecciones del Entorno
           IconButton(
-            tooltip: 'Listas del entorno',
-            icon: const Icon(Icons.playlist_play_rounded),
+            tooltip: 'Listas y colecciones compartidas',
+            icon: const Icon(Icons.format_list_bulleted_rounded),
             color: AppTheme.textPrimary,
             onPressed: () =>
                 LeisureSharedListsSheet.show(context, controller: controller),
@@ -471,7 +471,7 @@ class _LeisureScreenState extends State<LeisureScreen> {
         clipBehavior: Clip.none,
         children: [
           IconButton(
-            tooltip: 'Ruleta de Ocio',
+            tooltip: 'Tirada al azar',
             icon: const Icon(Icons.casino_rounded),
             color: controller.rouletteCount > 0
                 ? AppTheme.accentCoral
@@ -510,8 +510,8 @@ class _LeisureScreenState extends State<LeisureScreen> {
       padding: EdgeInsets.zero,
       baseColor: AppTheme.surfaceDark,
       child: IconButton(
-        tooltip: 'Listas del entorno',
-        icon: const Icon(Icons.playlist_play_rounded),
+        tooltip: 'Listas y colecciones compartidas',
+        icon: const Icon(Icons.format_list_bulleted_rounded),
         color: AppTheme.textPrimary,
         onPressed: () =>
             LeisureSharedListsSheet.show(context, controller: controller),

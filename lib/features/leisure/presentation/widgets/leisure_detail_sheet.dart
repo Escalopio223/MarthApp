@@ -402,7 +402,7 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Botón de Ruleta
+                        // Botón de Tirada al azar
                         AppContainer(
                           borderRadius: 14,
                           padding: const EdgeInsets.symmetric(
@@ -418,8 +418,8 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(added
-                                    ? 'Añadido a la ruleta'
-                                    : 'Quitado de la ruleta'),
+                                    ? 'Añadido a tirada al azar'
+                                    : 'Quitado de tirada al azar'),
                                 duration: const Duration(seconds: 1),
                                 backgroundColor: AppTheme.surfaceDark,
                               ),
@@ -437,8 +437,8 @@ class _LeisureDetailSheetState extends State<LeisureDetailSheet> {
                               const SizedBox(width: 6),
                               Text(
                                 isRouletteSelected
-                                    ? 'En la Ruleta'
-                                    : 'Añadir a la ruleta',
+                                    ? 'En tirada al azar'
+                                    : 'Tirada al azar',
                                 style: TextStyle(
                                   color: isRouletteSelected
                                       ? Colors.white

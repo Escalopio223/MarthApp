@@ -126,47 +126,52 @@ class LeisureMediaCard extends StatelessWidget {
                     ),
                   ),
 
-                // Botón Secundario de Ruleta (Top Right)
+                // Botón Secundario de Dado / Selección al azar (Top Right)
                 Positioned(
                   top: 6,
                   right: 6,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        onRouletteToggle();
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: isRouletteSelected
-                              ? AppTheme.accentCoral
-                              : Colors.black.withValues(alpha: 0.55),
-                          shape: BoxShape.circle,
-                          border: Border.all(
+                  child: Tooltip(
+                    message: isRouletteSelected
+                        ? 'Quitar de tirada al azar'
+                        : 'Añadir a tirada al azar',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          onRouletteToggle();
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: isRouletteSelected
+                                ? AppTheme.accentCoral
+                                : Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isRouletteSelected
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                            boxShadow: isRouletteSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppTheme.accentCoral
+                                          .withValues(alpha: 0.6),
+                                      blurRadius: 8,
+                                    )
+                                  ]
+                                : null,
+                          ),
+                          child: Icon(
+                            Icons.casino_rounded,
+                            size: 16,
                             color: isRouletteSelected
                                 ? Colors.white
-                                : Colors.white.withValues(alpha: 0.3),
-                            width: 1,
+                                : AppTheme.textSecondary,
                           ),
-                          boxShadow: isRouletteSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppTheme.accentCoral
-                                        .withValues(alpha: 0.6),
-                                    blurRadius: 8,
-                                  )
-                                ]
-                              : null,
-                        ),
-                        child: Icon(
-                          Icons.casino_rounded,
-                          size: 16,
-                          color: isRouletteSelected
-                              ? Colors.white
-                              : AppTheme.textSecondary,
                         ),
                       ),
                     ),
