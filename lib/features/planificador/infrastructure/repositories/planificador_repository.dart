@@ -457,7 +457,7 @@ class PlanificadorRepository implements IPlanificadorRepository {
 
     final Map<String, dynamic> insertPayload = {
       'entorno_id': entornoId,
-      'titulo': titulo,
+      'titulo': tipo == 'cumpleanos' ? null : (titulo.isNotEmpty ? titulo : null),
       'descripcion': ?descripcion,
       'tipo': tipo,
       'fecha_inicio': fechaInicio.toIso8601String(),
@@ -502,7 +502,7 @@ class PlanificadorRepository implements IPlanificadorRepository {
   @override
   Future<void> actualizarEvento(EventoModel evento) async {
     final Map<String, dynamic> updatePayload = {
-      'titulo': evento.titulo,
+      'titulo': evento.tipo == 'cumpleanos' ? null : evento.titulo,
       'descripcion': evento.descripcion,
       'tipo': evento.tipo,
       'fecha_inicio': evento.fechaInicio.toIso8601String(),

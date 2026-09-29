@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class MockProfileRepository implements IProfileRepository {
   ProfileModel? mockProfile;
   String? lastUpdatedUsername;
+  DateTime? lastUpdatedBirthDate;
   String? lastSelectedIconKey;
   String? lastSelectedColorHex;
   bool returnError = false;
@@ -29,6 +30,13 @@ class MockProfileRepository implements IProfileRepository {
   Future<bool> updateUsername(String userId, String newUsername) async {
     if (returnError) throw Exception('Collision error');
     lastUpdatedUsername = newUsername;
+    return true;
+  }
+
+  @override
+  Future<bool> updateBirthDate(String userId, DateTime? birthDate) async {
+    if (returnError) throw Exception('Database error');
+    lastUpdatedBirthDate = birthDate;
     return true;
   }
 
@@ -147,6 +155,17 @@ void main() {
       controller.reset();
       expect(controller.currentProfile, isNull);
       expect(controller.errorMessage, isNull);
+    });
+
+    test('updateBirthDate updates profile birthDate correctly', () async {
+      await controller.initialize('u1');
+      final date = DateTime(1995, 5, 20);
+
+      final ok = await controller.updateBirthDate(date);
+      expect(ok, isTrue);
+      expect(controller.currentProfile?.birthDate, equals(date));
+      expect(mockRepo.lastUpdatedBirthDate, equals(date));
+      expect(controller.successMessage, contains('cumpleaños'));
     });
   });
 }

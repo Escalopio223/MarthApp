@@ -42,6 +42,9 @@ class AgendaItemModel implements Comparable<AgendaItemModel> {
   int? get tiempoEstimadoMinutos => tareaOriginal?.tiempoEstimadoMinutos;
   String? get ideasRegalo => eventoOriginal?.ideasRegalo;
   String? get personaCumpleanos => eventoOriginal?.personaCumpleanos;
+  String get nombrePersonaCumpleanos =>
+      eventoOriginal?.nombrePersonaCumpleanos ??
+      (personaCumpleanos?.isNotEmpty == true ? personaCumpleanos! : titulo);
 
   factory AgendaItemModel.fromEvento(EventoModel evento) {
     return AgendaItemModel(

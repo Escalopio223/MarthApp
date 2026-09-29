@@ -81,12 +81,14 @@ void main() {
   });
 
   group('ProfileModel Tests', () {
-    test('ProfileModel serializes and deserializes with AvatarData', () {
+    test('ProfileModel serializes and deserializes with AvatarData and birthDate', () {
       final now = DateTime.now();
+      final birthDate = DateTime(1992, 10, 15);
       final profile = ProfileModel(
         id: 'user_123',
         username: 'arturo_dev',
         avatarData: const AvatarData.icon(iconKey: 'bolt', bgColorHex: '#BD00FF'),
+        birthDate: birthDate,
         updatedAt: now,
       );
 
@@ -97,6 +99,9 @@ void main() {
       expect(json['avatar_icon'], equals('bolt'));
       expect(json['avatar_bg_color'], equals('#BD00FF'));
       expect(json['avatar_url'], isNull);
+      expect(json['birth_date'], equals('1992-10-15'));
+      expect(json.containsKey('birthday'), isFalse);
+      expect(json.containsKey('cumpleanos'), isFalse);
 
       final deserialized = ProfileModel.fromJson(json);
       expect(deserialized.id, equals('user_123'));
@@ -104,25 +109,57 @@ void main() {
       expect(deserialized.avatarType, equals(AvatarType.icon));
       expect(deserialized.avatarIcon, equals('bolt'));
       expect(deserialized.avatarBgColor, equals('#BD00FF'));
+      expect(deserialized.birthDate, equals(birthDate));
+      // Compatibilidad con getters deprecados
+      // ignore: deprecated_member_use_from_same_package
+      expect(deserialized.birthday, equals(birthDate));
+      // ignore: deprecated_member_use_from_same_package
+      expect(deserialized.fechaNacimiento, equals(birthDate));
     });
 
-    test('ProfileModel copyWith updates fields correctly', () {
+    test('ProfileModel deserializes legacy fallback fields without data loss', () {
+      final jsonLegacyBirthday = {
+        'id': 'u_legacy_1',
+        'username': 'legacy_user',
+        'avatar_type': 'initials',
+        'birthday': '1990-04-12',
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      final profileFromBirthday = ProfileModel.fromJson(jsonLegacyBirthday);
+      expect(profileFromBirthday.birthDate, equals(DateTime(1990, 4, 12)));
+
+      final jsonLegacyFechaNac = {
+        'id': 'u_legacy_2',
+        'username': 'legacy_user_2',
+        'avatar_type': 'initials',
+        'fecha_nacimiento': '1988-11-23',
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      final profileFromFechaNac = ProfileModel.fromJson(jsonLegacyFechaNac);
+      expect(profileFromFechaNac.birthDate, equals(DateTime(1988, 11, 23)));
+    });
+
+    test('ProfileModel copyWith updates fields correctly including birthDate', () {
       final profile = ProfileModel(
         id: 'u1',
         username: 'test_user',
         avatarData: const AvatarData.initials(),
+        birthDate: DateTime(1995, 1, 1),
         updatedAt: DateTime.now(),
       );
 
+      final newBirthDate = DateTime(1996, 2, 2);
       final updated = profile.copyWith(
         username: 'new_name',
         avatarData: const AvatarData.image(imageUrl: 'https://new_image.png'),
+        birthDate: newBirthDate,
       );
 
       expect(updated.id, equals('u1'));
       expect(updated.username, equals('new_name'));
       expect(updated.avatarType, equals(AvatarType.image));
       expect(updated.avatarUrl, equals('https://new_image.png'));
+      expect(updated.birthDate, equals(newBirthDate));
     });
   });
 }

@@ -225,11 +225,13 @@ class LocalNotificationService {
   }
 
   /// Calcula la fecha y hora programada como `tz.TZDateTime` en la zona horaria local.
-  /// Si la fecha ya expiró respecto al momento actual, retorna `null`.
+  /// Para eventos de tipo cumpleaños (`esCumpleanos == true`), calcula la próxima repetición
+  /// anual considerando años bisiestos.
   tz.TZDateTime? calcularFechaProgramada(
     DateTime fechaNotificacion,
-    String? horaNotificacion,
-  ) {
+    String? horaNotificacion, {
+    bool esCumpleanos = false,
+  }) {
     try {
       tz.local;
     } catch (_) {
@@ -244,22 +246,51 @@ class LocalNotificationService {
       minute = int.tryParse(parts[1]) ?? 0;
     }
 
+    final now = tz.TZDateTime.now(tz.local);
+    int targetYear = fechaNotificacion.year;
+
+    if (esCumpleanos) {
+      targetYear = now.year;
+      final diaAjustado = (fechaNotificacion.month == 2 && fechaNotificacion.day == 29)
+          ? (_esBisiesto(targetYear) ? 29 : 28)
+          : fechaNotificacion.day;
+
+      var candidate = tz.TZDateTime(
+        tz.local,
+        targetYear,
+        fechaNotificacion.month,
+        diaAjustado,
+        hour,
+        minute,
+      );
+
+      if (candidate.isBefore(now)) {
+        targetYear = now.year + 1;
+      }
+    }
+
+    final diaFinal = (fechaNotificacion.month == 2 && fechaNotificacion.day == 29)
+        ? (_esBisiesto(targetYear) ? 29 : 28)
+        : fechaNotificacion.day;
+
     final scheduled = tz.TZDateTime(
       tz.local,
-      fechaNotificacion.year,
+      targetYear,
       fechaNotificacion.month,
-      fechaNotificacion.day,
+      diaFinal,
       hour,
       minute,
     );
 
-    final now = tz.TZDateTime.now(tz.local);
     if (scheduled.isBefore(now)) {
       return null;
     }
 
     return scheduled;
   }
+
+  static bool _esBisiesto(int year) =>
+      (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 
   /// Programa de forma quirúrgica un recordatorio para una tarea específica
   Future<void> programarRecordatorioTarea({
@@ -335,12 +366,14 @@ class LocalNotificationService {
     required String eventoId,
     required String tituloEvento,
     required RecordatorioTareaModel recordatorio,
+    bool esCumpleanos = false,
   }) async {
     if (!_isInitialized || kIsWeb) return;
 
     final scheduledDate = calcularFechaProgramada(
       recordatorio.fechaNotificacion,
       recordatorio.horaNotificacion,
+      esCumpleanos: esCumpleanos,
     );
 
     if (scheduledDate == null) {
@@ -366,7 +399,7 @@ class LocalNotificationService {
       playSound: true,
       enableVibration: true,
       icon: 'ic_notification',
-      color: const Color(0xFF7CBCA2),
+      color: esCumpleanos ? const Color(0xFFFF6584) : const Color(0xFF7CBCA2),
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -381,19 +414,26 @@ class LocalNotificationService {
     );
 
     final String horaTexto = recordatorio.horaNotificacion ?? '09:00';
-    final String body = 'Tienes un evento agendado para hoy a las $horaTexto';
+    final String title = esCumpleanos
+        ? '🎂 ¡Hoy es el cumpleaños de $tituloEvento!'
+        : '📅 Evento: $tituloEvento';
+    final String body = esCumpleanos
+        ? '¡Hoy es su día especial! Felicítale o consulta sus ideas de regalo.'
+        : 'Tienes un evento agendado para hoy a las $horaTexto';
 
     try {
       await _plugin.zonedSchedule(
         id: notifId,
-        title: '📅 Evento: $tituloEvento',
+        title: title,
         body: body,
         scheduledDate: scheduledDate,
         notificationDetails: details,
         androidScheduleMode: scheduleMode,
         payload: 'evento:$eventoId',
+        matchDateTimeComponents:
+            esCumpleanos ? DateTimeComponents.dateAndTime : null,
       );
-      debugPrint('[LocalNotificationService] Recordatorio de evento programado: id=$notifId ($tituloEvento)');
+      debugPrint('[LocalNotificationService] Recordatorio de evento programado: id=$notifId ($tituloEvento, recurrente=$esCumpleanos)');
     } catch (e) {
       debugPrint('[LocalNotificationService] Error al programar recordatorio de evento $eventoId: $e');
     }
@@ -497,8 +537,11 @@ class LocalNotificationService {
             for (final rec in evento.recordatorios) {
               await programarRecordatorioEvento(
                 eventoId: evento.id,
-                tituloEvento: evento.titulo,
+                tituloEvento: evento.esCumpleanos
+                    ? evento.nombrePersonaCumpleanos
+                    : evento.titulo,
                 recordatorio: rec,
+                esCumpleanos: evento.esCumpleanos,
               );
             }
           }

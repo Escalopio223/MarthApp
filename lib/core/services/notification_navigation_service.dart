@@ -36,6 +36,7 @@ class NotificationPayload {
       type == 'task_reminder' ||
       type == 'tarea' ||
       type == 'evento' ||
+      type == 'cumpleanos' ||
       type == 'reparto_sesion' ||
       type == 'task_comment';
 

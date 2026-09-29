@@ -83,6 +83,26 @@ class ProfileService implements IProfileRepository {
   }
 
   @override
+  Future<bool> updateBirthDate(String userId, DateTime? birthDate) async {
+    try {
+      await _client.from('profiles').update({
+        'birth_date': birthDate != null
+            ? birthDate.toIso8601String().split('T').first
+            : null,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', userId);
+
+      return true;
+    } on PostgrestException catch (e) {
+      debugPrint('[ProfileService] PostgrestException al actualizar birth_date: ${e.message} (code: ${e.code})');
+      rethrow;
+    } catch (e) {
+      debugPrint('[ProfileService] Error al actualizar birth_date: $e');
+      return false;
+    }
+  }
+
+  @override
   Future<bool> updateAvatarIcon(
     String userId, {
     required String iconKey,

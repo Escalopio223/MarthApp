@@ -305,9 +305,11 @@ class PlanificadorController extends ChangeNotifier {
     for (final ev in _eventos) {
       final evLocal = ev.fechaInicio.toLocal();
       if (ev.esCumpleanos) {
-        // Los cumpleaños coinciden por día y mes
-        if (evLocal.month == selDay.month &&
-            evLocal.day == selDay.day) {
+        // Los cumpleaños coinciden por día y mes todos los años (recurrente anualmente)
+        final esMismoDiaYMes = evLocal.month == selDay.month &&
+            (evLocal.day == selDay.day ||
+                (evLocal.month == 2 && evLocal.day == 29 && selDay.day == 28 && !_esBisiesto(selDay.year)));
+        if (esMismoDiaYMes) {
           items.add(AgendaItemModel.fromEvento(ev));
         }
       } else {
@@ -334,6 +336,9 @@ class PlanificadorController extends ChangeNotifier {
     return items;
   }
 
+  static bool _esBisiesto(int year) =>
+      (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+
   /// Verifica si un día dado tiene eventos o tareas asociadas (para pintar badges/puntos)
   bool diaTieneItems(DateTime day) {
     final d = DateTime(day.year, day.month, day.day);
@@ -341,7 +346,9 @@ class PlanificadorController extends ChangeNotifier {
     final tieneEvento = _eventos.any((ev) {
       final evLocal = ev.fechaInicio.toLocal();
       if (ev.esCumpleanos) {
-        return evLocal.month == d.month && evLocal.day == d.day;
+        return evLocal.month == d.month &&
+            (evLocal.day == d.day ||
+                (evLocal.month == 2 && evLocal.day == 29 && d.day == 28 && !_esBisiesto(d.year)));
       }
       final evD = DateTime(
           evLocal.year, evLocal.month, evLocal.day);
@@ -1425,8 +1432,11 @@ class PlanificadorController extends ChangeNotifier {
       for (final rec in evento.recordatorios) {
         unawaited(LocalNotificationService.instance.programarRecordatorioEvento(
           eventoId: evento.id,
-          tituloEvento: evento.titulo,
+          tituloEvento: evento.esCumpleanos
+              ? evento.nombrePersonaCumpleanos
+              : evento.titulo,
           recordatorio: rec,
+          esCumpleanos: evento.esCumpleanos,
         ));
       }
     }

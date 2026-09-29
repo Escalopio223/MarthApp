@@ -122,6 +122,36 @@ class ProfileController extends ChangeNotifier {
     }
   }
 
+  /// Actualiza la fecha canónica de nacimiento/cumpleaños en el perfil
+  Future<bool> updateBirthDate(DateTime? newBirthDate) async {
+    if (_userId == null) return false;
+
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+
+    try {
+      final ok = await _profileRepository.updateBirthDate(_userId!, newBirthDate);
+      if (ok) {
+        _currentProfile = _currentProfile?.copyWith(
+          birthDate: newBirthDate,
+          updatedAt: DateTime.now(),
+        );
+        _successMessage = '¡Fecha de cumpleaños actualizada con éxito!';
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = 'No se pudo actualizar la fecha de cumpleaños';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Error al actualizar fecha de cumpleaños: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Configura el avatar con un icono y color de fondo seleccionados
   Future<bool> selectAvatarIcon(String iconKey, String colorHex) async {
     if (_userId == null) return false;

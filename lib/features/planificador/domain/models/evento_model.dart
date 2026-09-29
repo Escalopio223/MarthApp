@@ -54,22 +54,50 @@ class EventoModel {
     return checklistItemsCompletados / checklist.length;
   }
 
-  /// Nombre a mostrar para el cumpleaños (o título si no está especificado)
-  String get nombrePersonaCumpleanos =>
-      personaCumpleanos?.isNotEmpty == true ? personaCumpleanos! : titulo;
+  /// Nombre a mostrar para el cumpleaños (limpia prefijos como 'Cumpleaños de' si existen)
+  String get nombrePersonaCumpleanos {
+    final persona = personaCumpleanos?.trim();
+    if (persona != null && persona.isNotEmpty) {
+      final clean = persona.replaceAll(
+        RegExp(r'^(?:¡?cumpleaños(?:\s+de)?|cumple(?:\s+de)?)\s*', caseSensitive: false),
+        '',
+      ).trim();
+      return clean.isNotEmpty ? clean : persona;
+    }
+    final rawTitulo = titulo.trim();
+    if (rawTitulo.isNotEmpty) {
+      final clean = rawTitulo.replaceAll(
+        RegExp(r'^(?:¡?cumpleaños(?:\s+de)?|cumple(?:\s+de)?)\s*', caseSensitive: false),
+        '',
+      ).trim();
+      return clean.isNotEmpty ? clean : rawTitulo;
+    }
+    return 'Cumpleaños';
+  }
 
-  /// Calcula los días restantes para la próxima repetición del cumpleaños
+  /// Calcula los días restantes para la próxima repetición del cumpleaños (recurrente anualmente)
   int? get diasParaCumpleanos {
     if (!esCumpleanos) return null;
     final now = DateTime.now();
     final hoy = DateTime(now.year, now.month, now.day);
-    var proximo = DateTime(now.year, fechaInicio.month, fechaInicio.day);
+
+    final diaAjustado = (fechaInicio.month == 2 && fechaInicio.day == 29)
+        ? (_esBisiesto(now.year) ? 29 : 28)
+        : fechaInicio.day;
+    var proximo = DateTime(now.year, fechaInicio.month, diaAjustado);
 
     if (proximo.isBefore(hoy)) {
-      proximo = DateTime(now.year + 1, fechaInicio.month, fechaInicio.day);
+      final proxYear = now.year + 1;
+      final diaAjustadoProx = (fechaInicio.month == 2 && fechaInicio.day == 29)
+          ? (_esBisiesto(proxYear) ? 29 : 28)
+          : fechaInicio.day;
+      proximo = DateTime(proxYear, fechaInicio.month, diaAjustadoProx);
     }
     return proximo.difference(hoy).inDays;
   }
+
+  static bool _esBisiesto(int year) =>
+      (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 
   EventoModel copyWith({
     String? id,

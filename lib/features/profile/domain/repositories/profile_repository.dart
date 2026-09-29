@@ -10,6 +10,9 @@ abstract class IProfileRepository {
   /// Actualiza el nombre de usuario
   Future<bool> updateUsername(String userId, String newUsername);
 
+  /// Actualiza la fecha canónica de nacimiento/cumpleaños del perfil
+  Future<bool> updateBirthDate(String userId, DateTime? birthDate);
+
   /// Configura el avatar en modo icono con un color de fondo
   Future<bool> updateAvatarIcon(
     String userId, {

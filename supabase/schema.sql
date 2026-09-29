@@ -12,6 +12,7 @@ create table if not exists public.profiles (
   email text,
   full_name text,
   avatar_url text,
+  birth_date date,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
