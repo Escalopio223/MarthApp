@@ -61,11 +61,16 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
   @override
   void initState() {
     super.initState();
+    final esCumple = widget.evento.esCumpleanos;
+    final nombreInicial = widget.evento.nombrePersonaCumpleanos;
     _tituloController = TextEditingController(text: widget.evento.titulo);
     _descController =
         TextEditingController(text: widget.evento.descripcion ?? '');
-    _personaController =
-        TextEditingController(text: widget.evento.personaCumpleanos ?? '');
+    _personaController = TextEditingController(
+      text: widget.evento.personaCumpleanos?.trim().isNotEmpty == true
+          ? widget.evento.personaCumpleanos!.trim()
+          : (esCumple ? nombreInicial : ''),
+    );
     _ideasController =
         TextEditingController(text: widget.evento.ideasRegalo ?? '');
     _tipo = widget.evento.tipo;
@@ -118,8 +123,11 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
   }
 
   Future<void> _guardarCambios() async {
-    final nuevoTitulo = _tituloController.text.trim();
-    if (nuevoTitulo.isEmpty) return;
+    final isCumple = _tipo == 'cumpleanos';
+    final nombrePersona = _personaController.text.trim();
+    if (isCumple && nombrePersona.isEmpty) return;
+    final nuevoTitulo = isCumple ? '' : _tituloController.text.trim();
+    if (!isCumple && nuevoTitulo.isEmpty) return;
 
     setState(() => _isSaving = true);
     HapticFeedback.mediumImpact();
@@ -129,16 +137,18 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
         titulo: nuevoTitulo,
         tipo: _tipo,
         fechaInicio: _fechaInicio,
-        descripcion: _descController.text.trim().isEmpty
+        descripcion: isCumple
             ? null
-            : _descController.text.trim(),
-        personaCumpleanos: _tipo == 'cumpleanos'
-            ? _personaController.text.trim()
+            : (_descController.text.trim().isEmpty
+                ? null
+                : _descController.text.trim()),
+        personaCumpleanos: isCumple ? nombrePersona : null,
+        ideasRegalo: isCumple
+            ? (_ideasController.text.trim().isEmpty
+                ? null
+                : _ideasController.text.trim())
             : null,
-        ideasRegalo: _tipo == 'cumpleanos'
-            ? _ideasController.text.trim()
-            : null,
-        checklist: _checklist,
+        checklist: isCumple ? const [] : _checklist,
         recordatorios: _recordatorios,
       );
 
@@ -327,29 +337,54 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
             ),
             const SizedBox(height: 14),
 
-            // Campo de Título
-            TextField(
-              controller: _tituloController,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
-              ),
-              decoration: InputDecoration(
-                labelText: 'Título del evento',
-                labelStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-                filled: true,
-                fillColor: AppTheme.darkBackground,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
+            // Campo de Nombre / Título
+            if (esCumple) ...[
+              TextField(
+                controller: _personaController,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
+                decoration: InputDecoration(
+                  labelText: 'Nombre de la persona (ej. Felipe)',
+                  labelStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  filled: true,
+                  fillColor: AppTheme.darkBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                 ),
               ),
-            ),
+            ] else ...[
+              TextField(
+                controller: _tituloController,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Título del evento',
+                  labelStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  filled: true,
+                  fillColor: AppTheme.darkBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
 
             // Selector de fecha
@@ -395,26 +430,11 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
 
             if (esCumple) ...[
               TextField(
-                controller: _personaController,
-                style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Nombre de la persona homenajeada',
-                  labelStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                  filled: true,
-                  fillColor: AppTheme.darkBackground,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
                 controller: _ideasController,
                 maxLines: 2,
                 style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
                 decoration: InputDecoration(
-                  labelText: 'Ideas de regalo',
+                  labelText: 'Ideas de regalo (ej. Boniato, libros)',
                   labelStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                   filled: true,
                   fillColor: AppTheme.darkBackground,
@@ -442,18 +462,18 @@ class _EditarEventoDialogState extends State<EditarEventoDialog> {
                 ),
               ),
               const SizedBox(height: 12),
-            ],
 
-            // SECCIÓN CHECKLIST DEL EVENTO
-            ChecklistEditorSection(
-              items: _checklist,
-              title: 'Subtareas',
-              hintText: 'Añadir elemento (ej. Coger cartilla)...',
-              onChanged: (nuevosItems) {
-                setState(() => _checklist = nuevosItems);
-              },
-            ),
-            const SizedBox(height: 16),
+              // SECCIÓN CHECKLIST DEL EVENTO (Solo para eventos generales)
+              ChecklistEditorSection(
+                items: _checklist,
+                title: 'Subtareas',
+                hintText: 'Añadir elemento (ej. Coger cartilla)...',
+                onChanged: (nuevosItems) {
+                  setState(() => _checklist = nuevosItems);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // SECCIÓN RECORDATORIOS PROGRAMADOS DEL EVENTO
             RecordatoriosSelectorWidget(

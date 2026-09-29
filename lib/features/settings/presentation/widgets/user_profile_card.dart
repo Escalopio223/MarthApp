@@ -140,6 +140,23 @@ class _UserProfileCardState extends State<UserProfileCard> {
     );
   }
 
+  Future<void> _pickBirthDate() async {
+    final profile = widget.profileController?.currentProfile;
+    final initialDate = profile?.birthDate ?? DateTime(2000, 1, 1);
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1920),
+      lastDate: DateTime.now(),
+      helpText: 'SELECCIONA TU FECHA DE CUMPLEAÑOS',
+      cancelText: 'CANCELAR',
+      confirmText: 'GUARDAR',
+    );
+    if (selected != null && widget.profileController != null) {
+      await widget.profileController!.updateBirthDate(selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileCtrl = widget.profileController;
@@ -304,6 +321,64 @@ class _UserProfileCardState extends State<UserProfileCard> {
           ),
 
           const SizedBox(height: 16),
+
+          // Selector de Fecha de Cumpleaños canónica (Single Source of Truth)
+          AppContainer(
+            borderRadius: 14,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            baseColor: AppTheme.surfaceDark.withValues(alpha: 0.6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _pickBirthDate,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.cake_rounded,
+                    color: AppTheme.accentCoral,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Fecha de Cumpleaños',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          profile.birthDate != null
+                              ? '${profile.birthDate!.day.toString().padLeft(2, '0')}/${profile.birthDate!.month.toString().padLeft(2, '0')}/${profile.birthDate!.year}'
+                              : 'Configurar cumpleaños',
+                          style: TextStyle(
+                            color: profile.birthDate != null
+                                ? AppTheme.primaryLiquid
+                                : AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: profile.birthDate != null
+                                ? FontWeight.w500
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.calendar_month_rounded,
+                    color: AppTheme.textSecondary,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
 
           // Botón Cambiar Contraseña / Seguridad
           AppContainer(

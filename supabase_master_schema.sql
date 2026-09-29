@@ -30,6 +30,7 @@ create table if not exists public.profiles (
   avatar_url text,
   avatar_icon text,
   avatar_bg_color text,
+  birth_date date,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   constraint chk_avatar_state check (
     (avatar_type = 'initials') or
@@ -44,7 +45,8 @@ alter table public.profiles
     check (avatar_type in ('initials', 'icon', 'image')),
   add column if not exists avatar_url text,
   add column if not exists avatar_icon text,
-  add column if not exists avatar_bg_color text;
+  add column if not exists avatar_bg_color text,
+  add column if not exists birth_date date;
 
 alter table public.profiles drop constraint if exists chk_avatar_state;
 alter table public.profiles add constraint chk_avatar_state check (

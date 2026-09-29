@@ -510,7 +510,7 @@ class AgendaCalendarView extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item.personaCumpleanos ?? item.titulo,
+                      item.nombrePersonaCumpleanos,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
