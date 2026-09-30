@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../food/presentation/screens/food_catalog_screen.dart';
+import '../../../food/presentation/screens/weekly_menu_planner_screen.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../domain/models/environment_invitation_model.dart';
@@ -255,6 +256,65 @@ class EnvironmentsHomeView extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Catálogo colaborativo, recetas caseras y favoritos',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppTheme.textSecondary,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        // Módulo Planificador Semanal & Menús
+        AppCard(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => WeeklyMenuPlannerScreen(
+                  environmentController: environmentController,
+                ),
+              ),
+            );
+          },
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryLiquid.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.calendar_month_rounded,
+                  color: AppTheme.primaryLiquid,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Menú Semanal & Calendario',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Planificación de los 7 días y biblioteca de plantillas',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppTheme.textSecondary,

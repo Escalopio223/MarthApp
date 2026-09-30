@@ -180,6 +180,21 @@ class MockFoodRepository implements IFoodRepository {
     required List<SavedWeeklyMenuSlotModel> slots,
   }) async => menu;
   @override
+  Future<SavedWeeklyMenuModel> renameSavedWeeklyMenu({
+    required String menuId,
+    required String newName,
+    String? newDescription,
+  }) async {
+    return SavedWeeklyMenuModel(
+      id: menuId,
+      environmentId: 'env-1',
+      name: newName,
+      description: newDescription,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
   Future<void> deleteSavedWeeklyMenu(String menuId) async {}
   @override
   Future<List<ActiveCalendarSlotModel>> getActiveCalendarSlots({
@@ -196,7 +211,33 @@ class MockFoodRepository implements IFoodRepository {
     required String environmentId,
     required String savedMenuId,
     required DateTime mondayStartDate,
+    bool overwrite = true,
   }) async {}
+
+  @override
+  Future<SavedWeeklyMenuModel> saveActiveWeekAsMenu({
+    required String environmentId,
+    required String name,
+    String? description,
+    required DateTime mondayStartDate,
+  }) async {
+    return SavedWeeklyMenuModel(
+      id: 'saved-${DateTime.now().millisecondsSinceEpoch}',
+      environmentId: environmentId,
+      name: name,
+      description: description,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  dynamic subscribeToActiveCalendar(
+    String environmentId,
+    void Function() onCalendarChanged,
+  ) => null;
+
+  @override
+  Future<void> unsubscribe(dynamic channel) async {}
   @override
   Future<List<ShoppingListItemModel>> getShoppingList(String environmentId) async => [];
   @override

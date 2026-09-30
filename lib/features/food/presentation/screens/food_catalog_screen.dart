@@ -8,6 +8,7 @@ import '../widgets/quick_favorites_view.dart';
 import '../widgets/quick_recipe_modal.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/recipe_detail_sheet.dart';
+import 'weekly_menu_planner_screen.dart';
 
 /// Pantalla principal para explorar el catálogo de recetas y gestionar favoritos
 class FoodCatalogScreen extends StatefulWidget {
@@ -136,6 +137,20 @@ class _FoodCatalogScreenState extends State<FoodCatalogScreen> {
             ],
           ),
           actions: [
+            // Botón de acceso al Planificador Semanal y Calendario
+            IconButton(
+              icon: const Icon(Icons.calendar_month_rounded, size: 22),
+              tooltip: 'Planificador Semanal',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => WeeklyMenuPlannerScreen(
+                      environmentController: widget.environmentController,
+                    ),
+                  ),
+                );
+              },
+            ),
             // Botón de creación rápida (<20s)
             IconButton(
               icon: const Icon(Icons.add_circle_outline_rounded, size: 24),

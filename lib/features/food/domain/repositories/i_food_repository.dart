@@ -69,6 +69,12 @@ abstract class IFoodRepository {
     required List<SavedWeeklyMenuSlotModel> slots,
   });
 
+  Future<SavedWeeklyMenuModel> renameSavedWeeklyMenu({
+    required String menuId,
+    required String newName,
+    String? newDescription,
+  });
+
   Future<void> deleteSavedWeeklyMenu(String menuId);
 
   // 5. Calendario Semanal Activo
@@ -86,7 +92,23 @@ abstract class IFoodRepository {
     required String environmentId,
     required String savedMenuId,
     required DateTime mondayStartDate,
+    bool overwrite = true,
   });
+
+  Future<SavedWeeklyMenuModel> saveActiveWeekAsMenu({
+    required String environmentId,
+    required String name,
+    String? description,
+    required DateTime mondayStartDate,
+  });
+
+  // Suscripción Realtime a cambios en el calendario activo
+  dynamic subscribeToActiveCalendar(
+    String environmentId,
+    void Function() onCalendarChanged,
+  );
+
+  Future<void> unsubscribe(dynamic channel);
 
   // 6. Lista de la Compra Colaborativa
   Future<List<ShoppingListItemModel>> getShoppingList(String environmentId);

@@ -409,6 +409,25 @@ class FoodService implements IFoodRepository {
   }
 
   @override
+  Future<SavedWeeklyMenuModel> renameSavedWeeklyMenu({
+    required String menuId,
+    required String newName,
+    String? newDescription,
+  }) async {
+    try {
+      await _client.from('saved_weekly_menus').update({
+        'name': newName.trim(),
+        if (newDescription != null) 'description': newDescription.trim(),
+      }).eq('id', menuId);
+
+      return (await getSavedWeeklyMenuById(menuId))!;
+    } catch (e) {
+      debugPrint('[FoodService] Error al renombrar menú guardado ($menuId): $e');
+      rethrow;
+    }
+  }
+
+  @override
   Future<void> deleteSavedWeeklyMenu(String menuId) async {
     try {
       await _client.from('saved_weekly_menus').delete().eq('id', menuId);
@@ -419,7 +438,7 @@ class FoodService implements IFoodRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // 5. CALENDARIO SEMANAL ACTIVO
+  // 5. CALENDARIO SEMANAL ACTIVO & PRESETS
   // ---------------------------------------------------------------------------
   @override
   Future<List<ActiveCalendarSlotModel>> getActiveCalendarSlots({
@@ -483,44 +502,159 @@ class FoodService implements IFoodRepository {
     required String environmentId,
     required String savedMenuId,
     required DateTime mondayStartDate,
+    bool overwrite = true,
   }) async {
     try {
       final menu = await getSavedWeeklyMenuById(savedMenuId);
       if (menu == null || menu.slots.isEmpty) return;
 
-      // Limpiar días de esa semana (lunes a domingo: 7 días)
       final sundayEndDate = mondayStartDate.add(const Duration(days: 6));
       final startStr =
           '${mondayStartDate.year.toString().padLeft(4, '0')}-${mondayStartDate.month.toString().padLeft(2, '0')}-${mondayStartDate.day.toString().padLeft(2, '0')}';
       final endStr =
           '${sundayEndDate.year.toString().padLeft(4, '0')}-${sundayEndDate.month.toString().padLeft(2, '0')}-${sundayEndDate.day.toString().padLeft(2, '0')}';
 
-      await _client
-          .from('active_calendar_slots')
-          .delete()
-          .eq('environment_id', environmentId)
-          .gte('date', startStr)
-          .lte('date', endStr);
+      if (overwrite) {
+        // Modo sobrescribir: eliminar toda la semana previa
+        await _client
+            .from('active_calendar_slots')
+            .delete()
+            .eq('environment_id', environmentId)
+            .gte('date', startStr)
+            .lte('date', endStr);
+      }
 
-      final newSlotsPayload = menu.slots.map((slot) {
+      // Si no es overwrite, obtener slots existentes para completar solo huecos vacíos
+      Set<String> occupiedSlots = {};
+      if (!overwrite) {
+        final existing = await getActiveCalendarSlots(
+          environmentId: environmentId,
+          startDate: mondayStartDate,
+          endDate: sundayEndDate,
+        );
+        occupiedSlots = {
+          for (final s in existing) '${s.dateString}_${s.mealType.dbValue}'
+        };
+      }
+
+      final List<Map<String, dynamic>> newSlotsPayload = [];
+
+      for (final slot in menu.slots) {
         final targetDate = mondayStartDate.add(Duration(days: slot.dayOfWeek - 1));
         final targetDateStr =
             '${targetDate.year.toString().padLeft(4, '0')}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}';
+        final key = '${targetDateStr}_${slot.mealType.dbValue}';
 
-        return {
+        if (!overwrite && occupiedSlots.contains(key)) {
+          continue; // No sobrescribir hueco ocupado
+        }
+
+        newSlotsPayload.add({
           'environment_id': environmentId,
           'date': targetDateStr,
           'meal_type': slot.mealType.dbValue,
           'item_type': slot.itemType.dbValue,
           'recipe_id': slot.recipeId,
           'custom_name': slot.customName,
-        };
-      }).toList();
+        });
+      }
 
-      await _client.from('active_calendar_slots').insert(newSlotsPayload);
+      if (newSlotsPayload.isNotEmpty) {
+        await _client.from('active_calendar_slots').insert(newSlotsPayload);
+      }
     } catch (e) {
       debugPrint('[FoodService] Error al aplicar menú guardado al calendario: $e');
       rethrow;
+    }
+  }
+
+  @override
+  Future<SavedWeeklyMenuModel> saveActiveWeekAsMenu({
+    required String environmentId,
+    required String name,
+    String? description,
+    required DateTime mondayStartDate,
+  }) async {
+    try {
+      final sundayEndDate = mondayStartDate.add(const Duration(days: 6));
+      final activeSlots = await getActiveCalendarSlots(
+        environmentId: environmentId,
+        startDate: mondayStartDate,
+        endDate: sundayEndDate,
+      );
+
+      final cleanMonday = DateTime(mondayStartDate.year, mondayStartDate.month, mondayStartDate.day);
+
+      final savedSlots = activeSlots.map((s) {
+        final cleanDate = DateTime(s.date.year, s.date.month, s.date.day);
+        final diffDays = cleanDate.difference(cleanMonday).inDays;
+        final dayOfWeek = ((diffDays % 7) + 1).clamp(1, 7);
+
+        return SavedWeeklyMenuSlotModel(
+          id: '',
+          savedMenuId: '',
+          dayOfWeek: dayOfWeek,
+          mealType: s.mealType,
+          itemType: s.itemType,
+          recipeId: s.recipeId,
+          customName: s.customName,
+        );
+      }).toList();
+
+      return await createSavedWeeklyMenu(
+        menu: SavedWeeklyMenuModel(
+          id: '',
+          environmentId: environmentId,
+          name: name.trim(),
+          description: description?.trim().isNotEmpty == true ? description!.trim() : null,
+          createdAt: DateTime.now(),
+        ),
+        slots: savedSlots,
+      );
+    } catch (e) {
+      debugPrint('[FoodService] Error al guardar semana activa como menú: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  RealtimeChannel? subscribeToActiveCalendar(
+    String environmentId,
+    void Function() onCalendarChanged,
+  ) {
+    try {
+      final channel = _client.channel('active_calendar_realtime_$environmentId');
+      channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'active_calendar_slots',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'environment_id',
+              value: environmentId,
+            ),
+            callback: (_) {
+              onCalendarChanged();
+            },
+          )
+          .subscribe();
+
+      return channel;
+    } catch (e) {
+      debugPrint('[FoodService] Error al suscribir Realtime en calendario: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> unsubscribe(dynamic channel) async {
+    if (channel is RealtimeChannel) {
+      try {
+        await _client.removeChannel(channel);
+      } catch (e) {
+        debugPrint('[FoodService] Error al desuscribir Realtime: $e');
+      }
     }
   }
 
