@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../food/presentation/screens/food_catalog_screen.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../profile/presentation/controllers/profile_controller.dart';
 import '../../domain/models/environment_invitation_model.dart';
@@ -24,6 +25,7 @@ class EnvironmentsHomeView extends StatelessWidget {
   final String? userEmail;
   final VoidCallback? onNavigateToLeisure;
   final VoidCallback? onNavigateToPlanificador;
+  final VoidCallback? onNavigateToFood;
   final VoidCallback? onNavigateToFriends;
   final VoidCallback? onOpenSettings;
   final int rouletteCount;
@@ -36,6 +38,7 @@ class EnvironmentsHomeView extends StatelessWidget {
     this.userEmail,
     this.onNavigateToLeisure,
     this.onNavigateToPlanificador,
+    this.onNavigateToFood,
     this.onNavigateToFriends,
     this.onOpenSettings,
     this.rouletteCount = 0,
@@ -204,6 +207,69 @@ class EnvironmentsHomeView extends StatelessWidget {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        // Módulo Cocina & Alimentación
+        AppCard(
+          onTap: () {
+            if (onNavigateToFood != null) {
+              onNavigateToFood!();
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FoodCatalogScreen(
+                    environmentController: environmentController,
+                  ),
+                ),
+              );
+            }
+          },
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF97316).withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.restaurant_menu_rounded,
+                  color: Color(0xFFF97316),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cocina & Alimentación',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Catálogo colaborativo, recetas caseras y favoritos',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppTheme.textSecondary,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ],
     );
