@@ -489,134 +489,203 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.surfaceDark,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        final asignado = _findMember(tarea.asignadoA);
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            final liveTarea = _controller.tareas.firstWhere(
+              (t) => t.id == tarea.id,
+              orElse: () => tarea,
+            );
+            final asignado = _findMember(liveTarea.asignadoA);
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                MediaQuery.of(ctx).padding.bottom + 24,
               ),
-              const SizedBox(height: 16),
-              Text(
-                tarea.titulo,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              if (tarea.descripcion != null && tarea.descripcion!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  tarea.descripcion!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 16,
-                    color: AppTheme.primaryAccent,
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppTheme.textSecondary.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(height: 16),
                   Text(
-                    'Tiempo estimado: ${tarea.tiempoEstimadoMinutos} min',
+                    liveTarea.titulo,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                ],
-              ),
-              if (asignado != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.person_rounded,
-                      size: 16,
-                      color: AppTheme.primaryAccent,
-                    ),
-                    const SizedBox(width: 6),
+                  if (liveTarea.descripcion != null &&
+                      liveTarea.descripcion!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
                     Text(
-                      'Asignado a: ${asignado.username}',
+                      liveTarea.descripcion!,
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppTheme.textPrimary,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
-                ),
-              ],
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _controller.toggleTarea(tarea.id);
-                      },
-                      icon: Icon(
-                        tarea.estaCompletada
-                            ? Icons.undo_rounded
-                            : Icons.check_circle_rounded,
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
                         size: 16,
+                        color: AppTheme.primaryAccent,
                       ),
-                      label: Text(
-                        tarea.estaCompletada
-                            ? 'Marcar Pendiente'
-                            : 'Completar Tarea',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: tarea.estaCompletada
-                            ? AppTheme.textSecondary
-                            : AppTheme.accentEmerald,
-                        side: BorderSide(
-                          color: tarea.estaCompletada
-                              ? AppTheme.cardBorderColor.withOpacity(0.3)
-                              : AppTheme.accentEmerald.withOpacity(0.5),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Tiempo estimado: ${liveTarea.tiempoEstimadoMinutos} min',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      _controller.eliminarTarea(tarea.id);
-                    },
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppTheme.accentCoral,
+                  if (asignado != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.person_rounded,
+                          size: 16,
+                          color: AppTheme.primaryAccent,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Asignado a: ${asignado.username}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
+                  ],
+                  if (liveTarea.checklist.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      'Subtareas (${liveTarea.checklistItemsCompletados}/${liveTarea.checklistItemsTotales})',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ...liveTarea.checklist.map((item) {
+                      return InkWell(
+                        onTap: () async {
+                          await _controller.toggleChecklistItem(
+                              liveTarea.id, item.id);
+                          setModalState(() {});
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: Row(
+                            children: [
+                              Icon(
+                                item.completado
+                                    ? Icons.check_box_rounded
+                                    : Icons.check_box_outline_blank_rounded,
+                                size: 18,
+                                color: item.completado
+                                    ? AppTheme.accentEmerald
+                                    : AppTheme.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.titulo,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    decoration: item.completado
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: item.completado
+                                        ? AppTheme.textSecondary
+                                        : AppTheme.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _controller.toggleTarea(liveTarea.id);
+                          },
+                          icon: Icon(
+                            liveTarea.estaCompletada
+                                ? Icons.undo_rounded
+                                : Icons.check_circle_rounded,
+                            size: 16,
+                          ),
+                          label: Text(
+                            liveTarea.estaCompletada
+                                ? 'Marcar Pendiente'
+                                : 'Completar Tarea',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: liveTarea.estaCompletada
+                                ? AppTheme.textSecondary
+                                : AppTheme.accentEmerald,
+                            side: BorderSide(
+                              color: liveTarea.estaCompletada
+                                  ? AppTheme.cardBorderColor.withOpacity(0.3)
+                                  : AppTheme.accentEmerald.withOpacity(0.5),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      IconButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _controller.eliminarTarea(liveTarea.id);
+                        },
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppTheme.accentCoral,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

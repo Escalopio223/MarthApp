@@ -505,3 +505,4 @@ class _FlatCalendarHeaderState extends State<FlatCalendarHeader> {
     );
   }
 }
+

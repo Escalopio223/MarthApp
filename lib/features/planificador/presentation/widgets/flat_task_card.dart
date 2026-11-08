@@ -295,3 +295,4 @@ class FlatTaskCard extends StatelessWidget {
     );
   }
 }
+

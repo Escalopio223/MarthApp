@@ -170,3 +170,4 @@ class FlatEventCard extends StatelessWidget {
     );
   }
 }
+
