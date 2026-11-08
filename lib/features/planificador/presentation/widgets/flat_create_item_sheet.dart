@@ -7,15 +7,37 @@ import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
+import '../../domain/models/recurrence_rule.dart';
 import 'recordatorios_selector_widget.dart';
 import 'subtask_list.dart';
 import 'tiempo_estimado_selector.dart';
 
+/// Niveles de prioridad disponibles para las tareas
+enum TaskPriorityLevel {
+  baja('Baja', Icons.keyboard_double_arrow_down_rounded, Color(0xFF10B981)),
+  media('Media', Icons.drag_handle_rounded, Color(0xFF38BDF8)),
+  alta('Alta', Icons.keyboard_double_arrow_up_rounded, Color(0xFFF59E0B)),
+  urgente('Urgente', Icons.priority_high_rounded, Color(0xFFEF4444));
+
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const TaskPriorityLevel(this.label, this.icon, this.color);
+}
+
 /// Modal unificado de creación (Tarea / Evento / Cumpleaños) con estética Flat Design 2.0:
 /// - Selector de tipo en cabecera: [ Tarea ] | [ Evento / Cita ]
-/// - Selector de tiempo estimado configurable con dropdowns de número (1-60) y unidad (Minutos / Horas).
-/// - Opciones avanzadas de Tarea: Recordatorios configurables y Subtareas / Checklist.
-/// - Apartado dedicado para Cumpleaños: Ideas de regalo editables y ordenables (Drag & Drop).
+/// - Selector de tiempo estimado con dropdowns configurables (1-60 y Minutos/Horas).
+/// - Prioridad con selector visual por chips / segmented control.
+/// - Opciones avanzadas completas:
+///   * Prioridad
+///   * Recurrencia / Repetición (No se repite, Diaria, Semanal, Mensual, Días específicos)
+///   * Taxonomía / Etiquetas temáticas del hogar
+///   * Notas / Descripción adicional
+///   * Recordatorios y Alertas configurables
+///   * Subtareas / Checklist interactivo
+/// - Apartado especial para Cumpleaños con lista de regalos Drag & Drop y editable.
 class FlatCreateItemSheet extends StatefulWidget {
   final DateTime defaultDate;
   final List<EnvironmentMemberModel> miembros;
@@ -107,17 +129,42 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   int _selectedTypeIndex = 0;
   bool _isSubmitting = false;
 
-  // Estado Tarea
+  // Estado Tarea: Campos Básicos
   final TextEditingController _taskTitleController = TextEditingController();
   final TextEditingController _taskDescController = TextEditingController();
   late DateTime _taskDate;
   String? _assignedTo;
   int _selectedMinutes = 15;
   String? _selectedProyectoId;
+  String? _taskError;
+
+  // Estado Tarea: Prioridad
+  TaskPriorityLevel _selectedPriority = TaskPriorityLevel.media;
+
+  // Estado Tarea: Etiquetas temáticas del hogar
+  static const List<String> _etiquetasSugeridas = [
+    'Limpieza',
+    'Cocina',
+    'Compras',
+    'Mantenimiento',
+    'Mascotas',
+    'Organización',
+    'Facturas',
+  ];
+  String? _selectedEtiqueta;
+  final TextEditingController _customTagController = TextEditingController();
+  bool _isAddingCustomTag = false;
+
+  // Estado Tarea: Recurrencia / Repetición
+  // 'none' | 'daily' | 'weekly' | 'monthly' | 'specific_days'
+  String _recurrenceMode = 'none';
+  int _recurrenceInterval = 1;
+  final Set<int> _selectedDaysOfWeek = {}; // 1 = Lun, 7 = Dom
+
+  // Estado Tarea: Checklist & Recordatorios
   List<ChecklistItemModel> _taskChecklist = [];
   List<RecordatorioTareaModel> _taskRecordatorios = [];
   bool _showAdvancedTaskOptions = false;
-  String? _taskError;
 
   // Estado Evento
   final TextEditingController _eventTitleController = TextEditingController();
@@ -143,6 +190,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   void dispose() {
     _taskTitleController.dispose();
     _taskDescController.dispose();
+    _customTagController.dispose();
     _eventTitleController.dispose();
     _giftIdeaInputController.dispose();
     super.dispose();
@@ -235,6 +283,57 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     }
   }
 
+  /// Compone la descripción enriquecida respetando el protocolo de almacenamiento:
+  /// Prioridad [p:alta], Etiqueta [tag:Limpieza], Recurrencia [rrule:...] y notas libres.
+  String? _composeTaskDescription() {
+    final buffer = StringBuffer();
+
+    // Etiqueta
+    if (_selectedEtiqueta != null && _selectedEtiqueta!.trim().isNotEmpty) {
+      buffer.write('[tag:${_selectedEtiqueta!.trim()}] ');
+    }
+
+    // Prioridad
+    buffer.write('[priority:${_selectedPriority.name}] ');
+
+    // Recurrencia
+    if (_recurrenceMode != 'none') {
+      final rrule = _buildRecurrenceRuleString();
+      if (rrule != null) {
+        buffer.write('[rrule:$rrule] ');
+      }
+    }
+
+    // Texto descriptivo adicional
+    final userNotes = _taskDescController.text.trim();
+    if (userNotes.isNotEmpty) {
+      buffer.write(userNotes);
+    }
+
+    final result = buffer.toString().trim();
+    return result.isNotEmpty ? result : null;
+  }
+
+  String? _buildRecurrenceRuleString() {
+    switch (_recurrenceMode) {
+      case 'daily':
+        return 'FREQ=DAILY;INTERVAL=$_recurrenceInterval';
+      case 'weekly':
+        return 'FREQ=WEEKLY;INTERVAL=$_recurrenceInterval';
+      case 'monthly':
+        return 'FREQ=MONTHLY;INTERVAL=$_recurrenceInterval';
+      case 'specific_days':
+        if (_selectedDaysOfWeek.isEmpty) {
+          return 'FREQ=WEEKLY;INTERVAL=1';
+        }
+        final days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+        final byDays = _selectedDaysOfWeek.map((d) => days[d - 1]).join(',');
+        return 'FREQ=WEEKLY;BYDAY=$byDays';
+      default:
+        return null;
+    }
+  }
+
   Future<void> _submitTask() async {
     final title = _taskTitleController.text.trim();
     if (title.isEmpty) {
@@ -248,14 +347,14 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     });
 
     try {
-      final desc = _taskDescController.text.trim();
+      final desc = _composeTaskDescription();
       await widget.onCreateTask(
         titulo: title,
         fechaLimite: _taskDate,
         asignadoA: _assignedTo,
         tiempoEstimadoMinutos: _selectedMinutes,
         proyectoId: _selectedProyectoId,
-        descripcion: desc.isNotEmpty ? desc : null,
+        descripcion: desc,
         checklist: _taskChecklist,
         recordatorios: _taskRecordatorios,
       );
@@ -650,7 +749,17 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     );
   }
 
+  // ===========================================================================
+  // Opciones Avanzadas de Tarea
+  // ===========================================================================
+
   Widget _buildAdvancedTaskOptions() {
+    final totalConfigurados = (_selectedEtiqueta != null ? 1 : 0) +
+        (_recurrenceMode != 'none' ? 1 : 0) +
+        (_selectedPriority != TaskPriorityLevel.media ? 1 : 0) +
+        _taskRecordatorios.length +
+        _taskChecklist.length;
+
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.darkBackground,
@@ -687,7 +796,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                     ),
                   ),
                   const Spacer(),
-                  if (_taskRecordatorios.isNotEmpty || _taskChecklist.isNotEmpty)
+                  if (totalConfigurados > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       margin: const EdgeInsets.only(right: 6),
@@ -696,7 +805,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        '${_taskRecordatorios.length + _taskChecklist.length} config.',
+                        '$totalConfigurados config.',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -722,7 +831,19 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Descripción opcional
+                  // 1. Prioridad
+                  _buildPrioritySelector(),
+                  const SizedBox(height: 16),
+
+                  // 2. Recurrencia / Repetición
+                  _buildRecurrenceSelector(),
+                  const SizedBox(height: 16),
+
+                  // 3. Taxonomía / Etiquetas del hogar
+                  _buildTagsSelector(),
+                  const SizedBox(height: 16),
+
+                  // 4. Notas / Descripción adicional
                   Text(
                     'Notas / Descripción adicional',
                     style: TextStyle(
@@ -758,7 +879,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Recordatorios y Alertas configurables
+                  // 5. Recordatorios y Alertas configurables
                   RecordatoriosSelectorWidget(
                     recordatoriosIniciales: _taskRecordatorios,
                     fechaLimite: _taskDate,
@@ -768,7 +889,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Subtareas / Checklist interactivo
+                  // 6. Subtareas / Checklist interactivo
                   SubtaskList(
                     items: _taskChecklist,
                     onChanged: (items) {
@@ -781,6 +902,449 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           ],
         ],
       ),
+    );
+  }
+
+  // ===========================================================================
+  // 1. Selector de Prioridad
+  // ===========================================================================
+
+  Widget _buildPrioritySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Prioridad',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: _selectedPriority.color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _selectedPriority.color.withOpacity(0.4),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                _selectedPriority.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: _selectedPriority.color,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceDark,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AppTheme.cardBorderColor.withOpacity(0.15),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: TaskPriorityLevel.values.map((priority) {
+              final isSelected = _selectedPriority == priority;
+              return Expanded(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedPriority = priority);
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? priority.color.withOpacity(0.18)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected
+                            ? priority.color
+                            : Colors.transparent,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          priority.icon,
+                          size: 13,
+                          color: isSelected ? priority.color : AppTheme.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          priority.label,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            color: isSelected ? priority.color : AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // 2. Selector de Recurrencia / Repetición
+  // ===========================================================================
+
+  Widget _buildRecurrenceSelector() {
+    const recurrenceOptions = [
+      {'key': 'none', 'label': 'No se repite'},
+      {'key': 'daily', 'label': 'Diaria'},
+      {'key': 'weekly', 'label': 'Semanal'},
+      {'key': 'monthly', 'label': 'Mensual'},
+      {'key': 'specific_days', 'label': 'Días específicos'},
+    ];
+
+    final diasSemanaNombres = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Repetición / Recurrencia',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: recurrenceOptions.map((opt) {
+              final isSel = _recurrenceMode == opt['key'];
+              return Padding(
+                padding: const EdgeInsets.only(right: 6.0),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _recurrenceMode = opt['key']!);
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSel
+                          ? AppTheme.primaryAccent.withOpacity(0.18)
+                          : AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSel
+                            ? AppTheme.primaryAccent
+                            : AppTheme.cardBorderColor.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      opt['label']!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                        color: isSel ? AppTheme.primaryAccent : AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // Configuración condicional: Intervalo (Diaria / Semanal / Mensual)
+        if (_recurrenceMode == 'daily' ||
+            _recurrenceMode == 'weekly' ||
+            _recurrenceMode == 'monthly') ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppTheme.cardBorderColor.withOpacity(0.15),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _recurrenceMode == 'daily'
+                      ? 'Repetir cada (días):'
+                      : _recurrenceMode == 'weekly'
+                          ? 'Repetir cada (semanas):'
+                          : 'Repetir cada (meses):',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline_rounded, size: 18),
+                      color: _recurrenceInterval > 1
+                          ? AppTheme.primaryAccent
+                          : AppTheme.textSecondary.withOpacity(0.3),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      onPressed: _recurrenceInterval > 1
+                          ? () => setState(() => _recurrenceInterval -= 1)
+                          : null,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        '$_recurrenceInterval',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                      color: AppTheme.primaryAccent,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      onPressed: () => setState(() => _recurrenceInterval += 1),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Configuración condicional: Selección de días específicos
+        if (_recurrenceMode == 'specific_days') ...[
+          const SizedBox(height: 10),
+          Row(
+            children: List.generate(7, (index) {
+              final dayNum = index + 1; // 1 = Lun, 7 = Dom
+              final isDaySelected = _selectedDaysOfWeek.contains(dayNum);
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        if (isDaySelected) {
+                          _selectedDaysOfWeek.remove(dayNum);
+                        } else {
+                          _selectedDaysOfWeek.add(dayNum);
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 140),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDaySelected
+                            ? AppTheme.primaryAccent.withOpacity(0.2)
+                            : AppTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isDaySelected
+                              ? AppTheme.primaryAccent
+                              : AppTheme.cardBorderColor.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          diasSemanaNombres[index],
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isDaySelected ? FontWeight.bold : FontWeight.w600,
+                            color: isDaySelected
+                                ? AppTheme.primaryAccent
+                                : AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // 3. Selector de Taxonomía / Etiquetas del Hogar
+  // ===========================================================================
+
+  Widget _buildTagsSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Categoría / Etiqueta del hogar',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            if (_selectedEtiqueta != null)
+              GestureDetector(
+                onTap: () => setState(() => _selectedEtiqueta = null),
+                child: Text(
+                  'Quitar etiqueta',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.accentCoral,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ..._etiquetasSugeridas.map((tag) {
+                final isSel = _selectedEtiqueta == tag;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6.0),
+                  child: _buildChipTag(
+                    label: '#$tag',
+                    isSelected: isSel,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _selectedEtiqueta = isSel ? null : tag;
+                      });
+                    },
+                  ),
+                );
+              }),
+              // Botón / Input para tag personalizado
+              if (!_isAddingCustomTag)
+                InkWell(
+                  onTap: () => setState(() => _isAddingCustomTag = true),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceDark,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.cardBorderColor.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_rounded, size: 14, color: AppTheme.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Personalizada...',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: 130,
+                  height: 32,
+                  child: TextField(
+                    controller: _customTagController,
+                    autofocus: true,
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+                    decoration: InputDecoration(
+                      hintText: 'Etiqueta...',
+                      hintStyle: TextStyle(
+                        color: AppTheme.textSecondary.withOpacity(0.5),
+                        fontSize: 11,
+                      ),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.check_rounded, size: 14),
+                        color: AppTheme.primaryAccent,
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          final val = _customTagController.text.trim().replaceAll('#', '');
+                          if (val.isNotEmpty) {
+                            setState(() {
+                              _selectedEtiqueta = val;
+                              _isAddingCustomTag = false;
+                              _customTagController.clear();
+                            });
+                          } else {
+                            setState(() => _isAddingCustomTag = false);
+                          }
+                        },
+                      ),
+                    ),
+                    onSubmitted: (val) {
+                      final clean = val.trim().replaceAll('#', '');
+                      if (clean.isNotEmpty) {
+                        setState(() {
+                          _selectedEtiqueta = clean;
+                          _isAddingCustomTag = false;
+                          _customTagController.clear();
+                        });
+                      } else {
+                        setState(() => _isAddingCustomTag = false);
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

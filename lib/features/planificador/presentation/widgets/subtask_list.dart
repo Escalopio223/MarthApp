@@ -93,10 +93,16 @@ class _SubtaskListState extends State<SubtaskList> {
             ),
             filled: true,
             fillColor: AppTheme.darkBackground,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 10,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.cardBorderColor, width: 0.8),
+              borderSide: BorderSide(
+                color: AppTheme.cardBorderColor,
+                width: 0.8,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -116,7 +122,9 @@ class _SubtaskListState extends State<SubtaskList> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryLiquid,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () => Navigator.pop(ctx, controller.text),
             child: const Text('Guardar', style: TextStyle(color: Colors.white)),
@@ -125,7 +133,9 @@ class _SubtaskListState extends State<SubtaskList> {
       ),
     );
 
-    if (result != null && result.trim().isNotEmpty && result.trim() != currentTitle) {
+    if (result != null &&
+        result.trim().isNotEmpty &&
+        result.trim() != currentTitle) {
       HapticFeedback.lightImpact();
       final updated = editSubtaskTitle(widget.items, index, result.trim());
       widget.onChanged(updated);
@@ -198,10 +208,7 @@ class _SubtaskListState extends State<SubtaskList> {
             controller: _inputController,
             focusNode: _inputFocusNode,
             textCapitalization: TextCapitalization.sentences,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppTheme.textPrimary,
-            ),
+            style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
             decoration: InputDecoration(
               hintText: 'Añadir un paso o subtarea...',
               hintStyle: TextStyle(
@@ -244,8 +251,10 @@ class _SubtaskListState extends State<SubtaskList> {
   }
 
   Widget _buildEmptyState() {
-    final message = widget.emptyMessage ??
-        'No hay subtareas añadidas. Divide esta tarea en pasos más sencillos para mayor claridad.';
+    if (widget.emptyMessage == null) {
+      return const SizedBox.shrink();
+    }
+    final message = widget.emptyMessage!;
 
     return Container(
       width: double.infinity,
@@ -361,7 +370,9 @@ class _SubtaskListState extends State<SubtaskList> {
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: widget.isEditable ? () => _handleEditSubtask(index, item.titulo) : null,
+              onTap: widget.isEditable
+                  ? () => _handleEditSubtask(index, item.titulo)
+                  : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Text(
