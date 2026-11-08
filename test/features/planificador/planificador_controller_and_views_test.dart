@@ -736,7 +736,26 @@ void main() {
         // Cabecera de calendario presente
         expect(find.byType(FlatCalendarHeader), findsOneWidget);
 
+        // Barra de búsqueda debajo del calendario presente
+        expect(find.byIcon(Icons.search_rounded), findsOneWidget);
+        expect(find.text('Buscar tareas, eventos, notas...'), findsOneWidget);
+
         // Estado vacío inicial presente
+        expect(find.text('Día despejado'), findsOneWidget);
+
+        // Probar filtrado con el buscador
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Buscar tareas, eventos, notas...'),
+          'cocina',
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Resultados para "cocina"'), findsOneWidget);
+        expect(find.text('Sin resultados'), findsOneWidget);
+
+        // Limpiar búsqueda
+        await tester.tap(find.byIcon(Icons.close_rounded));
+        await tester.pumpAndSettle();
         expect(find.text('Día despejado'), findsOneWidget);
 
         // Botón flotante presente

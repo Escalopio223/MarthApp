@@ -45,6 +45,9 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
   late final PlanificadorController _controller;
   EnvironmentController? _environmentController;
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   static const List<String> _diasSemana = [
     'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
   ];
@@ -133,6 +136,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _controller.removeListener(_onControllerChanged);
     _environmentController?.removeListener(_onEnvironmentChanged);
     if (widget.controller == null) {
@@ -227,8 +231,28 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedDate = _controller.selectedDate;
-    final eventosDelDia = _controller.eventosForSelectedDate;
-    final tareasDelDia = _controller.tareasForSelectedDate;
+    final isSearching = _searchQuery.trim().isNotEmpty;
+    final queryLower = _searchQuery.trim().toLowerCase();
+
+    // Filtrado de eventos y tareas si hay búsqueda activa o vista normal por día
+    final eventosFiltrados = isSearching
+        ? _controller.eventos.where((e) {
+            final titulo = e.titulo.toLowerCase();
+            final desc = (e.descripcion ?? '').toLowerCase();
+            final persona = (e.personaCumpleanos ?? '').toLowerCase();
+            return titulo.contains(queryLower) ||
+                desc.contains(queryLower) ||
+                persona.contains(queryLower);
+          }).toList()
+        : _controller.eventosForSelectedDate;
+
+    final tareasFiltradas = isSearching
+        ? _controller.tareas.where((t) {
+            final titulo = t.titulo.toLowerCase();
+            final desc = (t.descripcion ?? '').toLowerCase();
+            return titulo.contains(queryLower) || desc.contains(queryLower);
+          }).toList()
+        : _controller.tareasForSelectedDate;
 
     final content = Column(
       children: [
@@ -242,7 +266,10 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
           onMonthChanged: (m) => _controller.setFocusedMonth(m),
         ),
 
-        // 2. Feed del Día Seleccionado (Scroll vertical natural)
+        // 2. Buscador de tareas y eventos (Flat 2.0 justo debajo del calendario)
+        _buildSearchBar(),
+
+        // 3. Feed del Día Seleccionado o Resultados de Búsqueda
         Expanded(
           child: _controller.isLoading
               ? const Center(
@@ -252,21 +279,28 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                   onRefresh: () => _controller.recargar(),
                   color: AppTheme.primaryAccent,
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 88),
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 88),
                     children: [
-                      // Subcabecera de fecha actual del feed
-                      _buildFeedDateHeader(selectedDate),
-                      const SizedBox(height: 12),
+                      if (isSearching)
+                        _buildSearchResultsHeader(
+                          eventosCount: eventosFiltrados.length,
+                          tareasCount: tareasFiltradas.length,
+                        )
+                      else ...[
+                        // Subcabecera de fecha actual del feed
+                        _buildFeedDateHeader(selectedDate),
+                        const SizedBox(height: 12),
+                      ],
 
                       // Bloque A: Eventos / Citas (Solo si existen)
-                      if (eventosDelDia.isNotEmpty) ...[
+                      if (eventosFiltrados.isNotEmpty) ...[
                         _buildSectionTitle(
-                          title: 'Eventos y Citas',
-                          count: eventosDelDia.length,
+                          title: isSearching ? 'Eventos encontrados' : 'Eventos y Citas',
+                          count: eventosFiltrados.length,
                           icon: Icons.event_note_rounded,
                         ),
                         const SizedBox(height: 8),
-                        ...eventosDelDia.map(
+                        ...eventosFiltrados.map(
                           (ev) => FlatEventCard(
                             evento: ev,
                             onDelete: () => _confirmarEliminarEvento(ev),
@@ -277,18 +311,20 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
 
                       // Bloque B: Tareas Domésticas
                       _buildSectionTitle(
-                        title: 'Tareas del Día',
-                        count: tareasDelDia.length,
+                        title: isSearching ? 'Tareas encontradas' : 'Tareas del Día',
+                        count: tareasFiltradas.length,
                         icon: Icons.checklist_rounded,
                       ),
                       const SizedBox(height: 8),
 
-                      if (tareasDelDia.isEmpty && eventosDelDia.isEmpty)
-                        _buildEmptyState()
-                      else if (tareasDelDia.isEmpty)
+                      if (tareasFiltradas.isEmpty && eventosFiltrados.isEmpty)
+                        isSearching
+                            ? _buildSearchEmptyState()
+                            : _buildEmptyState()
+                      else if (tareasFiltradas.isEmpty)
                         _buildSinTareasState()
                       else
-                        ...tareasDelDia.map((t) {
+                        ...tareasFiltradas.map((t) {
                           final asignado = _findMember(t.asignadoA);
                           return FlatTaskCard(
                             tarea: t,
@@ -345,6 +381,161 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         child: content,
       ),
       floatingActionButton: fab,
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      height: 42,
+      decoration: BoxDecoration(
+        color: AppTheme.darkBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _searchQuery.isNotEmpty
+              ? AppTheme.primaryAccent.withOpacity(0.5)
+              : AppTheme.cardBorderColor.withOpacity(0.18),
+          width: 1,
+        ),
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: TextStyle(
+          color: AppTheme.textPrimary,
+          fontSize: 13,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'Buscar tareas, eventos, notas...',
+          hintStyle: TextStyle(
+            color: AppTheme.textSecondary.withOpacity(0.5),
+            fontSize: 12.5,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: _searchQuery.isNotEmpty
+                ? AppTheme.primaryAccent
+                : AppTheme.textSecondary.withOpacity(0.6),
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 16),
+                  color: AppTheme.textSecondary,
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _searchController.clear();
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 11),
+        ),
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsHeader({
+    required int eventosCount,
+    required int tareasCount,
+  }) {
+    final total = eventosCount + tareasCount;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Resultados para "$_searchQuery"',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryAccent.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$total resultado${total == 1 ? '' : 's'}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primaryAccent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchEmptyState() {
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.cardBorderColor.withOpacity(0.12),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 40,
+            color: AppTheme.textSecondary.withOpacity(0.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Sin resultados',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'No se encontraron tareas ni eventos que coincidan con "$_searchQuery".',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _searchController.clear();
+                _searchQuery = '';
+              });
+            },
+            icon: const Icon(Icons.clear_rounded, size: 16),
+            label: const Text('Limpiar búsqueda'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryAccent,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
