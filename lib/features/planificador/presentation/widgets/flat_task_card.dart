@@ -154,8 +154,9 @@ class FlatTaskCard extends StatelessWidget {
   }
 
   Widget _buildCheckbox(bool isDone) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return InkWell(
+      key: const ValueKey('task_card_checkbox'),
+      borderRadius: BorderRadius.circular(6),
       onTap: () {
         if (!isDone) {
           HapticFeedback.mediumImpact();
@@ -259,7 +260,9 @@ class FlatTaskCard extends StatelessWidget {
         opacity: isDone ? 0.6 : 1.0,
         child: UserAvatar(
           avatarData: avatarData,
-          radius: 13,
+          username: member.username,
+          size: 26,
+          showBorder: false,
         ),
       );
     }

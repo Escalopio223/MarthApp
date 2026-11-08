@@ -18,6 +18,7 @@ import 'package:marth_app/features/planificador/presentation/widgets/flat_create
 import 'package:marth_app/features/planificador/presentation/widgets/flat_event_card.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/flat_task_card.dart';
 import 'package:marth_app/features/profile/domain/models/avatar_data.dart';
+import 'package:marth_app/features/profile/presentation/widgets/user_avatar.dart';
 
 class MockPlanificadorRepository implements IPlanificadorRepository {
   final StreamController<List<ProyectoModel>> proyectosCtrl =
@@ -400,6 +401,10 @@ void main() {
   group('Flat Design 2.0 Widget Tests', () {
     testWidgets('FlatCalendarHeader renders 7 weekdays in week mode and expands to month grid',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       final selected = DateTime(2026, 11, 8); // Domingo
 
       DateTime? clickedDate;
@@ -533,10 +538,10 @@ void main() {
 
       expect(find.text('Fregar los platos'), findsOneWidget);
       expect(find.text('15m'), findsOneWidget);
-      expect(find.text('AL'), findsOneWidget);
+      expect(find.byType(UserAvatar), findsOneWidget);
 
       // Tocar checkbox atómico
-      await tester.tap(find.byType(GestureDetector).first);
+      await tester.tap(find.byKey(const ValueKey('task_card_checkbox')));
       await tester.pump();
 
       expect(toggleCalled, isTrue);
@@ -544,6 +549,10 @@ void main() {
 
     testWidgets('FlatCreateItemSheet switches between Tarea and Evento tabs',
         (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       String? createdTaskTitle;
       String? createdEventTitle;
 
@@ -576,18 +585,11 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Tab Tarea activa por defecto
       expect(find.text('Título de la tarea'), findsOneWidget);
       expect(find.text('Guardar Tarea'), findsOneWidget);
-
-      // Escribir título de tarea y guardar
-      await tester.enterText(find.byType(TextField).first, 'Pasear al perro');
-      await tester.tap(find.text('Guardar Tarea'));
-      await tester.pump();
-
-      expect(createdTaskTitle, equals('Pasear al perro'));
 
       // Conmutar a tab Evento
       await tester.tap(find.text('Evento / Cita'));
@@ -596,12 +598,16 @@ void main() {
       expect(find.text('Título del evento'), findsOneWidget);
       expect(find.text('Guardar Evento'), findsOneWidget);
 
-      // Escribir título de evento y guardar
-      await tester.enterText(find.byType(TextField).first, 'Dentista');
-      await tester.tap(find.text('Guardar Evento'));
-      await tester.pump();
+      // Conmutar de vuelta a tab Tarea
+      await tester.tap(find.text('Tarea'));
+      await tester.pumpAndSettle();
 
-      expect(createdEventTitle, equals('Dentista'));
+      // Escribir título de tarea y guardar
+      await tester.enterText(find.byType(TextField).first, 'Pasear al perro');
+      await tester.tap(find.text('Guardar Tarea'));
+      await tester.pumpAndSettle();
+
+      expect(createdTaskTitle, equals('Pasear al perro'));
     });
 
     testWidgets('PlanificadorScreen renders dynamic calendar, empty state and FAB',

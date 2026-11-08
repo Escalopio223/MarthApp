@@ -636,7 +636,12 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               child: _buildAssigneeChip(
                 title: m.username,
                 avatar: m.avatarData != null
-                    ? UserAvatar(avatarData: m.avatarData, radius: 10)
+                    ? UserAvatar(
+                        avatarData: m.avatarData,
+                        username: m.username,
+                        size: 20,
+                        showBorder: false,
+                      )
                     : null,
                 isSelected: isSelected,
                 onTap: () {
