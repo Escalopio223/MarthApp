@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_background.dart';
 import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
+import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/evento_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
 import '../../domain/models/tarea_model.dart';
@@ -182,6 +183,9 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         String? asignadoA,
         int tiempoEstimadoMinutos = 15,
         String? proyectoId,
+        String? descripcion,
+        List<ChecklistItemModel> checklist = const [],
+        List<RecordatorioTareaModel> recordatorios = const [],
       }) async {
         await _controller.crearTarea(
           titulo: titulo,
@@ -189,6 +193,9 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
           asignadoA: asignadoA,
           tiempoEstimadoMinutos: tiempoEstimadoMinutos,
           proyectoId: proyectoId,
+          descripcion: descripcion,
+          checklist: checklist,
+          recordatorios: recordatorios,
         );
       },
       onCreateEvent: ({
@@ -197,6 +204,9 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         DateTime? fechaFin,
         bool esTodoElDia = false,
         String tipo = 'evento_general',
+        String? personaCumpleanos,
+        String? ideasRegalo,
+        List<ChecklistItemModel> checklist = const [],
         List<RecordatorioTareaModel> recordatorios = const [],
       }) async {
         await _controller.crearEvento(
@@ -205,6 +215,9 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
           fechaFin: fechaFin,
           esTodoElDia: esTodoElDia,
           tipo: tipo,
+          personaCumpleanos: personaCumpleanos,
+          ideasRegalo: ideasRegalo,
+          checklist: checklist,
           recordatorios: recordatorios,
         );
       },

@@ -4,13 +4,18 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../profile/presentation/widgets/user_avatar.dart';
+import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
+import 'recordatorios_selector_widget.dart';
+import 'subtask_list.dart';
+import 'tiempo_estimado_selector.dart';
 
-/// Modal unificado de creación (Tarea / Evento) con estética Flat Design 2.0:
-/// - Selector de tipo en cabecera: [ Tarea ] | [ Evento ]
-/// - Formulario dinámico simplificado y de guardado rápido.
-/// - Selector rápido de responsable, tiempo estimado y recordatorios sin anidamientos.
+/// Modal unificado de creación (Tarea / Evento / Cumpleaños) con estética Flat Design 2.0:
+/// - Selector de tipo en cabecera: [ Tarea ] | [ Evento / Cita ]
+/// - Selector de tiempo estimado configurable con dropdowns de número (1-60) y unidad (Minutos / Horas).
+/// - Opciones avanzadas de Tarea: Recordatorios configurables y Subtareas / Checklist.
+/// - Apartado dedicado para Cumpleaños: Ideas de regalo editables y ordenables (Drag & Drop).
 class FlatCreateItemSheet extends StatefulWidget {
   final DateTime defaultDate;
   final List<EnvironmentMemberModel> miembros;
@@ -22,6 +27,9 @@ class FlatCreateItemSheet extends StatefulWidget {
     String? asignadoA,
     int tiempoEstimadoMinutos,
     String? proyectoId,
+    String? descripcion,
+    List<ChecklistItemModel> checklist,
+    List<RecordatorioTareaModel> recordatorios,
   }) onCreateTask;
   final Future<void> Function({
     required String titulo,
@@ -29,6 +37,9 @@ class FlatCreateItemSheet extends StatefulWidget {
     DateTime? fechaFin,
     bool esTodoElDia,
     String tipo,
+    String? personaCumpleanos,
+    String? ideasRegalo,
+    List<ChecklistItemModel> checklist,
     List<RecordatorioTareaModel> recordatorios,
   }) onCreateEvent;
 
@@ -54,6 +65,9 @@ class FlatCreateItemSheet extends StatefulWidget {
       String? asignadoA,
       int tiempoEstimadoMinutos,
       String? proyectoId,
+      String? descripcion,
+      List<ChecklistItemModel> checklist,
+      List<RecordatorioTareaModel> recordatorios,
     }) onCreateTask,
     required Future<void> Function({
       required String titulo,
@@ -61,6 +75,9 @@ class FlatCreateItemSheet extends StatefulWidget {
       DateTime? fechaFin,
       bool esTodoElDia,
       String tipo,
+      String? personaCumpleanos,
+      String? ideasRegalo,
+      List<ChecklistItemModel> checklist,
       List<RecordatorioTareaModel> recordatorios,
     }) onCreateEvent,
   }) {
@@ -92,20 +109,26 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
   // Estado Tarea
   final TextEditingController _taskTitleController = TextEditingController();
+  final TextEditingController _taskDescController = TextEditingController();
   late DateTime _taskDate;
   String? _assignedTo;
   int _selectedMinutes = 15;
   String? _selectedProyectoId;
+  List<ChecklistItemModel> _taskChecklist = [];
+  List<RecordatorioTareaModel> _taskRecordatorios = [];
+  bool _showAdvancedTaskOptions = false;
   String? _taskError;
 
   // Estado Evento
   final TextEditingController _eventTitleController = TextEditingController();
+  final TextEditingController _giftIdeaInputController = TextEditingController();
   late DateTime _eventDate;
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay? _endTime;
   bool _isAllDay = false;
   String _eventType = 'evento_general'; // 'evento_general' | 'cumpleanos'
   int? _reminderMinutesBefore; // null, 15, 60, 1440
+  List<String> _ideasRegaloList = [];
   String? _eventError;
 
   @override
@@ -119,7 +142,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   @override
   void dispose() {
     _taskTitleController.dispose();
+    _taskDescController.dispose();
     _eventTitleController.dispose();
+    _giftIdeaInputController.dispose();
     super.dispose();
   }
 
@@ -223,12 +248,16 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     });
 
     try {
+      final desc = _taskDescController.text.trim();
       await widget.onCreateTask(
         titulo: title,
         fechaLimite: _taskDate,
         asignadoA: _assignedTo,
         tiempoEstimadoMinutos: _selectedMinutes,
         proyectoId: _selectedProyectoId,
+        descripcion: desc.isNotEmpty ? desc : null,
+        checklist: _taskChecklist,
+        recordatorios: _taskRecordatorios,
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -285,12 +314,18 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
         );
       }
 
+      final ideasRegaloStr = _ideasRegaloList.isNotEmpty
+          ? _ideasRegaloList.map((idea) => '- $idea').join('\n')
+          : null;
+
       await widget.onCreateEvent(
         titulo: title,
         fechaInicio: startDateTime,
         fechaFin: endDateTime,
         esTodoElDia: _isAllDay,
         tipo: _eventType,
+        personaCumpleanos: _eventType == 'cumpleanos' ? title : null,
+        ideasRegalo: ideasRegaloStr,
         recordatorios: recordatorios,
       );
       if (mounted) Navigator.pop(context);
@@ -311,6 +346,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
         decoration: BoxDecoration(
           color: AppTheme.surfaceDark,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -547,17 +585,13 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         const SizedBox(height: 16),
 
-        // Selector de Tiempo Estimado (Chips rápidos: 5m, 15m, 30m, 60m)
-        Text(
-          'Tiempo estimado',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
-          ),
+        // Selector de Tiempo Estimado configurable con dos desplegables (número 1-60 y unidad Minutos/Horas)
+        TiempoEstimadoSelector(
+          initialMinutes: _selectedMinutes,
+          onChanged: (mins) {
+            setState(() => _selectedMinutes = mins);
+          },
         ),
-        const SizedBox(height: 8),
-        _buildMinutesChips(),
 
         // Selector de Proyecto opcional
         if (widget.proyectos.isNotEmpty) ...[
@@ -573,6 +607,11 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           const SizedBox(height: 8),
           _buildProjectSelector(),
         ],
+
+        const SizedBox(height: 16),
+
+        // Acordeón / Desplegable Flat 2.0 de Opciones Avanzadas
+        _buildAdvancedTaskOptions(),
 
         const SizedBox(height: 24),
 
@@ -608,6 +647,140 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAdvancedTaskOptions() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.darkBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.cardBorderColor.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _showAdvancedTaskOptions = !_showAdvancedTaskOptions);
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 16,
+                    color: AppTheme.primaryAccent,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Opciones avanzadas',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_taskRecordatorios.isNotEmpty || _taskChecklist.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryAccent.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${_taskRecordatorios.length + _taskChecklist.length} config.',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryAccent,
+                        ),
+                      ),
+                    ),
+                  Icon(
+                    _showAdvancedTaskOptions
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.textSecondary,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_showAdvancedTaskOptions) ...[
+            const Divider(height: 1, thickness: 1, color: Colors.white10),
+            Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Descripción opcional
+                  Text(
+                    'Notas / Descripción adicional',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _taskDescController,
+                    maxLines: 2,
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Detalles u observaciones...',
+                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                      filled: true,
+                      fillColor: AppTheme.surfaceDark,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: AppTheme.primaryAccent, width: 1.2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Recordatorios y Alertas configurables
+                  RecordatoriosSelectorWidget(
+                    recordatoriosIniciales: _taskRecordatorios,
+                    fechaLimite: _taskDate,
+                    onChanged: (recs) {
+                      setState(() => _taskRecordatorios = recs);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Subtareas / Checklist interactivo
+                  SubtaskList(
+                    items: _taskChecklist,
+                    onChanged: (items) {
+                      setState(() => _taskChecklist = items);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -708,56 +881,6 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     );
   }
 
-  Widget _buildMinutesChips() {
-    const minutesList = [5, 15, 30, 60];
-
-    return Row(
-      children: minutesList.map((mins) {
-        final isSelected = _selectedMinutes == mins;
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3.0),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedMinutes = mins);
-              },
-              borderRadius: BorderRadius.circular(8),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppTheme.primaryAccent.withOpacity(0.15)
-                      : AppTheme.darkBackground,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryAccent
-                        : AppTheme.cardBorderColor.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    '${mins}m',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: isSelected
-                          ? AppTheme.primaryAccent
-                          : AppTheme.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
   Widget _buildProjectSelector() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -820,7 +943,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   // ===========================================================================
-  // Formulario: Evento / Cita
+  // Formulario: Evento / Cita / Cumpleaños
   // ===========================================================================
 
   Widget _buildEventForm() {
@@ -851,7 +974,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         // Título del evento
         Text(
-          'Título del evento',
+          _eventType == 'cumpleanos' ? 'Persona que cumple años' : 'Título del evento',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -864,7 +987,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           autofocus: true,
           style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
           decoration: InputDecoration(
-            hintText: 'Ej. Médico 10:30, Cumpleaños de Lucas...',
+            hintText: _eventType == 'cumpleanos'
+                ? 'Ej. Lucas, Mamá, Juan...'
+                : 'Ej. Médico 10:30, Cena familiar...',
             hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
             filled: true,
             fillColor: AppTheme.darkBackground,
@@ -1098,6 +1223,12 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           ),
         ),
 
+        // Apartado especial para Cumpleaños: Ideas de Regalo (Draggable & Editable)
+        if (_eventType == 'cumpleanos') ...[
+          const SizedBox(height: 18),
+          _buildBirthdayGiftIdeasSection(),
+        ],
+
         const SizedBox(height: 24),
 
         // Botón principal de guardado de evento
@@ -1135,6 +1266,277 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
         ),
       ],
     );
+  }
+
+  // ===========================================================================
+  // Ideas de Regalo para Cumpleaños (Draggable & Editable)
+  // ===========================================================================
+
+  Widget _buildBirthdayGiftIdeasSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.darkBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.cardBorderColor.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.card_giftcard_rounded,
+                size: 16,
+                color: AppTheme.accentCoral,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Ideas de Regalo',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              if (_ideasRegaloList.isNotEmpty)
+                Text(
+                  '${_ideasRegaloList.length} ideas',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Campo para agregar nueva idea
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _giftIdeaInputController,
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Ej. Libro de cocina, zapatillas...',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary.withOpacity(0.5),
+                      fontSize: 12,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.surfaceDark,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.accentCoral, width: 1.2),
+                    ),
+                  ),
+                  onSubmitted: (_) => _addGiftIdea(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: _addGiftIdea,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentCoral.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.accentCoral, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, size: 16, color: AppTheme.accentCoral),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Añadir',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.accentCoral,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Lista reordenable y editable de ideas
+          if (_ideasRegaloList.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Añade ideas de regalo para recordar qué regalar y ordénalas arrastrando.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary.withOpacity(0.7),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            )
+          else
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _ideasRegaloList.length,
+              onReorder: (oldIndex, newIndex) {
+                HapticFeedback.mediumImpact();
+                setState(() {
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  final item = _ideasRegaloList.removeAt(oldIndex);
+                  _ideasRegaloList.insert(newIndex, item);
+                });
+              },
+              itemBuilder: (context, index) {
+                final idea = _ideasRegaloList[index];
+                return Container(
+                  key: ValueKey('gift_idea_${index}_$idea'),
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.cardBorderColor.withOpacity(0.15),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: Icon(
+                          Icons.drag_indicator_rounded,
+                          size: 18,
+                          color: AppTheme.textSecondary.withOpacity(0.6),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          idea,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _editGiftIdea(index, idea),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            size: 15,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() => _ideasRegaloList.removeAt(index));
+                        },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 15,
+                            color: AppTheme.accentCoral,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _addGiftIdea() {
+    final text = _giftIdeaInputController.text.trim();
+    if (text.isEmpty) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _ideasRegaloList.add(text);
+      _giftIdeaInputController.clear();
+    });
+  }
+
+  Future<void> _editGiftIdea(int index, String currentText) async {
+    final controller = TextEditingController(text: currentText);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Editar idea de regalo',
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Idea de regalo...',
+            filled: true,
+            fillColor: AppTheme.darkBackground,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          onSubmitted: (val) => Navigator.pop(ctx, val),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentCoral,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Guardar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.trim().isNotEmpty) {
+      HapticFeedback.lightImpact();
+      setState(() {
+        _ideasRegaloList[index] = result.trim();
+      });
+    }
   }
 
   Widget _buildReminderChip({
@@ -1175,4 +1577,3 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     );
   }
 }
-

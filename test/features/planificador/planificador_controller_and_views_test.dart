@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/features/environments/domain/models/environment_member_model.dart';
@@ -17,6 +18,9 @@ import 'package:marth_app/features/planificador/presentation/widgets/flat_calend
 import 'package:marth_app/features/planificador/presentation/widgets/flat_create_item_sheet.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/flat_event_card.dart';
 import 'package:marth_app/features/planificador/presentation/widgets/flat_task_card.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/recordatorios_selector_widget.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/subtask_list.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/tiempo_estimado_selector.dart';
 import 'package:marth_app/features/profile/domain/models/avatar_data.dart';
 import 'package:marth_app/features/profile/presentation/widgets/user_avatar.dart';
 
@@ -187,7 +191,8 @@ class MockPlanificadorRepository implements IPlanificadorRepository {
 
   @override
   Future<List<RecordatorioTareaModel>> obtenerRecordatoriosTarea(
-      String tareaId) async {
+    String tareaId,
+  ) async {
     return const [];
   }
 
@@ -375,180 +380,190 @@ void main() {
       expect(controller.diaTieneItems(today), isTrue);
     });
 
-    test('toggleTarea updates state optimistically and calls repository', () async {
-      final now = DateTime.now();
-      mockRepo.tareas = [
-        TareaModel(
-          id: 't1',
-          entornoId: 'env-1',
-          titulo: 'Barrer la casa',
-          estado: 'pendiente',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
+    test(
+      'toggleTarea updates state optimistically and calls repository',
+      () async {
+        final now = DateTime.now();
+        mockRepo.tareas = [
+          TareaModel(
+            id: 't1',
+            entornoId: 'env-1',
+            titulo: 'Barrer la casa',
+            estado: 'pendiente',
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ];
 
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        controller.setEntorno('env-1');
+        mockRepo.emitAll();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      await controller.toggleTarea('t1');
+        await controller.toggleTarea('t1');
 
-      expect(controller.tareas.first.estaCompletada, isTrue);
-    });
+        expect(controller.tareas.first.estaCompletada, isTrue);
+      },
+    );
   });
 
   group('Flat Design 2.0 Widget Tests', () {
-    testWidgets('FlatCalendarHeader renders 7 weekdays in week mode and expands to month grid',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    testWidgets(
+      'FlatCalendarHeader renders 7 weekdays in week mode and expands to month grid',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      final selected = DateTime(2026, 11, 8); // Domingo
+        final selected = DateTime(2026, 11, 8); // Domingo
 
-      DateTime? clickedDate;
+        DateTime? clickedDate;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlatCalendarHeader(
-              selectedDate: selected,
-              onDateSelected: (d) => clickedDate = d,
-              hasItemsOnDate: (d) => d.day == 8,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: FlatCalendarHeader(
+                selectedDate: selected,
+                onDateSelected: (d) => clickedDate = d,
+                hasItemsOnDate: (d) => d.day == 8,
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      // Verificar que se renderizan las etiquetas de los 7 días
-      expect(find.text('L'), findsWidgets);
-      expect(find.text('M'), findsWidgets);
-      expect(find.text('X'), findsWidgets);
-      expect(find.text('J'), findsWidgets);
-      expect(find.text('V'), findsWidgets);
-      expect(find.text('S'), findsWidgets);
-      expect(find.text('D'), findsWidgets);
+        // Verificar que se renderizan las etiquetas de los 7 días
+        expect(find.text('L'), findsWidgets);
+        expect(find.text('M'), findsWidgets);
+        expect(find.text('X'), findsWidgets);
+        expect(find.text('J'), findsWidgets);
+        expect(find.text('V'), findsWidgets);
+        expect(find.text('S'), findsWidgets);
+        expect(find.text('D'), findsWidgets);
 
-      // Tocar en el botón del mes para expandir al modo mes
-      await tester.tap(find.textContaining('Noviembre 2026'));
-      await tester.pumpAndSettle();
+        // Tocar en el botón del mes para expandir al modo mes
+        await tester.tap(find.textContaining('Noviembre 2026'));
+        await tester.pumpAndSettle();
 
-      // Encontrar días del mes
-      expect(find.text('15'), findsWidgets);
+        // Encontrar días del mes
+        expect(find.text('15'), findsWidgets);
 
-      // Tocar el día 15 en la cuadrícula mensual: debe llamar al callback y colapsarse a modo semana
-      await tester.tap(find.text('15').first);
-      await tester.pumpAndSettle();
+        // Tocar el día 15 en la cuadrícula mensual: debe llamar al callback y colapsarse a modo semana
+        await tester.tap(find.text('15').first);
+        await tester.pumpAndSettle();
 
-      expect(clickedDate, isNotNull);
-      expect(clickedDate!.day, equals(15));
-    });
+        expect(clickedDate, isNotNull);
+        expect(clickedDate!.day, equals(15));
+      },
+    );
 
-    testWidgets('FlatEventCard renders appointment and birthday card with subtle pastel styling',
-        (tester) async {
-      final now = DateTime(2026, 11, 8, 10, 30);
+    testWidgets(
+      'FlatEventCard renders appointment and birthday card with subtle pastel styling',
+      (tester) async {
+        final now = DateTime(2026, 11, 8, 10, 30);
 
-      final citaMedica = EventoModel(
-        id: 'ev-1',
-        entornoId: 'env-1',
-        titulo: 'Consulta Médica',
-        tipo: 'evento_general',
-        fechaInicio: now,
-        createdBy: 'u-1',
-        createdAt: now,
-      );
+        final citaMedica = EventoModel(
+          id: 'ev-1',
+          entornoId: 'env-1',
+          titulo: 'Consulta Médica',
+          tipo: 'evento_general',
+          fechaInicio: now,
+          createdBy: 'u-1',
+          createdAt: now,
+        );
 
-      final cumpleanos = EventoModel(
-        id: 'ev-2',
-        entornoId: 'env-1',
-        titulo: 'Cumpleaños de Laura',
-        tipo: 'cumpleanos',
-        fechaInicio: now,
-        personaCumpleanos: 'Laura',
-        ideasRegalo: 'Libro de diseño',
-        createdBy: 'u-1',
-        createdAt: now,
-      );
+        final cumpleanos = EventoModel(
+          id: 'ev-2',
+          entornoId: 'env-1',
+          titulo: 'Cumpleaños de Laura',
+          tipo: 'cumpleanos',
+          fechaInicio: now,
+          personaCumpleanos: 'Laura',
+          ideasRegalo: 'Libro de diseño',
+          createdBy: 'u-1',
+          createdAt: now,
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Column(
-              children: [
-                FlatEventCard(evento: citaMedica),
-                FlatEventCard(evento: cumpleanos),
-              ],
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  FlatEventCard(evento: citaMedica),
+                  FlatEventCard(evento: cumpleanos),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      // Cita médica
-      expect(find.text('Consulta Médica'), findsOneWidget);
-      expect(find.text('10:30'), findsOneWidget);
+        // Cita médica
+        expect(find.text('Consulta Médica'), findsOneWidget);
+        expect(find.text('10:30'), findsOneWidget);
 
-      // Cumpleaños con regalo y pastel
-      expect(find.text('Cumpleaños de Laura'), findsOneWidget);
-      expect(find.text('Regalo: Libro de diseño'), findsOneWidget);
-      expect(find.text('Cumpleaños'), findsOneWidget);
-      expect(find.byIcon(Icons.cake_rounded), findsOneWidget);
-    });
+        // Cumpleaños con regalo y pastel
+        expect(find.text('Cumpleaños de Laura'), findsOneWidget);
+        expect(find.text('Regalo: Libro de diseño'), findsOneWidget);
+        expect(find.text('Cumpleaños'), findsOneWidget);
+        expect(find.byIcon(Icons.cake_rounded), findsOneWidget);
+      },
+    );
 
-    testWidgets('FlatTaskCard renders checkbox, title, estimated time chip and member avatar',
-        (tester) async {
-      final now = DateTime.now();
+    testWidgets(
+      'FlatTaskCard renders checkbox, title, estimated time chip and member avatar',
+      (tester) async {
+        final now = DateTime.now();
 
-      final tarea = TareaModel(
-        id: 't-1',
-        entornoId: 'env-1',
-        titulo: 'Fregar los platos',
-        tiempoEstimadoMinutos: 15,
-        estado: 'pendiente',
-        asignadoA: 'u-1',
-        createdAt: now,
-        updatedAt: now,
-      );
+        final tarea = TareaModel(
+          id: 't-1',
+          entornoId: 'env-1',
+          titulo: 'Fregar los platos',
+          tiempoEstimadoMinutos: 15,
+          estado: 'pendiente',
+          asignadoA: 'u-1',
+          createdAt: now,
+          updatedAt: now,
+        );
 
-      final miembro = EnvironmentMemberModel(
-        environmentId: 'env-1',
-        userId: 'u-1',
-        role: 'member',
-        joinedAt: now,
-        username: 'Alba',
-        avatarData: const AvatarData.initials(),
-      );
+        final miembro = EnvironmentMemberModel(
+          environmentId: 'env-1',
+          userId: 'u-1',
+          role: 'member',
+          joinedAt: now,
+          username: 'Alba',
+          avatarData: const AvatarData.initials(),
+        );
 
-      bool toggleCalled = false;
+        bool toggleCalled = false;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FlatTaskCard(
-              tarea: tarea,
-              asignado: miembro,
-              onToggle: () => toggleCalled = true,
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: FlatTaskCard(
+                tarea: tarea,
+                asignado: miembro,
+                onToggle: () => toggleCalled = true,
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      expect(find.text('Fregar los platos'), findsOneWidget);
-      expect(find.text('15m'), findsOneWidget);
-      expect(find.byType(UserAvatar), findsOneWidget);
+        expect(find.text('Fregar los platos'), findsOneWidget);
+        expect(find.text('15m'), findsOneWidget);
+        expect(find.byType(UserAvatar), findsOneWidget);
 
-      // Tocar checkbox atómico
-      await tester.tap(find.byKey(const ValueKey('task_card_checkbox')));
-      await tester.pump();
+        // Tocar checkbox atómico
+        await tester.tap(find.byKey(const ValueKey('task_card_checkbox')));
+        await tester.pump();
 
-      expect(toggleCalled, isTrue);
-    });
+        expect(toggleCalled, isTrue);
+      },
+    );
 
-    testWidgets('FlatCreateItemSheet switches between Tarea and Evento tabs',
-        (tester) async {
+    testWidgets('FlatCreateItemSheet switches between Tarea and Evento tabs', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -562,25 +577,33 @@ void main() {
             body: FlatCreateItemSheet(
               defaultDate: DateTime.now(),
               miembros: const [],
-              onCreateTask: ({
-                required String titulo,
-                DateTime? fechaLimite,
-                String? asignadoA,
-                int tiempoEstimadoMinutos = 15,
-                String? proyectoId,
-              }) async {
-                createdTaskTitle = titulo;
-              },
-              onCreateEvent: ({
-                required String titulo,
-                required DateTime fechaInicio,
-                DateTime? fechaFin,
-                bool esTodoElDia = false,
-                String tipo = 'evento_general',
-                List<RecordatorioTareaModel> recordatorios = const [],
-              }) async {
-                createdEventTitle = titulo;
-              },
+              onCreateTask:
+                  ({
+                    required String titulo,
+                    DateTime? fechaLimite,
+                    String? asignadoA,
+                    int tiempoEstimadoMinutos = 15,
+                    String? proyectoId,
+                    String? descripcion,
+                    List<ChecklistItemModel> checklist = const [],
+                    List<RecordatorioTareaModel> recordatorios = const [],
+                  }) async {
+                    createdTaskTitle = titulo;
+                  },
+              onCreateEvent:
+                  ({
+                    required String titulo,
+                    required DateTime fechaInicio,
+                    DateTime? fechaFin,
+                    bool esTodoElDia = false,
+                    String tipo = 'evento_general',
+                    String? personaCumpleanos,
+                    String? ideasRegalo,
+                    List<ChecklistItemModel> checklist = const [],
+                    List<RecordatorioTareaModel> recordatorios = const [],
+                  }) async {
+                    createdEventTitle = titulo;
+                  },
             ),
           ),
         ),
@@ -610,28 +633,115 @@ void main() {
       expect(createdTaskTitle, equals('Pasear al perro'));
     });
 
-    testWidgets('PlanificadorScreen renders dynamic calendar, empty state and FAB',
-        (tester) async {
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
+    testWidgets('FlatCreateItemSheet handles configurable estimated time, advanced task options and birthday gift ideas', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      String? createdEventTitle;
+      String? createdGiftIdeas;
 
       await tester.pumpWidget(
         MaterialApp(
-          home: PlanificadorScreen(
-            controller: controller,
+          home: Scaffold(
+            body: FlatCreateItemSheet(
+              defaultDate: DateTime.now(),
+              miembros: const [],
+              onCreateTask:
+                  ({
+                    required String titulo,
+                    DateTime? fechaLimite,
+                    String? asignadoA,
+                    int tiempoEstimadoMinutos = 15,
+                    String? proyectoId,
+                    String? descripcion,
+                    List<ChecklistItemModel> checklist = const [],
+                    List<RecordatorioTareaModel> recordatorios = const [],
+                  }) async {},
+              onCreateEvent:
+                  ({
+                    required String titulo,
+                    required DateTime fechaInicio,
+                    DateTime? fechaFin,
+                    bool esTodoElDia = false,
+                    String tipo = 'evento_general',
+                    String? personaCumpleanos,
+                    String? ideasRegalo,
+                    List<ChecklistItemModel> checklist = const [],
+                    List<RecordatorioTareaModel> recordatorios = const [],
+                  }) async {
+                    createdEventTitle = titulo;
+                    createdGiftIdeas = ideasRegalo;
+                  },
+            ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Cabecera de calendario presente
-      expect(find.byType(FlatCalendarHeader), findsOneWidget);
+      // Verificar que el selector configurable de tiempo estimado con dropdowns está presente
+      expect(find.byType(TiempoEstimadoSelector), findsOneWidget);
+      expect(find.text('Tiempo'), findsOneWidget);
+      expect(find.text('Minutos'), findsOneWidget);
 
-      // Estado vacío inicial presente
-      expect(find.text('Día despejado'), findsOneWidget);
+      // Verificar que las Opciones Avanzadas de Tarea existen y se pueden desplegar
+      expect(find.text('Opciones avanzadas'), findsOneWidget);
+      await tester.tap(find.text('Opciones avanzadas'));
+      await tester.pumpAndSettle();
+      expect(find.text('Notas / Descripción adicional'), findsOneWidget);
+      expect(find.byType(RecordatoriosSelectorWidget), findsOneWidget);
+      expect(find.byType(SubtaskList), findsOneWidget);
 
-      // Botón flotante presente
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      // Conmutar a tab Evento
+      await tester.tap(find.text('Evento / Cita'));
+      await tester.pumpAndSettle();
+
+      // Seleccionar tipo Cumpleaños
+      await tester.tap(find.text('🎂 Cumpleaños'));
+      await tester.pumpAndSettle();
+
+      // Verificar que la sección de ideas de regalo reordenable y editable aparece
+      expect(find.text('Ideas de Regalo'), findsOneWidget);
+      expect(find.text('Añadir'), findsOneWidget);
+
+      // Añadir una idea de regalo
+      await tester.enterText(find.widgetWithText(TextField, 'Ej. Libro de cocina, zapatillas...'), 'Bicicleta de montaña');
+      await tester.tap(find.text('Añadir'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bicicleta de montaña'), findsOneWidget);
+
+      // Guardar cumpleaños
+      await tester.enterText(find.widgetWithText(TextField, 'Ej. Lucas, Mamá, Juan...'), 'Carlos');
+      await tester.tap(find.text('Guardar Cumpleaños'));
+      await tester.pumpAndSettle();
+
+      expect(createdEventTitle, equals('Carlos'));
+      expect(createdGiftIdeas, contains('Bicicleta de montaña'));
     });
+
+    testWidgets(
+      'PlanificadorScreen renders dynamic calendar, empty state and FAB',
+      (tester) async {
+        controller.setEntorno('env-1');
+        mockRepo.emitAll();
+
+        await tester.pumpWidget(
+          MaterialApp(home: PlanificadorScreen(controller: controller)),
+        );
+        await tester.pumpAndSettle();
+
+        // Cabecera de calendario presente
+        expect(find.byType(FlatCalendarHeader), findsOneWidget);
+
+        // Estado vacío inicial presente
+        expect(find.text('Día despejado'), findsOneWidget);
+
+        // Botón flotante presente
+        expect(find.byType(FloatingActionButton), findsOneWidget);
+      },
+    );
   });
 }
