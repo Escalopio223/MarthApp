@@ -87,10 +87,14 @@ class FlatTaskCard extends StatelessWidget {
                               : AppTheme.textPrimary,
                         ),
                       ),
-                      if (tarea.checklist.isNotEmpty || etiquetaObj != null) ...[
+                      if (tarea.checklist.isNotEmpty || etiquetaObj != null || tarea.prioridad != null) ...[
                         const SizedBox(height: 4),
                         Row(
                           children: [
+                            if (tarea.prioridad != null) ...[
+                              _buildPriorityChip(tarea.prioridad!),
+                              const SizedBox(width: 6),
+                            ],
                             if (etiquetaObj != null) ...[
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -188,6 +192,63 @@ class FlatTaskCard extends StatelessWidget {
                 ),
               )
             : null,
+      ),
+    );
+  }
+
+  Widget _buildPriorityChip(String prioridadKey) {
+    Color color;
+    String label;
+    IconData icon;
+
+    switch (prioridadKey.toLowerCase()) {
+      case 'baja':
+        color = const Color(0xFF10B981);
+        label = 'Baja';
+        icon = Icons.keyboard_double_arrow_down_rounded;
+        break;
+      case 'alta':
+        color = const Color(0xFFF59E0B);
+        label = 'Alta';
+        icon = Icons.keyboard_double_arrow_up_rounded;
+        break;
+      case 'urgente':
+        color = const Color(0xFFEF4444);
+        label = 'Urgente';
+        icon = Icons.priority_high_rounded;
+        break;
+      case 'media':
+      default:
+        color = const Color(0xFF38BDF8);
+        label = 'Media';
+        icon = Icons.drag_handle_rounded;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(
+          color: color.withOpacity(0.35),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

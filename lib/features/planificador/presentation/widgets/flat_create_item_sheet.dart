@@ -8,6 +8,7 @@ import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
 import '../../domain/models/recurrence_rule.dart';
+import '../../domain/models/tarea_model.dart';
 import 'recordatorios_selector_widget.dart';
 import 'subtask_list.dart';
 import 'tiempo_estimado_selector.dart';
@@ -24,12 +25,28 @@ enum TaskPriorityLevel {
   final Color color;
 
   const TaskPriorityLevel(this.label, this.icon, this.color);
+
+  static TaskPriorityLevel? fromString(String? val) {
+    if (val == null) return null;
+    switch (val.toLowerCase()) {
+      case 'baja':
+        return TaskPriorityLevel.baja;
+      case 'media':
+        return TaskPriorityLevel.media;
+      case 'alta':
+        return TaskPriorityLevel.alta;
+      case 'urgente':
+        return TaskPriorityLevel.urgente;
+      default:
+        return null;
+    }
+  }
 }
 
-/// Modal unificado de creación (Tarea / Evento / Cumpleaños) con estética Flat Design 2.0:
-/// - Selector de tipo en cabecera: [ Tarea ] | [ Evento / Cita ]
+/// Modal unificado de creación y edición (Tarea / Evento / Cumpleaños) con estética Flat Design 2.0:
+/// - Selector de tipo en cabecera: [ Tarea ] | [ Evento / Cita ] (oculto en modo edición de tarea).
 /// - Selector de tiempo estimado con dropdowns configurables (1-60 y Minutos/Horas).
-/// - Prioridad con selector visual por chips / segmented control.
+/// - Selector de prioridad opcional (sin prioridad por defecto).
 /// - Opciones avanzadas completas:
 ///   * Prioridad
 ///   * Recurrencia / Repetición (No se repite, Diaria, Semanal, Mensual, Días específicos)
@@ -43,6 +60,7 @@ class FlatCreateItemSheet extends StatefulWidget {
   final List<EnvironmentMemberModel> miembros;
   final String? currentUserId;
   final List<ProyectoModel> proyectos;
+  final TareaModel? tareaToEdit; // Si se proporciona, opera en modo edición
   final Future<void> Function({
     required String titulo,
     DateTime? fechaLimite,
@@ -71,6 +89,7 @@ class FlatCreateItemSheet extends StatefulWidget {
     required this.miembros,
     this.currentUserId,
     this.proyectos = const [],
+    this.tareaToEdit,
     required this.onCreateTask,
     required this.onCreateEvent,
   });
@@ -81,6 +100,7 @@ class FlatCreateItemSheet extends StatefulWidget {
     required List<EnvironmentMemberModel> miembros,
     String? currentUserId,
     List<ProyectoModel> proyectos = const [],
+    TareaModel? tareaToEdit,
     required Future<void> Function({
       required String titulo,
       DateTime? fechaLimite,
@@ -114,6 +134,7 @@ class FlatCreateItemSheet extends StatefulWidget {
         miembros: miembros,
         currentUserId: currentUserId,
         proyectos: proyectos,
+        tareaToEdit: tareaToEdit,
         onCreateTask: onCreateTask,
         onCreateEvent: onCreateEvent,
       ),
@@ -138,8 +159,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   String? _selectedProyectoId;
   String? _taskError;
 
-  // Estado Tarea: Prioridad
-  TaskPriorityLevel _selectedPriority = TaskPriorityLevel.media;
+  // Estado Tarea: Prioridad (null = Sin prioridad / Ninguna)
+  TaskPriorityLevel? _selectedPriority;
 
   // Estado Tarea: Etiquetas temáticas del hogar
   static const List<String> _etiquetasSugeridas = [
@@ -178,12 +199,37 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   List<String> _ideasRegaloList = [];
   String? _eventError;
 
+  bool get _isEditingTask => widget.tareaToEdit != null;
+
   @override
   void initState() {
     super.initState();
-    _taskDate = widget.defaultDate;
+    _taskDate = widget.tareaToEdit?.fechaLimite ?? widget.defaultDate;
     _eventDate = widget.defaultDate;
-    _assignedTo = widget.currentUserId;
+    _assignedTo = widget.tareaToEdit?.asignadoA ?? widget.currentUserId;
+
+    if (_isEditingTask) {
+      final t = widget.tareaToEdit!;
+      _selectedTypeIndex = 0;
+      _taskTitleController.text = t.titulo;
+      _taskDescController.text = t.notasLimpias ?? '';
+      _selectedMinutes = t.tiempoEstimadoMinutos;
+      _selectedProyectoId = t.proyectoId;
+      _selectedPriority = TaskPriorityLevel.fromString(t.prioridad);
+      _selectedEtiqueta = t.etiqueta;
+      _taskChecklist = List.from(t.checklist);
+      _taskRecordatorios = List.from(t.recordatorios);
+
+      // Si tiene configuraciones avanzadas, desplegar acordeón para fácil acceso
+      if (_selectedPriority != null ||
+          _selectedEtiqueta != null ||
+          t.rruleString != null ||
+          _taskChecklist.isNotEmpty ||
+          _taskRecordatorios.isNotEmpty ||
+          (_taskDescController.text.isNotEmpty)) {
+        _showAdvancedTaskOptions = true;
+      }
+    }
   }
 
   @override
@@ -284,7 +330,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   /// Compone la descripción enriquecida respetando el protocolo de almacenamiento:
-  /// Prioridad [p:alta], Etiqueta [tag:Limpieza], Recurrencia [rrule:...] y notas libres.
+  /// Prioridad [priority:alta], Etiqueta [tag:Limpieza], Recurrencia [rrule:...] y notas libres.
   String? _composeTaskDescription() {
     final buffer = StringBuffer();
 
@@ -293,8 +339,10 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
       buffer.write('[tag:${_selectedEtiqueta!.trim()}] ');
     }
 
-    // Prioridad
-    buffer.write('[priority:${_selectedPriority.name}] ');
+    // Prioridad (solo si el usuario la seleccionó explícitamente)
+    if (_selectedPriority != null) {
+      buffer.write('[priority:${_selectedPriority!.name}] ');
+    }
 
     // Recurrencia
     if (_recurrenceMode != 'none') {
@@ -475,9 +523,33 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               ),
               const SizedBox(height: 14),
 
-              // Selector plano de tipo [ Tarea ] | [ Evento ]
-              _buildTypeSelector(),
-              const SizedBox(height: 18),
+              // Selector plano de tipo [ Tarea ] | [ Evento ] (Oculto en modo edición de tarea)
+              if (!_isEditingTask) ...[
+                _buildTypeSelector(),
+                const SizedBox(height: 18),
+              ] else ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Editar Tarea',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      color: AppTheme.textSecondary,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+              ],
 
               // Formulario según tipo
               if (_selectedTypeIndex == 0) _buildTaskForm() else _buildEventForm(),
@@ -736,9 +808,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                       color: Colors.white,
                     ),
                   )
-                : const Text(
-                    'Guardar Tarea',
-                    style: TextStyle(
+                : Text(
+                    _isEditingTask ? 'Actualizar Tarea' : 'Guardar Tarea',
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -756,7 +828,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   Widget _buildAdvancedTaskOptions() {
     final totalConfigurados = (_selectedEtiqueta != null ? 1 : 0) +
         (_recurrenceMode != 'none' ? 1 : 0) +
-        (_selectedPriority != TaskPriorityLevel.media ? 1 : 0) +
+        (_selectedPriority != null ? 1 : 0) +
         _taskRecordatorios.length +
         _taskChecklist.length;
 
@@ -906,7 +978,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   // ===========================================================================
-  // 1. Selector de Prioridad
+  // 1. Selector de Prioridad (Opcional, sin prioridad por defecto)
   // ===========================================================================
 
   Widget _buildPrioritySelector() {
@@ -924,25 +996,17 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                 color: AppTheme.textSecondary,
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: _selectedPriority.color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: _selectedPriority.color.withOpacity(0.4),
-                  width: 1,
+            if (_selectedPriority != null)
+              GestureDetector(
+                onTap: () => setState(() => _selectedPriority = null),
+                child: Text(
+                  'Quitar prioridad',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.accentCoral,
+                  ),
                 ),
               ),
-              child: Text(
-                _selectedPriority.label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: _selectedPriority.color,
-                ),
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -963,7 +1027,10 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                 child: InkWell(
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    setState(() => _selectedPriority = priority);
+                    setState(() {
+                      // Toggle: si se toca la misma, se deselecciona
+                      _selectedPriority = isSelected ? null : priority;
+                    });
                   },
                   borderRadius: BorderRadius.circular(8),
                   child: AnimatedContainer(
@@ -975,9 +1042,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isSelected
-                            ? priority.color
-                            : Colors.transparent,
+                        color: isSelected ? priority.color : Colors.transparent,
                         width: 1,
                       ),
                     ),

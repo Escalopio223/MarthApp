@@ -230,6 +230,57 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     );
   }
 
+  void _abrirModalEdicionTarea(TareaModel tarea) {
+    final members = _environmentController?.activeMembers ?? const [];
+
+    FlatCreateItemSheet.show(
+      context,
+      defaultDate: tarea.fechaLimite ?? _controller.selectedDate,
+      miembros: members,
+      currentUserId: _currentUserId,
+      proyectos: _controller.proyectos,
+      tareaToEdit: tarea,
+      onCreateTask: ({
+        required String titulo,
+        DateTime? fechaLimite,
+        String? asignadoA,
+        int tiempoEstimadoMinutos = 15,
+        String? proyectoId,
+        String? descripcion,
+        List<ChecklistItemModel> checklist = const [],
+        List<RecordatorioTareaModel> recordatorios = const [],
+      }) async {
+        final tareaActualizada = tarea.copyWith(
+          titulo: titulo,
+          fechaLimite: fechaLimite,
+          clearFechaLimite: fechaLimite == null,
+          asignadoA: asignadoA,
+          clearAsignadoA: asignadoA == null,
+          tiempoEstimadoMinutos: tiempoEstimadoMinutos,
+          proyectoId: proyectoId,
+          clearProyectoId: proyectoId == null,
+          descripcion: descripcion,
+          clearDescripcion: descripcion == null,
+          checklist: checklist,
+          recordatorios: recordatorios,
+          updatedAt: DateTime.now(),
+        );
+        await _controller.actualizarTarea(tareaActualizada);
+      },
+      onCreateEvent: ({
+        required String titulo,
+        required DateTime fechaInicio,
+        DateTime? fechaFin,
+        bool esTodoElDia = false,
+        String tipo = 'evento_general',
+        String? personaCumpleanos,
+        String? ideasRegalo,
+        List<ChecklistItemModel> checklist = const [],
+        List<RecordatorioTareaModel> recordatorios = const [],
+      }) async {},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedDate = _controller.selectedDate;
@@ -944,6 +995,29 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.pop(ctx);
+                            _abrirModalEdicionTarea(liveTarea);
+                          },
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            size: 16,
+                          ),
+                          label: const Text('Editar Tarea'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primaryAccent,
+                            side: BorderSide(
+                              color: AppTheme.primaryAccent.withOpacity(0.4),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
                             _controller.toggleTarea(liveTarea.id);
                           },
                           icon: Icon(
@@ -954,8 +1028,8 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                           ),
                           label: Text(
                             liveTarea.estaCompletada
-                                ? 'Marcar Pendiente'
-                                : 'Completar Tarea',
+                                ? 'Pendiente'
+                                : 'Completar',
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: liveTarea.estaCompletada
@@ -972,7 +1046,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 6),
                       IconButton(
                         onPressed: () {
                           Navigator.pop(ctx);

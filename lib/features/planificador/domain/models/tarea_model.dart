@@ -70,16 +70,58 @@ class TareaModel {
       if (space != -1) return d.substring(1, space).trim();
       return d.substring(1).trim();
     }
-    if (d.startsWith('[tag:')) {
-      final endTag = d.indexOf(']');
+    if (d.contains('[tag:')) {
+      final start = d.indexOf('[tag:') + 5;
+      final endTag = d.indexOf(']', start);
       if (endTag != -1) {
-        return d.substring(5, endTag).trim();
+        return d.substring(start, endTag).trim();
       }
     }
-    if (!d.contains('\n') && d.length <= 30) {
+    if (!d.contains('\n') && !d.contains('[') && d.length <= 30) {
       return d;
     }
     return null;
+  }
+
+  /// Nivel de prioridad de la tarea ('baja' | 'media' | 'alta' | 'urgente')
+  String? get prioridad {
+    if (descripcion == null || descripcion!.trim().isEmpty) return null;
+    final d = descripcion!.trim();
+    if (d.contains('[priority:')) {
+      final start = d.indexOf('[priority:') + 10;
+      final endTag = d.indexOf(']', start);
+      if (endTag != -1) {
+        final p = d.substring(start, endTag).trim().toLowerCase();
+        return p.isNotEmpty ? p : null;
+      }
+    }
+    return null;
+  }
+
+  /// Regla de recurrencia en formato string si existe
+  String? get rruleString {
+    if (descripcion == null || descripcion!.trim().isEmpty) return null;
+    final d = descripcion!.trim();
+    if (d.contains('[rrule:')) {
+      final start = d.indexOf('[rrule:') + 7;
+      final endTag = d.indexOf(']', start);
+      if (endTag != -1) {
+        final r = d.substring(start, endTag).trim();
+        return r.isNotEmpty ? r : null;
+      }
+    }
+    return null;
+  }
+
+  /// Notas o texto limpio sin los metadatos [tag:...], [priority:...], [rrule:...]
+  String? get notasLimpias {
+    if (descripcion == null || descripcion!.trim().isEmpty) return null;
+    var d = descripcion!.trim();
+    d = d.replaceAll(RegExp(r'\[tag:[^\]]+\]'), '');
+    d = d.replaceAll(RegExp(r'\[priority:[^\]]+\]'), '');
+    d = d.replaceAll(RegExp(r'\[rrule:[^\]]+\]'), '');
+    d = d.trim();
+    return d.isNotEmpty ? d : null;
   }
 
   TareaModel copyWith({
