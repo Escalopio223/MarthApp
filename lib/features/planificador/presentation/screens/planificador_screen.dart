@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,22 +5,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_background.dart';
-import '../../../../core/widgets/app_container.dart';
+import '../../../environments/domain/models/environment_member_model.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
-import '../../domain/models/checklist_item_model.dart';
+import '../../domain/models/evento_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
+import '../../domain/models/tarea_model.dart';
 import '../controllers/planificador_controller.dart';
-import '../widgets/checklist_editor_section.dart';
-import '../widgets/task_form_basic.dart';
-import '../../domain/models/task_form_basic_payload.dart';
-import '../widgets/recordatorios_selector_widget.dart';
-import '../widgets/planificador_hoy_view.dart';
-import '../widgets/planificador_planificacion_view.dart';
+import '../widgets/flat_calendar_header.dart';
+import '../widgets/flat_create_item_sheet.dart';
+import '../widgets/flat_event_card.dart';
+import '../widgets/flat_task_card.dart';
 
-/// Pantalla contenedora principal del módulo Planificador:
-/// - Estructura ágil unificada en 2 vistas:
-///   1. "Hoy": Foco diario ("¿Qué hay que hacer hoy y quién lo hace?")
-///   2. "Planificación": Calendario visual y proyectos del hogar
+/// Pantalla Principal Unificada del Planificador (Flat Design 2.0):
+/// - Cabecera de Calendario Dinámica (Semana ↔ Mes).
+/// - Feed vertical continuo del día seleccionado:
+///   1. Bloque Eventos / Citas destacadas (si existen).
+///   2. Bloque Tareas Domésticas con checkbox rápido, chip de tiempo y avatar del responsable.
+/// - Botón Flotante (+) con Modal Unificado de Creación.
 class PlanificadorScreen extends StatefulWidget {
   final PlanificadorController? controller;
   final EnvironmentController? environmentController;
@@ -44,8 +44,13 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
   late final PlanificadorController _controller;
   EnvironmentController? _environmentController;
 
-  // 0 = Hoy, 1 = Planificación
-  int _currentSectionIndex = 0;
+  static const List<String> _diasSemana = [
+    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+  ];
+  static const List<String> _meses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
 
   String? get _currentUserId {
     if (widget.currentUserId != null) return widget.currentUserId;
@@ -65,7 +70,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     _environmentController = widget.environmentController;
     _environmentController?.addListener(_onEnvironmentChanged);
 
-    // Configurar entorno inicial
+    // Sincronizar entorno inicial
     final activeEnv = _environmentController?.activeEnvironment;
     if (activeEnv != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,6 +89,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         SnackBar(
           content: Text(_controller.errorMessage!),
           backgroundColor: AppTheme.accentCoral,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       _controller.clearMessages();
@@ -92,6 +98,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         SnackBar(
           content: Text(_controller.successMessage!),
           backgroundColor: AppTheme.accentEmerald,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       _controller.clearMessages();
@@ -119,7 +126,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
         );
       }
     } catch (_) {
-      // Ignorar silenciosamente si FCM no está disponible en la plataforma actual
+      // Ignorar silenciosamente si FCM no está disponible
     }
   }
 
@@ -133,46 +140,176 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     super.dispose();
   }
 
+  EnvironmentMemberModel? _findMember(String? userId) {
+    if (userId == null) return null;
+    final members = _environmentController?.activeMembers ?? const [];
+    try {
+      return members.firstWhere((m) => m.userId == userId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _formatHeaderDate(DateTime d) {
+    final now = DateTime.now();
+    final diaNombre = _diasSemana[d.weekday - 1];
+    final mesNombre = _meses[d.month - 1];
+
+    if (d.year == now.year && d.month == now.month && d.day == now.day) {
+      return 'Hoy ($diaNombre, ${d.day} de $mesNombre)';
+    }
+
+    final tomorrow = now.add(const Duration(days: 1));
+    if (d.year == tomorrow.year && d.month == tomorrow.month && d.day == tomorrow.day) {
+      return 'Mañana ($diaNombre, ${d.day} de $mesNombre)';
+    }
+
+    return '$diaNombre, ${d.day} de $mesNombre';
+  }
+
+  void _abrirModalCreacion(BuildContext context) {
+    final members = _environmentController?.activeMembers ?? const [];
+
+    FlatCreateItemSheet.show(
+      context,
+      defaultDate: _controller.selectedDate,
+      miembros: members,
+      currentUserId: _currentUserId,
+      proyectos: _controller.proyectos,
+      onCreateTask: ({
+        required String titulo,
+        DateTime? fechaLimite,
+        String? asignadoA,
+        int tiempoEstimadoMinutos = 15,
+        String? proyectoId,
+      }) async {
+        await _controller.crearTarea(
+          titulo: titulo,
+          fechaLimite: fechaLimite,
+          asignadoA: asignadoA,
+          tiempoEstimadoMinutos: tiempoEstimadoMinutos,
+          proyectoId: proyectoId,
+        );
+      },
+      onCreateEvent: ({
+        required String titulo,
+        required DateTime fechaInicio,
+        DateTime? fechaFin,
+        bool esTodoElDia = false,
+        String tipo = 'evento_general',
+        List<RecordatorioTareaModel> recordatorios = const [],
+      }) async {
+        await _controller.crearEvento(
+          titulo: titulo,
+          fechaInicio: fechaInicio,
+          fechaFin: fechaFin,
+          esTodoElDia: esTodoElDia,
+          tipo: tipo,
+          recordatorios: recordatorios,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final members = _environmentController?.activeMembers ?? const [];
-    final userId = _currentUserId;
+    final selectedDate = _controller.selectedDate;
+    final eventosDelDia = _controller.eventosForSelectedDate;
+    final tareasDelDia = _controller.tareasForSelectedDate;
 
-    Widget bodyContent = Column(
+    final content = Column(
       children: [
-        _buildSectionTabs(context),
-        const SizedBox(height: 4),
-        Expanded(
-          child: IndexedStack(
-            index: _currentSectionIndex,
-            children: [
-              // Vista 1: "Hoy" (Foco diario y rutinas)
-              PlanificadorHoyView(
-                controller: _controller,
-                environmentController: _environmentController,
-                miembros: members,
-                usuarioActualId: userId,
-                onIrAPlanificacion: () =>
-                    setState(() => _currentSectionIndex = 1),
-              ),
+        // 1. Cabecera de Calendario Dinámica (Semana ↔ Mes)
+        FlatCalendarHeader(
+          selectedDate: selectedDate,
+          onDateSelected: (newDate) {
+            _controller.selectDate(newDate);
+          },
+          hasItemsOnDate: (d) => _controller.diaTieneItems(d),
+          onMonthChanged: (m) => _controller.setFocusedMonth(m),
+        ),
 
-              // Vista 2: "Planificación" (Calendario y proyectos)
-              PlanificadorPlanificacionView(
-                controller: _controller,
-                miembros: members,
-                usuarioActualId: userId,
-                onCrearTarea: () => _mostrarDialogoCrearTarea(context),
-                onCrearEvento: () => _mostrarDialogoCrearEvento(context),
-                onCrearProyecto: () => _mostrarDialogoCrearProyecto(context),
-              ),
-            ],
-          ),
+        // 2. Feed del Día Seleccionado (Scroll vertical natural)
+        Expanded(
+          child: _controller.isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : RefreshIndicator(
+                  onRefresh: () => _controller.recargar(),
+                  color: AppTheme.primaryAccent,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 88),
+                    children: [
+                      // Subcabecera de fecha actual del feed
+                      _buildFeedDateHeader(selectedDate),
+                      const SizedBox(height: 12),
+
+                      // Bloque A: Eventos / Citas (Solo si existen)
+                      if (eventosDelDia.isNotEmpty) ...[
+                        _buildSectionTitle(
+                          title: 'Eventos y Citas',
+                          count: eventosDelDia.length,
+                          icon: Icons.event_note_rounded,
+                        ),
+                        const SizedBox(height: 8),
+                        ...eventosDelDia.map(
+                          (ev) => FlatEventCard(
+                            evento: ev,
+                            onDelete: () => _confirmarEliminarEvento(ev),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Bloque B: Tareas Domésticas
+                      _buildSectionTitle(
+                        title: 'Tareas del Día',
+                        count: tareasDelDia.length,
+                        icon: Icons.checklist_rounded,
+                      ),
+                      const SizedBox(height: 8),
+
+                      if (tareasDelDia.isEmpty && eventosDelDia.isEmpty)
+                        _buildEmptyState()
+                      else if (tareasDelDia.isEmpty)
+                        _buildSinTareasState()
+                      else
+                        ...tareasDelDia.map((t) {
+                          final asignado = _findMember(t.asignadoA);
+                          return FlatTaskCard(
+                            tarea: t,
+                            asignado: asignado,
+                            onToggle: () => _controller.toggleTarea(t.id),
+                            onTap: () => _mostrarDetalleTarea(t),
+                            onDelete: () => _controller.eliminarTarea(t.id),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
         ),
       ],
     );
 
+    final fab = FloatingActionButton(
+      onPressed: () => _abrirModalCreacion(context),
+      backgroundColor: AppTheme.primaryAccent,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: const Icon(
+        Icons.add_rounded,
+        size: 28,
+        color: Colors.white,
+      ),
+    );
+
     if (widget.asTab) {
-      return bodyContent;
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: content,
+        floatingActionButton: fab,
+      );
     }
 
     return Scaffold(
@@ -192,489 +329,333 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
       body: AppBackground(
         safeAreaTop: false,
         safeAreaBottom: false,
-        child: bodyContent,
+        child: content,
       ),
+      floatingActionButton: fab,
     );
   }
 
-  // ===========================================================================
-  // Selector de Sección Superior (Hoy vs Planificación)
-  // ===========================================================================
-
-  Widget _buildSectionTabs(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
-      child: AppContainer(
-        borderRadius: 22,
-        padding: const EdgeInsets.all(4),
-        baseColor: AppTheme.surfaceDark,
-        child: Row(
-          children: [
-            _buildSectionButton(
-              title: 'Hoy',
-              icon: Icons.wb_sunny_rounded,
-              index: 0,
-            ),
-            _buildSectionButton(
-              title: 'Planificación',
-              icon: Icons.calendar_month_rounded,
-              index: 1,
-            ),
-          ],
+  Widget _buildFeedDateHeader(DateTime date) {
+    return Row(
+      children: [
+        Text(
+          _formatHeaderDate(date),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+            letterSpacing: -0.2,
+          ),
         ),
-      ),
+        const Spacer(),
+        if (_controller.tareasPendientesHoyCount > 0 &&
+            PlanificadorController.isSameDay(date, DateTime.now()))
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryAccent.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${_controller.tareasPendientesHoyCount} pendientes',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primaryAccent,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _buildSectionButton({
+  Widget _buildSectionTitle({
     required String title,
+    required int count,
     required IconData icon,
-    required int index,
   }) {
-    final isSelected = _currentSectionIndex == index;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          setState(() => _currentSectionIndex = index);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: AppTheme.textSecondary,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textSecondary,
+            letterSpacing: 0.1,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
           decoration: BoxDecoration(
-            gradient: isSelected ? AppTheme.actionGradient : null,
-            color: isSelected ? null : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
+            color: AppTheme.surfaceDark,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: AppTheme.cardBorderColor.withOpacity(0.15),
+              width: 1,
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color:
-                    isSelected ? AppTheme.ctaTextColor : AppTheme.textSecondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color:
-                      isSelected ? AppTheme.ctaTextColor : AppTheme.textSecondary,
-                ),
-              ),
-            ],
+          child: Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textSecondary,
+            ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceDark.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.cardBorderColor.withOpacity(0.12),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.spa_rounded,
+            size: 40,
+            color: AppTheme.primaryAccent.withOpacity(0.6),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Día despejado',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'No hay tareas ni eventos programados para esta fecha.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => _abrirModalCreacion(context),
+            icon: const Icon(Icons.add_rounded, size: 16),
+            label: const Text('Añadir Tarea o Evento'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.primaryAccent,
+              side: BorderSide(color: AppTheme.primaryAccent.withOpacity(0.4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSinTareasState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      alignment: Alignment.center,
+      child: Text(
+        'Sin tareas pendientes para hoy',
+        style: TextStyle(
+          fontSize: 13,
+          color: AppTheme.textSecondary.withOpacity(0.7),
         ),
       ),
     );
   }
 
-  // ===========================================================================
-  // Modales de Creación Rápida
-  // ===========================================================================
-
-  void _mostrarDialogoCrearTarea(BuildContext context) {
-    TaskFormBasic.showModal(
-      context,
-      mode: TaskFormMode.create,
-      initialPayload: TaskFormBasicPayload.initialForCreate(
-        defaultDate: _controller.selectedDate,
-        defaultAssigneeId: _currentUserId,
-      ),
-      miembros: _environmentController?.activeMembers ?? const [],
-      proyectos: _controller.proyectos,
-      usuarioActualId: _currentUserId,
-      onSubmit: (payload) => _controller.crearTareaDesdePayload(payload),
-    );
-  }
-
-  void _mostrarDialogoCrearProyecto(BuildContext context) {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    bool isSaving = false;
-
+  void _mostrarDetalleTarea(TareaModel tarea) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       backgroundColor: AppTheme.surfaceDark,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            final bottomPadding = math.max(MediaQuery.paddingOf(ctx).bottom, 20.0);
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + bottomPadding,
+        final asignado = _findMember(tarea.asignadoA);
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 16),
+              Text(
+                tarea.titulo,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              if (tarea.descripcion != null && tarea.descripcion!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  tarea.descripcion!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
                 children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 16,
+                    color: AppTheme.primaryAccent,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
-                    'Nuevo Proyecto',
+                    'Tiempo estimado: ${tarea.tiempoEstimadoMinutos} min',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
                       color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleController,
-                    autofocus: true,
-                    style: TextStyle(color: AppTheme.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'Nombre del proyecto...',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary),
-                      filled: true,
-                      fillColor: AppTheme.darkBackground,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: descController,
-                    maxLines: 2,
-                    style: TextStyle(color: AppTheme.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'Objetivo o descripción...',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary),
-                      filled: true,
-                      fillColor: AppTheme.darkBackground,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: isSaving
-                          ? null
-                          : () async {
-                              final title = titleController.text.trim();
-                              if (title.isEmpty) return;
-
-                              setModalState(() => isSaving = true);
-                              try {
-                                await _controller.crearProyecto(
-                                  nombre: title,
-                                  descripcion: descController.text.trim().isEmpty
-                                      ? null
-                                      : descController.text.trim(),
-                                );
-                                if (ctx.mounted) {
-                                  Navigator.pop(ctx);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          const Icon(Icons.check_circle_rounded,
-                                              color: Colors.greenAccent, size: 20),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text('Proyecto "$title" creado'),
-                                          ),
-                                        ],
-                                      ),
-                                      behavior: SnackBarBehavior.floating,
-                                      duration: const Duration(seconds: 2),
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (ctx.mounted) {
-                                  setModalState(() => isSaving = false);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error al crear proyecto: $e'),
-                                      backgroundColor: Colors.redAccent,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryLiquid,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: isSaving
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Crear Proyecto',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
                     ),
                   ),
                 ],
               ),
-            );
-          },
+              if (asignado != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person_rounded,
+                      size: 16,
+                      color: AppTheme.primaryAccent,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Asignado a: ${asignado.username}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _controller.toggleTarea(tarea.id);
+                      },
+                      icon: Icon(
+                        tarea.estaCompletada
+                            ? Icons.undo_rounded
+                            : Icons.check_circle_rounded,
+                        size: 16,
+                      ),
+                      label: Text(
+                        tarea.estaCompletada
+                            ? 'Marcar Pendiente'
+                            : 'Completar Tarea',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: tarea.estaCompletada
+                            ? AppTheme.textSecondary
+                            : AppTheme.accentEmerald,
+                        side: BorderSide(
+                          color: tarea.estaCompletada
+                              ? AppTheme.cardBorderColor.withOpacity(0.3)
+                              : AppTheme.accentEmerald.withOpacity(0.5),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _controller.eliminarTarea(tarea.id);
+                    },
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppTheme.accentCoral,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  void _mostrarDialogoCrearEvento(BuildContext context) {
-    final titleController = TextEditingController();
-    final personaController = TextEditingController();
-    final ideasController = TextEditingController();
-    String tipo = 'evento_general';
-    List<ChecklistItemModel> checklist = [];
-    List<RecordatorioTareaModel> recordatorios = [];
-    bool isSaving = false;
-
-    showModalBottomSheet(
+  void _confirmarEliminarEvento(EventoModel evento) {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: AppTheme.surfaceDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Eliminar Evento',
+          style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+        ),
+        content: Text(
+          '¿Deseas eliminar "${evento.titulo}"?',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _controller.eliminarEvento(evento.id);
+            },
+            child: Text(
+              'Eliminar',
+              style: TextStyle(color: AppTheme.accentCoral),
+            ),
+          ),
+        ],
       ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            final bottomPadding = math.max(MediaQuery.paddingOf(ctx).bottom, 20.0);
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + bottomPadding,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Nuevo Evento / Cumpleaños',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Evento'),
-                          selected: tipo == 'evento_general',
-                          onSelected: (_) =>
-                              setModalState(() => tipo = 'evento_general'),
-                        ),
-                        const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: const Text('🎂 Cumpleaños'),
-                          selected: tipo == 'cumpleanos',
-                          onSelected: (_) =>
-                              setModalState(() => tipo = 'cumpleanos'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (tipo == 'cumpleanos') ...[
-                      TextField(
-                        controller: personaController,
-                        autofocus: true,
-                        style: TextStyle(color: AppTheme.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'Nombre de la persona (ej. Felipe)...',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
-                          filled: true,
-                          fillColor: AppTheme.darkBackground,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: ideasController,
-                        maxLines: 2,
-                        style: TextStyle(color: AppTheme.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'Ideas de regalo (ej. Boniato, libros)...',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
-                          filled: true,
-                          fillColor: AppTheme.darkBackground,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      TextField(
-                        controller: titleController,
-                        autofocus: true,
-                        style: TextStyle(color: AppTheme.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'Nombre del evento (ej. Ir al médico)...',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary),
-                          filled: true,
-                          fillColor: AppTheme.darkBackground,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      ChecklistEditorSection(
-                        items: checklist,
-                        title: 'Subtareas',
-                        hintText: 'Añadir elemento (ej. Coger cartilla)...',
-                        onChanged: (nuevos) {
-                          setModalState(() => checklist = nuevos);
-                        },
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-
-                    // Selector de recordatorios programados (igual que en tareas)
-                    RecordatoriosSelectorWidget(
-                      recordatoriosIniciales: recordatorios,
-                      fechaLimite: _controller.selectedDate,
-                      onChanged: (nuevos) {
-                        setModalState(() => recordatorios = List.from(nuevos));
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isSaving
-                            ? null
-                            : () async {
-                                final isCumple = tipo == 'cumpleanos';
-                                final nombre = personaController.text.trim();
-                                if (isCumple && nombre.isEmpty) return;
-                                final title = isCumple ? '' : titleController.text.trim();
-                                if (!isCumple && title.isEmpty) return;
-
-                                // Si es cumpleaños y no se añadieron recordatorios específicos,
-                                // agregamos recordatorio por defecto para las 09:00 de ese día
-                                var recordatoriosAGuardar = List<RecordatorioTareaModel>.from(recordatorios);
-                                if (isCumple && recordatoriosAGuardar.isEmpty) {
-                                  recordatoriosAGuardar.add(
-                                    RecordatorioTareaModel(
-                                      id: 'rec_${DateTime.now().millisecondsSinceEpoch}',
-                                      tareaId: '',
-                                      fechaNotificacion: _controller.selectedDate,
-                                      horaNotificacion: '09:00',
-                                    ),
-                                  );
-                                }
-
-                                setModalState(() => isSaving = true);
-                                try {
-                                  await _controller.crearEvento(
-                                    titulo: isCumple ? '' : title,
-                                    tipo: tipo,
-                                    fechaInicio: _controller.selectedDate,
-                                    personaCumpleanos: isCumple ? nombre : null,
-                                    ideasRegalo: isCumple && ideasController.text.trim().isNotEmpty
-                                        ? ideasController.text.trim()
-                                        : null,
-                                    checklist: isCumple ? const [] : checklist,
-                                    recordatorios: recordatoriosAGuardar,
-                                  );
-
-                                  if (ctx.mounted) {
-                                    Navigator.pop(ctx);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Row(
-                                          children: [
-                                            const Icon(Icons.check_circle_rounded,
-                                                color: Colors.greenAccent, size: 20),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                isCumple
-                                                    ? 'Cumpleaños de "$nombre" guardado'
-                                                    : 'Evento "$title" guardado',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (ctx.mounted) {
-                                    setModalState(() => isSaving = false);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Error al crear evento: $e'),
-                                        backgroundColor: AppTheme.accentCoral,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryLiquid,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: isSaving
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                'Guardar Evento',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 }

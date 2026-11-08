@@ -336,6 +336,98 @@ class PlanificadorController extends ChangeNotifier {
     return items;
   }
 
+  /// Retorna los eventos programados para una fecha específica (incluyendo cumpleaños anuales)
+  List<EventoModel> eventosParaFecha(DateTime date) {
+    final selDay = DateTime(date.year, date.month, date.day);
+    final List<EventoModel> res = [];
+    for (final ev in _eventos) {
+      final evLocal = ev.fechaInicio.toLocal();
+      if (ev.esCumpleanos) {
+        final esMismoDiaYMes = evLocal.month == selDay.month &&
+            (evLocal.day == selDay.day ||
+                (evLocal.month == 2 && evLocal.day == 29 && selDay.day == 28 && !_esBisiesto(selDay.year)));
+        if (esMismoDiaYMes) {
+          res.add(ev);
+        }
+      } else {
+        final evDay = DateTime(evLocal.year, evLocal.month, evLocal.day);
+        if (evDay.isAtSameMomentAs(selDay)) {
+          res.add(ev);
+        }
+      }
+    }
+    res.sort((a, b) => a.fechaInicio.compareTo(b.fechaInicio));
+    return res;
+  }
+
+  /// Retorna las tareas correspondientes a una fecha específica
+  List<TareaModel> tareasParaFecha(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDay = DateTime(date.year, date.month, date.day);
+    final esHoy = targetDay.isAtSameMomentAs(today);
+
+    final List<TareaModel> res = _tareas.where((t) {
+      // 1. Tarea completada en targetDay
+      if (t.completadaAt != null) {
+        final compDate = DateTime(
+          t.completadaAt!.year,
+          t.completadaAt!.month,
+          t.completadaAt!.day,
+        );
+        if (compDate.isAtSameMomentAs(targetDay)) return true;
+      }
+
+      // 2. Tarea con fecha límite que coincide con targetDay
+      if (t.fechaLimite != null) {
+        final limite = DateTime(
+          t.fechaLimite!.year,
+          t.fechaLimite!.month,
+          t.fechaLimite!.day,
+        );
+        if (limite.isAtSameMomentAs(targetDay)) return true;
+        // Si el día consultado es hoy, también mostrar tareas atrasadas pendientes
+        if (esHoy && limite.isBefore(today) && t.estado != 'completada') {
+          return true;
+        }
+      }
+
+      // 3. Tareas creadas hoy sin fecha límite fija (solo si targetDay es hoy)
+      if (esHoy && t.fechaLimite == null) {
+        final created = DateTime(
+          t.createdAt.year,
+          t.createdAt.month,
+          t.createdAt.day,
+        );
+        if (created.isAtSameMomentAs(today) && t.estado != 'completada') {
+          return true;
+        }
+      }
+
+      return false;
+    }).toList();
+
+    // Ordenación limpia: pendientes y en progreso primero, luego completadas
+    res.sort((a, b) {
+      if (a.estaCompletada != b.estaCompletada) {
+        return a.estaCompletada ? 1 : -1;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    return res;
+  }
+
+  /// Eventos filtrados para la fecha actualmente seleccionada en el calendario
+  List<EventoModel> get eventosForSelectedDate => eventosParaFecha(_selectedDate);
+
+  /// Tareas filtradas para la fecha actualmente seleccionada en el calendario
+  List<TareaModel> get tareasForSelectedDate => tareasParaFecha(_selectedDate);
+
+  /// Compara dos fechas ignorando la hora
+  static bool isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
   static bool _esBisiesto(int year) =>
       (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 

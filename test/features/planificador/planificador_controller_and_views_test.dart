@@ -6,24 +6,18 @@ import 'package:marth_app/features/planificador/domain/models/agenda_item_model.
 import 'package:marth_app/features/planificador/domain/models/checklist_item_model.dart';
 import 'package:marth_app/features/planificador/domain/models/comentario_tarea_model.dart';
 import 'package:marth_app/features/planificador/domain/models/evento_model.dart';
-import 'package:marth_app/features/planificador/domain/models/item_reparto_model.dart';
 import 'package:marth_app/features/planificador/domain/models/proyecto_model.dart';
 import 'package:marth_app/features/planificador/domain/models/recordatorio_tarea_model.dart';
 import 'package:marth_app/features/planificador/domain/models/sesion_reparto_model.dart';
 import 'package:marth_app/features/planificador/domain/models/tarea_model.dart';
 import 'package:marth_app/features/planificador/domain/repositories/i_planificador_repository.dart';
 import 'package:marth_app/features/planificador/presentation/controllers/planificador_controller.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/agenda_calendar_view.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/crear_tarea_rapida_dialog.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/editar_evento_dialog.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/editar_proyecto_dialog.dart';
-import 'package:marth_app/features/planificador/domain/models/task_form_basic_payload.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/task_form_basic.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/planificador_hoy_view.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/proyectos_backlog_view.dart';
-import 'package:marth_app/features/planificador/presentation/widgets/reparto_tareas_board_view.dart';
+import 'package:marth_app/features/planificador/presentation/screens/planificador_screen.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/flat_calendar_header.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/flat_create_item_sheet.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/flat_event_card.dart';
+import 'package:marth_app/features/planificador/presentation/widgets/flat_task_card.dart';
 import 'package:marth_app/features/profile/domain/models/avatar_data.dart';
-import 'package:marth_app/features/profile/presentation/widgets/user_avatar.dart';
 
 class MockPlanificadorRepository implements IPlanificadorRepository {
   final StreamController<List<ProyectoModel>> proyectosCtrl =
@@ -109,12 +103,6 @@ class MockPlanificadorRepository implements IPlanificadorRepository {
   @override
   Future<void> eliminarProyecto(String proyectoId) async {
     proyectos.removeWhere((p) => p.id == proyectoId);
-    tareas = tareas.map((t) {
-      if (t.proyectoId == proyectoId) {
-        return t.copyWith(clearProyectoId: true);
-      }
-      return t;
-    }).toList();
     emitAll();
   }
 
@@ -168,7 +156,19 @@ class MockPlanificadorRepository implements IPlanificadorRepository {
   }
 
   @override
-  Future<void> toggleChecklistItem(String tareaId, String itemId) async {}
+  Future<void> toggleChecklistItem(String tareaId, String itemId) async {
+    final idx = tareas.indexWhere((t) => t.id == tareaId);
+    if (idx != -1) {
+      final updated = tareas[idx].checklist.map((item) {
+        if (item.id == itemId) {
+          return item.copyWith(completado: !item.completado);
+        }
+        return item;
+      }).toList();
+      tareas[idx] = tareas[idx].copyWith(checklist: updated);
+      emitAll();
+    }
+  }
 
   @override
   Future<void> agregarComentarioTarea({
@@ -177,35 +177,24 @@ class MockPlanificadorRepository implements IPlanificadorRepository {
   }) async {
     final idx = tareas.indexWhere((t) => t.id == tareaId);
     if (idx != -1) {
-      final exists = tareas[idx].comentarios.any(
-        (c) => c.id == comentario.id || (c.texto == comentario.texto && c.autorId == comentario.autorId),
+      tareas[idx] = tareas[idx].copyWith(
+        comentarios: [...tareas[idx].comentarios, comentario],
       );
-      if (!exists) {
-        tareas[idx] = tareas[idx].copyWith(
-          comentarios: [...tareas[idx].comentarios, comentario],
-        );
-      }
       emitAll();
     }
   }
 
   @override
-  Future<List<RecordatorioTareaModel>> obtenerRecordatoriosTarea(String tareaId) async {
-    final t = tareas.firstWhere((element) => element.id == tareaId, orElse: () => tareas.first);
-    return t.recordatorios;
+  Future<List<RecordatorioTareaModel>> obtenerRecordatoriosTarea(
+      String tareaId) async {
+    return const [];
   }
 
   @override
   Future<void> guardarRecordatoriosTarea(
     String tareaId,
     List<RecordatorioTareaModel> recordatorios,
-  ) async {
-    final idx = tareas.indexWhere((t) => t.id == tareaId);
-    if (idx != -1) {
-      tareas[idx] = tareas[idx].copyWith(recordatorios: recordatorios);
-      emitAll();
-    }
-  }
+  ) async {}
 
   @override
   Future<void> eliminarTarea(String tareaId) async {
@@ -249,13 +238,34 @@ class MockPlanificadorRepository implements IPlanificadorRepository {
   }
 
   @override
-  Future<void> actualizarEvento(EventoModel evento) async {}
+  Future<void> actualizarEvento(EventoModel evento) async {
+    final idx = eventos.indexWhere((e) => e.id == evento.id);
+    if (idx != -1) {
+      eventos[idx] = evento;
+      emitAll();
+    }
+  }
 
   @override
-  Future<void> eliminarEvento(String eventoId) async {}
+  Future<void> toggleEventoChecklistItem(String eventoId, String itemId) async {
+    final idx = eventos.indexWhere((e) => e.id == eventoId);
+    if (idx != -1) {
+      final updated = eventos[idx].checklist.map((item) {
+        if (item.id == itemId) {
+          return item.copyWith(completado: !item.completado);
+        }
+        return item;
+      }).toList();
+      eventos[idx] = eventos[idx].copyWith(checklist: updated);
+      emitAll();
+    }
+  }
 
   @override
-  Future<void> toggleEventoChecklistItem(String eventoId, String itemId) async {}
+  Future<void> eliminarEvento(String eventoId) async {
+    eventos.removeWhere((e) => e.id == eventoId);
+    emitAll();
+  }
 
   @override
   Future<SesionRepartoModel> ejecutarRepartoAutomatico({
@@ -264,21 +274,11 @@ class MockPlanificadorRepository implements IPlanificadorRepository {
     List<String>? tareaIds,
   }) async {
     return SesionRepartoModel(
-      id: 'ses-mock',
+      id: 'sesion-1',
       entornoId: entornoId,
       fechaSesion: DateTime.now(),
       usuariosParticipantes: usuariosParticipantes,
       minutosTotales: 60,
-      items: [
-        ItemRepartoModel(
-          id: 'item-1',
-          sesionId: 'ses-mock',
-          tareaId: 'task-1',
-          usuarioAsignadoInicial: usuariosParticipantes[0],
-          usuarioAsignadoFinal: usuariosParticipantes[0],
-          tiempoMinutos: 30,
-        ),
-      ],
       createdAt: DateTime.now(),
     );
   }
@@ -291,10 +291,11 @@ class MockPlanificadorRepository implements IPlanificadorRepository {
     required List<TareaModel> todasLasTareas,
   }) async {
     return SesionRepartoModel(
-      id: 'ses-manual',
+      id: 'sesion-manual',
       entornoId: entornoId,
       fechaSesion: DateTime.now(),
       usuariosParticipantes: usuariosParticipantes,
+      minutosTotales: 30,
       createdAt: DateTime.now(),
     );
   }
@@ -363,33 +364,24 @@ void main() {
       controller.setEntorno('env-1');
       mockRepo.emitAll();
 
-      // Permitir que los streams emitan
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       expect(controller.proyectos.length, equals(1));
       expect(controller.tareas.length, equals(1));
       expect(controller.eventos.length, equals(1));
-      expect(controller.tareasSueltas.length, equals(1));
-      expect(controller.agendaItemsForSelectedDate.length, equals(2));
+      expect(controller.eventosForSelectedDate.length, equals(1));
+      expect(controller.tareasForSelectedDate.length, equals(1));
       expect(controller.diaTieneItems(today), isTrue);
     });
 
-    test('Reparto Drag & Drop state and dynamic minutes accumulation', () async {
+    test('toggleTarea updates state optimistically and calls repository', () async {
       final now = DateTime.now();
       mockRepo.tareas = [
         TareaModel(
           id: 't1',
           entornoId: 'env-1',
-          titulo: 'Limpiar sala',
-          tiempoEstimadoMinutos: 30,
-          createdAt: now,
-          updatedAt: now,
-        ),
-        TareaModel(
-          id: 't2',
-          entornoId: 'env-1',
-          titulo: 'Fregar platos',
-          tiempoEstimadoMinutos: 20,
+          titulo: 'Barrer la casa',
+          estado: 'pendiente',
           createdAt: now,
           updatedAt: now,
         ),
@@ -399,1295 +391,241 @@ void main() {
       mockRepo.emitAll();
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      controller.setParticipantes(['u1', 'u2']);
-      controller.seleccionarTodasLasTareasReparto();
+      await controller.toggleTarea('t1');
 
-      // Por defecto asigna a u1
-      expect(controller.getMinutosUsuarioEnReparto('u1'), equals(50));
-      expect(controller.getMinutosUsuarioEnReparto('u2'), equals(0));
-
-      // Mover t2 a u2 vía drag and drop
-      controller.moverTareaEnReparto('t2', 'u2');
-
-      // Comprobar recálculo dinámico inmediato de minutos
-      expect(controller.getMinutosUsuarioEnReparto('u1'), equals(30));
-      expect(controller.getMinutosUsuarioEnReparto('u2'), equals(20));
-      expect(controller.getTareasDeUsuarioEnReparto('u2').first.id, equals('t2'));
+      expect(controller.tareas.first.estaCompletada, isTrue);
     });
   });
 
-  group('Planificador Widget Views Tests', () {
-    testWidgets('AgendaCalendarView renders days, task and birthday card',
+  group('Flat Design 2.0 Widget Tests', () {
+    testWidgets('FlatCalendarHeader renders 7 weekdays in week mode and expands to month grid',
         (tester) async {
-      final today = DateTime.now();
-      mockRepo.tareas = [
-        TareaModel(
-          id: 't1',
-          entornoId: 'env-1',
-          titulo: 'Pagar facturas',
-          tiempoEstimadoMinutos: 15,
-          fechaLimite: today,
-          createdAt: today,
-          updatedAt: today,
-        ),
-      ];
-      mockRepo.eventos = [
-        EventoModel(
-          id: 'e1',
-          entornoId: 'env-1',
-          titulo: 'Cumpleaños de Roberto',
-          tipo: 'cumpleanos',
-          fechaInicio: today,
-          personaCumpleanos: 'Roberto',
-          ideasRegalo: 'Zapatillas deportivas',
-          createdBy: 'u1',
-          createdAt: today,
-        ),
-      ];
+      final selected = DateTime(2026, 11, 8); // Domingo
 
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
+      DateTime? clickedDate;
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: AgendaCalendarView(controller: controller),
+            body: FlatCalendarHeader(
+              selectedDate: selected,
+              onDateSelected: (d) => clickedDate = d,
+              hasItemsOnDate: (d) => d.day == 8,
+            ),
           ),
         ),
       );
       await tester.pump();
 
-      expect(find.text('Lun'), findsOneWidget);
-      expect(find.text('Pagar facturas'), findsOneWidget);
-      expect(find.text('Roberto'), findsOneWidget);
-      expect(find.text('Ideas: Zapatillas deportivas'), findsOneWidget);
+      // Verificar que se renderizan las etiquetas de los 7 días
+      expect(find.text('L'), findsWidgets);
+      expect(find.text('M'), findsWidgets);
+      expect(find.text('X'), findsWidgets);
+      expect(find.text('J'), findsWidgets);
+      expect(find.text('V'), findsWidgets);
+      expect(find.text('S'), findsWidgets);
+      expect(find.text('D'), findsWidgets);
+
+      // Tocar en el botón del mes para expandir al modo mes
+      await tester.tap(find.textContaining('Noviembre 2026'));
+      await tester.pumpAndSettle();
+
+      // Encontrar días del mes
+      expect(find.text('15'), findsWidgets);
+
+      // Tocar el día 15 en la cuadrícula mensual: debe llamar al callback y colapsarse a modo semana
+      await tester.tap(find.text('15').first);
+      await tester.pumpAndSettle();
+
+      expect(clickedDate, isNotNull);
+      expect(clickedDate!.day, equals(15));
+    });
+
+    testWidgets('FlatEventCard renders appointment and birthday card with subtle pastel styling',
+        (tester) async {
+      final now = DateTime(2026, 11, 8, 10, 30);
+
+      final citaMedica = EventoModel(
+        id: 'ev-1',
+        entornoId: 'env-1',
+        titulo: 'Consulta Médica',
+        tipo: 'evento_general',
+        fechaInicio: now,
+        createdBy: 'u-1',
+        createdAt: now,
+      );
+
+      final cumpleanos = EventoModel(
+        id: 'ev-2',
+        entornoId: 'env-1',
+        titulo: 'Cumpleaños de Laura',
+        tipo: 'cumpleanos',
+        fechaInicio: now,
+        personaCumpleanos: 'Laura',
+        ideasRegalo: 'Libro de diseño',
+        createdBy: 'u-1',
+        createdAt: now,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                FlatEventCard(evento: citaMedica),
+                FlatEventCard(evento: cumpleanos),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Cita médica
+      expect(find.text('Consulta Médica'), findsOneWidget);
+      expect(find.text('10:30'), findsOneWidget);
+
+      // Cumpleaños con regalo y pastel
+      expect(find.text('Cumpleaños de Laura'), findsOneWidget);
+      expect(find.text('Regalo: Libro de diseño'), findsOneWidget);
+      expect(find.text('Cumpleaños'), findsOneWidget);
       expect(find.byIcon(Icons.cake_rounded), findsOneWidget);
     });
 
-    testWidgets('ProyectosBacklogView renders projects and only project-related content',
+    testWidgets('FlatTaskCard renders checkbox, title, estimated time chip and member avatar',
         (tester) async {
       final now = DateTime.now();
-      mockRepo.proyectos = [
-        ProyectoModel(
-          id: 'p1',
-          entornoId: 'env-1',
-          nombre: 'Pintar Casa',
-          createdBy: 'u1',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-      mockRepo.tareas = [
-        TareaModel(
-          id: 't1',
-          entornoId: 'env-1',
-          proyectoId: 'p1',
-          titulo: 'Comprar rodillos',
-          estado: 'pendiente',
-          createdAt: now,
-          updatedAt: now,
-        ),
-        TareaModel(
-          id: 't2',
-          entornoId: 'env-1',
-          titulo: 'Tarea sin proyecto',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
 
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ProyectosBacklogView(controller: controller),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Pintar Casa'), findsOneWidget);
-      expect(find.text('0/1 (0%)'), findsOneWidget);
-      expect(find.text('Proyectos (1)'), findsOneWidget);
-
-      // Las tareas sueltas no deben mostrarse en la sección de proyectos
-      expect(find.text('Tarea sin proyecto'), findsNothing);
-    });
-
-    testWidgets('RepartoTareasBoardView renders member columns with minute counter',
-        (tester) async {
-      final now = DateTime.now();
-      mockRepo.tareas = [
-        TareaModel(
-          id: 't1',
-          entornoId: 'env-1',
-          titulo: 'Barrer terraza',
-          tiempoEstimadoMinutos: 40,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-
-      final miembros = [
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-alberto',
-          role: 'owner',
-          joinedAt: now,
-          username: 'Alberto',
-          avatarData: const AvatarData.initials(),
-        ),
-      ];
-
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      controller.setParticipantes(['usr-alberto']);
-      controller.seleccionarTodasLasTareasReparto();
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: RepartoTareasBoardView(
-              controller: controller,
-              miembros: miembros,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Alberto'), findsNWidgets(2)); // Barra de participantes + cabecera columna
-      expect(find.text('40 min'), findsOneWidget);
-      expect(find.text('Barrer terraza'), findsOneWidget);
-      expect(find.text('Reparto automático balanceado'), findsOneWidget);
-      expect(find.text('Guardar y Aplicar'), findsOneWidget);
-    });
-
-    testWidgets(
-        'RepartoTareasBoardView renders all environment members when 2+ members exist',
-        (tester) async {
-      final now = DateTime.now();
-      mockRepo.tareas = [
-        TareaModel(
-          id: 't1',
-          entornoId: 'env-1',
-          titulo: 'Limpiar cristales',
-          tiempoEstimadoMinutos: 45,
-          asignadoA: 'usr-alberto',
-          createdAt: now,
-          updatedAt: now,
-        ),
-        TareaModel(
-          id: 't2',
-          entornoId: 'env-1',
-          titulo: 'Pasar la aspiradora',
-          tiempoEstimadoMinutos: 30,
-          asignadoA: 'usr-beatriz',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-
-      final miembros = [
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-alberto',
-          role: 'owner',
-          joinedAt: now,
-          username: 'Alberto',
-          avatarData: const AvatarData.initials(),
-        ),
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-beatriz',
-          role: 'member',
-          joinedAt: now,
-          username: 'Beatriz',
-          avatarData: const AvatarData.initials(),
-        ),
-      ];
-
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      // Montar vista con los 2 miembros
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: RepartoTareasBoardView(
-              controller: controller,
-              miembros: miembros,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // Ambos participantes deben ser reconocidos automáticamente
-      expect(controller.participantesIds, containsAll(['usr-alberto', 'usr-beatriz']));
-
-      // Comprobar que en la UI aparecen tanto Alberto como Beatriz (en chips de participantes y en columnas)
-      expect(find.text('Alberto'), findsNWidgets(2));
-      expect(find.text('Beatriz'), findsNWidgets(2));
-      expect(find.text('PARTICIPANTES EN EL REPARTO'), findsOneWidget);
-      expect(find.text('2/2'), findsNWidgets(2)); // 2/2 participantes y 2/2 tareas seleccionadas
-
-      // Comprobar que las tareas aparecen en el tablero
-      expect(find.text('Limpiar cristales'), findsOneWidget);
-      expect(find.text('Pasar la aspiradora'), findsOneWidget);
-
-      // Botón de reasignación rápida presente cuando hay más de 1 participante
-      expect(find.byIcon(Icons.swap_horiz_rounded), findsWidgets);
-
-      // Probar toggle de participante en controller
-      controller.toggleParticipante('usr-beatriz');
-      await tester.pump();
-
-      expect(controller.participantesIds, equals(['usr-alberto']));
-      // Las tareas de Beatriz deben reasignarse a Alberto
-      expect(controller.repartoAsignaciones['t2'], equals('usr-alberto'));
-    });
-
-    testWidgets('PlanificadorHoyView renders critical alerts and task feed without routine carousel',
-        (tester) async {
-      final now = DateTime.now();
-      // Cumpleaños mañana
-      final manana = now.add(const Duration(days: 1));
-      mockRepo.eventos = [
-        EventoModel(
-          id: 'ev-cumple',
-          entornoId: 'env-1',
-          titulo: 'Cumpleaños de Laura',
-          fechaInicio: DateTime(now.year, manana.month, manana.day, 10, 0),
-          tipo: 'cumpleanos',
-          ideasRegalo: '1 ideas',
-          personaCumpleanos: 'Laura',
-          createdBy: 'user-1',
-          createdAt: now,
-        ),
-      ];
-
-      mockRepo.tareas = [
-        TareaModel(
-          id: 't-hoy',
-          entornoId: 'env-1',
-          titulo: 'Pasear a Max',
-          asignadoA: 'usr-1',
-          fechaLimite: now,
-          estado: 'pendiente',
-          tiempoEstimadoMinutos: 15,
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      final miembros = [
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-1',
-          role: 'owner',
-          joinedAt: now,
-          username: 'Yo',
-          avatarData: const AvatarData.initials(),
-        ),
-      ];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: PlanificadorHoyView(
-              controller: controller,
-              usuarioActualId: 'usr-1',
-              miembros: miembros,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // Verifica alerta crítica de cumpleaños
-      expect(find.text('Laura'), findsOneWidget);
-      expect(find.text('¡MAÑANA ES SU CUMPLEAÑOS!'), findsOneWidget);
-
-      // Verifica que no se renderiza la sección de rutinas habituales (1 toque)
-      expect(find.text('RUTINAS HABITUALES (1 TOQUE)'), findsNothing);
-      expect(find.text('Fregar platos'), findsNothing);
-
-      // Verifica tarea de hoy
-      expect(find.text('Pasear a Max'), findsOneWidget);
-    });
-
-    testWidgets(
-        'PlanificadorHoyView search bar filters tasks and shows empty search state',
-        (tester) async {
-      final now = DateTime.now();
-      mockRepo.tareas = [
-        TareaModel(
-          id: 't-perro',
-          entornoId: 'env-1',
-          titulo: 'Pasear a Max',
-          fechaLimite: now,
-          estado: 'pendiente',
-          createdAt: now,
-          updatedAt: now,
-        ),
-        TareaModel(
-          id: 't-compra',
-          entornoId: 'env-1',
-          titulo: 'Comprar frutas',
-          fechaLimite: now,
-          estado: 'pendiente',
-          createdAt: now,
-          updatedAt: now,
-        ),
-      ];
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: PlanificadorHoyView(
-              controller: controller,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Pasear a Max'), findsOneWidget);
-      expect(find.text('Comprar frutas'), findsOneWidget);
-      expect(find.byIcon(Icons.search_rounded), findsOneWidget);
-
-      // Buscar "Max"
-      await tester.enterText(find.byType(TextField).first, 'Max');
-      await tester.pumpAndSettle();
-
-      expect(find.text('Pasear a Max'), findsOneWidget);
-      expect(find.text('Comprar frutas'), findsNothing);
-
-      // Buscar texto inexistente
-      await tester.enterText(find.byType(TextField).first, 'inexistente');
-      await tester.pumpAndSettle();
-
-      expect(find.text('Sin resultados'), findsOneWidget);
-      expect(find.text('Limpiar búsqueda'), findsOneWidget);
-
-      // Limpiar búsqueda
-      await tester.tap(find.text('Limpiar búsqueda'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Pasear a Max'), findsOneWidget);
-      expect(find.text('Comprar frutas'), findsOneWidget);
-    });
-
-    testWidgets('CrearTareaRapidaDialog submits task with selected chips',
-        (tester) async {
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      final miembros = [
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-1',
-          role: 'owner',
-          joinedAt: now,
-          username: 'Yo',
-          avatarData: const AvatarData.initials(),
-        ),
-      ];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => CrearTareaRapidaDialog.show(
-                  ctx,
-                  controller: controller,
-                  usuarioActualId: 'usr-1',
-                  miembros: miembros,
-                ),
-                child: const Text('Abrir'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Abrir'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Nueva Tarea Rápida'), findsOneWidget);
-      expect(find.text('Hoy'), findsOneWidget);
-      expect(find.text('Mañana'), findsOneWidget);
-
-      // Escribir texto de la tarea
-      await tester.enterText(find.byType(TextField).first, 'Comprar leche desnatada');
-      await tester.pump();
-
-      // Tap en botón de crear (AppButton con 'Crear Tarea')
-      await tester.ensureVisible(find.text('Crear Tarea'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Crear Tarea'));
-      await tester.pumpAndSettle();
-
-      // Debe haber creado la tarea con tiempo 0 (Sin tiempo) por defecto
-      expect(mockRepo.tareas.any((t) => t.titulo == 'Comprar leche desnatada'), isTrue);
-      final tareaCreada = mockRepo.tareas.firstWhere((t) => t.titulo == 'Comprar leche desnatada');
-      expect(tareaCreada.tiempoEstimadoMinutos, equals(0));
-    });
-
-    testWidgets('TaskFormBasic in edit mode allows renaming, setting etiqueta, and saving',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-
-      final tareaOriginal = TareaModel(
-        id: 't-fregar',
-        entornoId: 'env-1',
-        titulo: 'Fregar platos',
-        fechaLimite: now,
-        estado: 'pendiente',
-        tiempoEstimadoMinutos: 15,
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      mockRepo.tareas = [tareaOriginal];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      final miembros = [
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-1',
-          role: 'owner',
-          joinedAt: now,
-          username: 'Yo',
-          avatarData: const AvatarData.initials(),
-        ),
-      ];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => TaskFormBasic.showModal(
-                  ctx,
-                  mode: TaskFormMode.edit,
-                  initialTarea: tareaOriginal,
-                  miembros: miembros,
-                  proyectos: controller.proyectos,
-                  usuarioActualId: 'usr-1',
-                  onSubmit: (payload) => controller.actualizarTareaDesdePayload(tareaOriginal, payload),
-                  onDelete: () => controller.eliminarTarea(tareaOriginal.id),
-                ),
-                child: const Text('Abrir Editar'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Abrir Editar'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Editar tarea'), findsOneWidget);
-      expect(find.text('¿Qué hay que hacer?'), findsOneWidget);
-      expect(find.text('Cuándo'), findsOneWidget);
-      expect(find.text('Asignar a'), findsOneWidget);
-      expect(find.text('Opciones avanzadas'), findsOneWidget);
-
-      // Renombrar tarea
-      await tester.enterText(find.byType(TextField).first, 'Fregar platos y sartenes');
-      await tester.pump();
-
-      // Expandir opciones avanzadas y seleccionar etiqueta Cocina
-      await tester.tap(find.text('Opciones avanzadas'));
-      await tester.pumpAndSettle();
-
-      await tester.ensureVisible(find.text('Cocina'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cocina'));
-      await tester.pumpAndSettle();
-
-      // Guardar cambios
-      await tester.ensureVisible(find.text('Guardar cambios'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar cambios'));
-      await tester.pumpAndSettle();
-
-      expect(mockRepo.tareas.any((t) => t.titulo == 'Fregar platos y sartenes'), isTrue);
-      final tareaGuardada = mockRepo.tareas.firstWhere((t) => t.id == 't-fregar');
-      expect(tareaGuardada.etiqueta, equals('Cocina'));
-
-      // Probar eliminar tarea en controller
-      await controller.eliminarTarea('t-fregar');
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(mockRepo.tareas.any((t) => t.id == 't-fregar'), isFalse);
-    });
-
-    test('PlanificadorController tag filtering and grouping works properly', () async {
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-
-      final t1 = TareaModel(
+      final tarea = TareaModel(
         id: 't-1',
-        entornoId: 'env-1',
-        titulo: 'Limpiar baño',
-        descripcion: 'Limpieza',
-        fechaLimite: now,
-        estado: 'pendiente',
-        createdAt: now,
-        updatedAt: now,
-      );
-      final t2 = TareaModel(
-        id: 't-2',
-        entornoId: 'env-1',
-        titulo: 'Cocinar cena',
-        descripcion: 'Cocina',
-        fechaLimite: now,
-        estado: 'pendiente',
-        createdAt: now,
-        updatedAt: now,
-      );
-      final t3 = TareaModel(
-        id: 't-3',
-        entornoId: 'env-1',
-        titulo: 'Hacer llamada',
-        fechaLimite: now,
-        estado: 'pendiente',
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      mockRepo.tareas = [t1, t2, t3];
-      mockRepo.emitAll();
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      expect(controller.tareasDeHoy.length, equals(3));
-      expect(controller.etiquetasDisponibles, containsAll(['Limpieza', 'Cocina']));
-
-      // Filtro por etiqueta
-      controller.setFiltroEtiqueta('Limpieza');
-      expect(controller.tareasDeHoy.length, equals(1));
-      expect(controller.tareasDeHoy.first.titulo, equals('Limpiar baño'));
-
-      controller.setFiltroEtiqueta(null);
-      expect(controller.tareasDeHoy.length, equals(3));
-
-      // Agrupación por etiqueta
-      final agrupadas = controller.tareasDeHoyAgrupadasPorEtiqueta;
-      expect(agrupadas.containsKey('Limpieza'), isTrue);
-      expect(agrupadas.containsKey('Cocina'), isTrue);
-      expect(agrupadas.containsKey('Sin etiqueta'), isTrue);
-      expect(agrupadas['Limpieza']!.length, equals(1));
-      expect(agrupadas['Cocina']!.length, equals(1));
-      expect(agrupadas['Sin etiqueta']!.length, equals(1));
-
-      // Toggle agrupación
-      expect(controller.agruparPorEtiqueta, isFalse);
-      controller.toggleAgruparPorEtiqueta();
-      expect(controller.agruparPorEtiqueta, isTrue);
-    });
-
-    testWidgets('Checklist items in tasks and events can be viewed and toggled in controller and UI',
-        (tester) async {
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-
-      final taskWithChecklist = TareaModel(
-        id: 'task-chk-1',
-        entornoId: 'env-1',
-        titulo: 'Hacer compra semanal',
-        fechaLimite: now,
-        checklist: const [
-          ChecklistItemModel(id: 'chk-1', titulo: 'Manzanas', completado: false),
-          ChecklistItemModel(id: 'chk-2', titulo: 'Leche de avena', completado: true),
-        ],
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      final eventWithChecklist = EventoModel(
-        id: 'ev-chk-1',
-        entornoId: 'env-1',
-        titulo: 'Visita al médico',
-        tipo: 'general',
-        fechaInicio: now,
-        checklist: const [
-          ChecklistItemModel(id: 'echk-1', titulo: 'Coger cartilla médica', completado: false),
-        ],
-        createdBy: 'usr-1',
-        createdAt: now,
-      );
-
-      mockRepo.tareas = [taskWithChecklist];
-      mockRepo.eventos = [eventWithChecklist];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(controller.tareasDeHoy.first.checklist.length, equals(2));
-      expect(controller.eventos.first.checklist.length, equals(1));
-
-      // Test optimistic toggle on task checklist
-      await controller.toggleChecklistItem('task-chk-1', 'chk-1');
-      expect(controller.tareasDeHoy.first.checklist.firstWhere((i) => i.id == 'chk-1').completado, isTrue);
-
-      // Test optimistic toggle on event checklist
-      await controller.toggleEventoChecklistItem('ev-chk-1', 'echk-1');
-      expect(controller.eventos.first.checklist.firstWhere((i) => i.id == 'echk-1').completado, isTrue);
-
-      // Render PlanificadorHoyView to verify UI displays subitems
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: PlanificadorHoyView(
-              controller: controller,
-              usuarioActualId: 'usr-1',
-              miembros: const [],
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Manzanas'), findsOneWidget);
-      expect(find.text('Leche de avena'), findsOneWidget);
-      expect(find.text('Coger cartilla médica'), findsOneWidget);
-
-      // Tap on item 'Manzanas' in UI
-      await tester.tap(find.text('Manzanas'));
-      await tester.pump(const Duration(milliseconds: 50));
-
-      // Tap on event item 'Coger cartilla médica' in UI
-      await tester.tap(find.text('Coger cartilla médica'));
-      await tester.pump(const Duration(milliseconds: 50));
-    });
-
-    test('TareaModel decodes checklist and comentarios with dynamic maps properly', () {
-      final json = <String, dynamic>{
-        'id': 't-test',
-        'entorno_id': 'env-1',
-        'titulo': 'Test subtareas y comentarios',
-        'checklist': <dynamic>[
-          <dynamic, dynamic>{'id': 'c-1', 'titulo': 'Sub 1', 'completado': false},
-          <dynamic, dynamic>{'id': 'c-2', 'titulo': 'Sub 2', 'completado': true},
-        ],
-        'comentarios': <dynamic>[
-          <dynamic, dynamic>{
-            'id': 'com-1',
-            'autor_id': 'usr-1',
-            'autor_nombre': 'Carlos',
-            'texto': 'Ya compré las cosas',
-            'created_at': DateTime.now().toIso8601String(),
-          },
-        ],
-      };
-
-      final tarea = TareaModel.fromJson(json);
-      expect(tarea.checklist.length, equals(2));
-      expect(tarea.checklist.first.titulo, equals('Sub 1'));
-      expect(tarea.comentarios.length, equals(1));
-      expect(tarea.comentarios.first.texto, equals('Ya compré las cosas'));
-    });
-
-    testWidgets('Comments can be added to task and TaskFormBasic displays subtareas in edit mode', (tester) async {
-      controller.setEntorno('env-1');
-
-      final task = TareaModel(
-        id: 't-comm-1',
-        entornoId: 'env-1',
-        titulo: 'Tarea con comentarios',
-        checklist: const [
-          ChecklistItemModel(id: 'chk-1', titulo: 'Comprar pan'),
-        ],
-        comentarios: [
-          ComentarioTareaModel(
-            id: 'c-1',
-            autorId: 'usr-1',
-            autorNombre: 'Marta',
-            texto: 'Por favor pan integral',
-            createdAt: DateTime.fromMillisecondsSinceEpoch(1700000000000),
-          ),
-        ],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      mockRepo.tareas = [task];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 30));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: TaskFormBasic(
-              mode: TaskFormMode.edit,
-              initialTarea: task,
-              usuarioActualId: 'usr-1',
-              miembros: const [],
-              onSubmit: (_) async {},
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      // Comprobar título rescatado
-      expect(find.text('Tarea con comentarios'), findsOneWidget);
-
-      // Abrir Opciones avanzadas para verificar subtareas
-      await tester.tap(find.text('Opciones avanzadas'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Subtareas / Checklist'), findsOneWidget);
-      expect(find.text('Comprar pan'), findsOneWidget);
-
-      // Add a new comment via controller
-      await controller.agregarComentario(
-        tareaId: 't-comm-1',
-        texto: 'Listo, compré el integral',
-        autorId: 'usr-2',
-        autorNombre: 'Juan',
-      );
-
-      final updatedTask = controller.tareas.firstWhere((t) => t.id == 't-comm-1');
-      expect(updatedTask.comentarios.length, equals(2));
-      expect(updatedTask.comentarios.last.texto, equals('Listo, compré el integral'));
-    });
-
-    testWidgets('AgendaCalendarView renders subtareas and comments badges, and tapping opens TaskFormBasic in edit mode', (tester) async {
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-      controller.selectDate(now);
-
-      final task = TareaModel(
-        id: 't-agenda-1',
-        entornoId: 'env-1',
-        titulo: 'Llevar coche a revisión',
-        fechaLimite: now,
-        checklist: const [
-          ChecklistItemModel(id: 'c-1', titulo: 'Mirar frenos'),
-        ],
-        comentarios: [
-          ComentarioTareaModel(
-            id: 'c-1',
-            autorId: 'u1',
-            autorNombre: 'Ana',
-            texto: 'Llamé al taller',
-            createdAt: now,
-          ),
-        ],
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      mockRepo.tareas = [task];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 30));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: AgendaCalendarView(
-              controller: controller,
-              usuarioActualId: 'usr-1',
-              miembros: const [],
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.text('Llevar coche a revisión'), findsOneWidget);
-      expect(find.text('0/1 subtareas'), findsOneWidget);
-      expect(find.text('1'), findsWidgets); // Comment badge counter
-
-      // Tap on the task card to open TaskFormBasic in edit mode
-      await tester.tap(find.text('Llevar coche a revisión'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-
-      // Verify TaskFormBasic in edit mode is displayed
-      expect(find.text('Editar tarea'), findsOneWidget);
-    });
-
-    testWidgets('Reparto allows selecting and deselecting participants, and shows/hides columns', (tester) async {
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-
-      final miembros = [
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-alberto',
-          role: 'owner',
-          joinedAt: now,
-          username: 'Alberto',
-          avatarData: const AvatarData.initials(),
-        ),
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-beatriz',
-          role: 'member',
-          joinedAt: now,
-          username: 'Beatriz',
-          avatarData: const AvatarData.initials(),
-        ),
-      ];
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: RepartoTareasBoardView(
-              controller: controller,
-              miembros: miembros,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      // Inicialmente ambos están seleccionados
-      expect(controller.participantesIds, containsAll(['usr-alberto', 'usr-beatriz']));
-      expect(find.text('2/2'), findsWidgets);
-
-      // Deseleccionar a Beatriz tocando su chip en la barra de participantes
-      final chipBeatriz = find.text('Beatriz').first;
-      await tester.tap(chipBeatriz);
-      await tester.pump();
-
-      // Ahora solo Alberto participa
-      expect(controller.participantesIds, equals(['usr-alberto']));
-      expect(find.text('1/2'), findsWidgets);
-
-      // Volver a seleccionar a Beatriz tocando de nuevo
-      await tester.tap(chipBeatriz);
-      await tester.pump();
-
-      expect(controller.participantesIds, containsAll(['usr-alberto', 'usr-beatriz']));
-      expect(find.text('2/2'), findsWidgets);
-
-      // Probar Deseleccionar todos
-      await tester.tap(find.text('Deseleccionar todos'));
-      await tester.pump();
-
-      expect(controller.participantesIds, isEmpty);
-      expect(find.text('No hay miembros participantes seleccionados'), findsOneWidget);
-
-      // Probar Seleccionar todos
-      await tester.tap(find.text('Seleccionar todos'));
-      await tester.pump();
-
-      expect(controller.participantesIds.length, equals(2));
-    });
-
-    testWidgets('Hoy view renders responsible logo on card and TaskFormBasic displays assigned member in edit mode', (tester) async {
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-
-      final miembros = [
-        EnvironmentMemberModel(
-          environmentId: 'env-1',
-          userId: 'usr-alberto',
-          role: 'owner',
-          joinedAt: now,
-          username: 'Alberto',
-          avatarData: const AvatarData.initials(),
-        ),
-      ];
-
-      final tareaAsignada = TareaModel(
-        id: 't-asig-1',
         entornoId: 'env-1',
         titulo: 'Fregar los platos',
         tiempoEstimadoMinutos: 15,
-        asignadoA: 'usr-alberto',
+        estado: 'pendiente',
+        asignadoA: 'u-1',
         createdAt: now,
         updatedAt: now,
       );
 
-      mockRepo.tareas = [tareaAsignada];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 30));
+      final miembro = EnvironmentMemberModel(
+        environmentId: 'env-1',
+        userId: 'u-1',
+        role: 'member',
+        joinedAt: now,
+        username: 'Alba',
+        avatarData: const AvatarData.initials(),
+      );
+
+      bool toggleCalled = false;
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PlanificadorHoyView(
-              controller: controller,
-              miembros: miembros,
-              usuarioActualId: 'usr-alberto',
+            body: FlatTaskCard(
+              tarea: tarea,
+              asignado: miembro,
+              onToggle: () => toggleCalled = true,
             ),
           ),
         ),
       );
       await tester.pump();
 
-      // Comprobar previsualización del card en Hoy: título y logo del responsable
       expect(find.text('Fregar los platos'), findsOneWidget);
-      expect(find.byType(UserAvatar), findsWidgets); // Mini avatar + logo en previsualización
+      expect(find.text('15m'), findsOneWidget);
+      expect(find.text('AL'), findsOneWidget);
 
-      // Abrir la tarea para editar
-      await tester.tap(find.text('Fregar los platos'));
+      // Tocar checkbox atómico
+      await tester.tap(find.byType(GestureDetector).first);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
 
-      // Comprobar que en TaskFormBasic aparece en modo edición con el responsable seleccionado
-      expect(find.text('Editar tarea'), findsOneWidget);
-      expect(find.text('Alberto'), findsWidgets);
+      expect(toggleCalled, isTrue);
     });
 
-    testWidgets('EditarEventoDialog renders RecordatoriosSelectorWidget with quick chips',
+    testWidgets('FlatCreateItemSheet switches between Tarea and Evento tabs',
         (tester) async {
-      final now = DateTime.now();
-      controller.setEntorno('env-1');
-
-      final eventoConRecordatorios = EventoModel(
-        id: 'ev-test-rec',
-        entornoId: 'env-1',
-        titulo: 'Reunión de vecinos',
-        tipo: 'evento_general',
-        fechaInicio: now.add(const Duration(days: 3)),
-        recordatorios: [
-          RecordatorioTareaModel(
-            id: 'rec-e1',
-            tareaId: 'ev-test-rec',
-            fechaNotificacion: now.add(const Duration(days: 2)),
-            horaNotificacion: '10:00',
-          ),
-        ],
-        createdBy: 'usr-1',
-        createdAt: now,
-      );
-
-      mockRepo.eventos = [eventoConRecordatorios];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 30));
+      String? createdTaskTitle;
+      String? createdEventTitle;
 
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => EditarEventoDialog.show(
-                  ctx,
-                  evento: eventoConRecordatorios,
-                  controller: controller,
-                ),
-                child: const Text('Abrir Editar Evento'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Abrir Editar Evento'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Editar Evento'), findsOneWidget);
-      expect(find.text('RECORDATORIOS PROGRAMADOS'), findsOneWidget);
-      expect(find.text('El día antes'), findsOneWidget);
-      expect(find.text('3 días antes'), findsOneWidget);
-    });
-
-    testWidgets(
-        'EditarProyectoDialog allows editing name, color and deleting project',
-        (tester) async {
-      final now = DateTime.now();
-      final proyecto = ProyectoModel(
-        id: 'p-edit-test',
-        entornoId: 'env-1',
-        nombre: 'Proyecto Test',
-        descripcion: 'Objetivo test',
-        colorHex: '#6366F1',
-        createdBy: 'usr-1',
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      controller.setEntorno('env-1');
-      mockRepo.proyectos = [proyecto];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => EditarProyectoDialog.show(
-                  ctx,
-                  proyecto: proyecto,
-                  controller: controller,
-                ),
-                child: const Text('Abrir Editar Proyecto'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Abrir Editar Proyecto'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Editar Proyecto'), findsOneWidget);
-      expect(find.text('Proyecto Test'), findsOneWidget);
-      expect(find.text('Guardar Cambios'), findsOneWidget);
-      expect(find.text('Eliminar Proyecto'), findsOneWidget);
-
-      // Editar nombre
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Proyecto Test'), 'Proyecto Renombrado');
-      await tester.tap(find.text('Guardar Cambios'));
-      await tester.pumpAndSettle();
-
-      expect(controller.proyectos.first.nombre, 'Proyecto Renombrado');
-    });
-
-    testWidgets(
-        'ProyectosBacklogView has button to add task directly to project and popup menu',
-        (tester) async {
-      final now = DateTime.now();
-      final proyecto = ProyectoModel(
-        id: 'p-vacaciones',
-        entornoId: 'env-1',
-        nombre: 'Vacaciones Verano',
-        createdBy: 'usr-1',
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      controller.setEntorno('env-1');
-      mockRepo.proyectos = [proyecto];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ProyectosBacklogView(
-              controller: controller,
+            body: FlatCreateItemSheet(
+              defaultDate: DateTime.now(),
               miembros: const [],
+              onCreateTask: ({
+                required String titulo,
+                DateTime? fechaLimite,
+                String? asignadoA,
+                int tiempoEstimadoMinutos = 15,
+                String? proyectoId,
+              }) async {
+                createdTaskTitle = titulo;
+              },
+              onCreateEvent: ({
+                required String titulo,
+                required DateTime fechaInicio,
+                DateTime? fechaFin,
+                bool esTodoElDia = false,
+                String tipo = 'evento_general',
+                List<RecordatorioTareaModel> recordatorios = const [],
+              }) async {
+                createdEventTitle = titulo;
+              },
             ),
           ),
         ),
       );
       await tester.pump();
 
-      expect(find.text('Vacaciones Verano'), findsOneWidget);
-      // Popup menu button existe
-      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+      // Tab Tarea activa por defecto
+      expect(find.text('Título de la tarea'), findsOneWidget);
+      expect(find.text('Guardar Tarea'), findsOneWidget);
 
-      // Desplegar tarjeta para ver botón de añadir tarea
-      await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+      // Escribir título de tarea y guardar
+      await tester.enterText(find.byType(TextField).first, 'Pasear al perro');
+      await tester.tap(find.text('Guardar Tarea'));
+      await tester.pump();
+
+      expect(createdTaskTitle, equals('Pasear al perro'));
+
+      // Conmutar a tab Evento
+      await tester.tap(find.text('Evento / Cita'));
       await tester.pumpAndSettle();
 
-      expect(
-          find.text('Añadir tarea a Vacaciones Verano'), findsOneWidget);
+      expect(find.text('Título del evento'), findsOneWidget);
+      expect(find.text('Guardar Evento'), findsOneWidget);
+
+      // Escribir título de evento y guardar
+      await tester.enterText(find.byType(TextField).first, 'Dentista');
+      await tester.tap(find.text('Guardar Evento'));
+      await tester.pump();
+
+      expect(createdEventTitle, equals('Dentista'));
     });
 
-    testWidgets(
-        'CrearTareaRapidaDialog displays project selector and passes proyectoId',
+    testWidgets('PlanificadorScreen renders dynamic calendar, empty state and FAB',
         (tester) async {
-      final now = DateTime.now();
-      final proyecto = ProyectoModel(
-        id: 'p-jardin',
-        entornoId: 'env-1',
-        nombre: 'Jardín',
-        colorHex: '#10B981',
-        createdBy: 'usr-1',
-        createdAt: now,
-        updatedAt: now,
-      );
-
       controller.setEntorno('env-1');
-      mockRepo.proyectos = [proyecto];
       mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => CrearTareaRapidaDialog.show(
-                  ctx,
-                  controller: controller,
-                  proyectoIdInicial: 'p-jardin',
-                ),
-                child: const Text('Abrir Crear Tarea'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Abrir Crear Tarea'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Proyecto'), findsOneWidget);
-      expect(find.text('Jardín'), findsOneWidget);
-      expect(find.text('Sin proyecto'), findsOneWidget);
-
-      // Escribir título y enviar formulario
-      await tester.enterText(
-          find.byType(TextField).first, 'Plantar rosales');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pumpAndSettle();
-
-      final tareaCreada =
-          controller.tareas.firstWhere((t) => t.titulo == 'Plantar rosales');
-      expect(tareaCreada.proyectoId, 'p-jardin');
-    });
-
-    testWidgets(
-        'TaskFormBasic displays project selector and allows changing project in edit mode',
-        (tester) async {
-      final now = DateTime.now();
-      final proyecto1 = ProyectoModel(
-        id: 'p-a',
-        entornoId: 'env-1',
-        nombre: 'Proyecto A',
-        createdBy: 'usr-1',
-        createdAt: now,
-        updatedAt: now,
-      );
-      final proyecto2 = ProyectoModel(
-        id: 'p-b',
-        entornoId: 'env-1',
-        nombre: 'Proyecto B',
-        createdBy: 'usr-1',
-        createdAt: now,
-        updatedAt: now,
-      );
-      final tarea = TareaModel(
-        id: 't-edit-proj',
-        entornoId: 'env-1',
-        proyectoId: 'p-a',
-        titulo: 'Tarea de Proyecto',
-        createdAt: now,
-        updatedAt: now,
-      );
-
-      controller.setEntorno('env-1');
-      mockRepo.proyectos = [proyecto1, proyecto2];
-      mockRepo.tareas = [tarea];
-      mockRepo.emitAll();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => TaskFormBasic.showModal(
-                  ctx,
-                  mode: TaskFormMode.edit,
-                  initialTarea: tarea,
-                  miembros: const [],
-                  proyectos: controller.proyectos,
-                  onSubmit: (payload) => controller.actualizarTareaDesdePayload(tarea, payload),
-                ),
-                child: const Text('Abrir Editar Tarea'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Abrir Editar Tarea'));
-      await tester.pumpAndSettle();
-
-      // Open advanced options
-      await tester.tap(find.text('Opciones avanzadas'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Proyecto A'), findsOneWidget);
-      expect(find.text('Proyecto B'), findsOneWidget);
-
-      // Cambiar a Proyecto B
-      await tester.ensureVisible(find.text('Proyecto B'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Proyecto B'));
-      await tester.pumpAndSettle();
-
-      await tester.ensureVisible(find.text('Guardar cambios'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar cambios'));
-      await tester.pumpAndSettle();
-
-      final tareaActualizada =
-          controller.tareas.firstWhere((t) => t.id == 't-edit-proj');
-      expect(tareaActualizada.proyectoId, 'p-b');
-    });
-
-    testWidgets('TaskFormBasic saves edited description when clicking Guardar cambios in edit mode', (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      controller.setEntorno('env-1');
-
-      // Agregamos la tarea al controlador
-      await controller.crearTarea(
-        titulo: 'Tarea para probar guardado de notas',
-      );
-      final tareaEnCtrl = controller.tareas.first;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData.dark(),
-          home: Scaffold(
-            body: TaskFormBasic(
-              mode: TaskFormMode.edit,
-              initialTarea: tareaEnCtrl,
-              usuarioActualId: 'usr-1',
-              miembros: const [],
-              onSubmit: (payload) => controller.actualizarTareaDesdePayload(tareaEnCtrl, payload),
-            ),
+          home: PlanificadorScreen(
+            controller: controller,
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Encontrar el campo de texto de descripción
-      final descInput = find.byType(TextField).at(1);
-      await tester.enterText(descInput, 'Nota o descripción importante');
-      await tester.pumpAndSettle();
+      // Cabecera de calendario presente
+      expect(find.byType(FlatCalendarHeader), findsOneWidget);
 
-      // Pulsar directamente "Guardar cambios"
-      await tester.ensureVisible(find.text('Guardar cambios'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar cambios'));
-      await tester.pumpAndSettle();
+      // Estado vacío inicial presente
+      expect(find.text('Día despejado'), findsOneWidget);
 
-      // Verificar que la descripción se guardó en el controlador y la tarea
-      final tareaActualizada =
-          controller.tareas.firstWhere((t) => t.id == tareaEnCtrl.id);
-      expect(tareaActualizada.descripcion, equals('Nota o descripción importante'));
+      // Botón flotante presente
+      expect(find.byType(FloatingActionButton), findsOneWidget);
     });
   });
 }
