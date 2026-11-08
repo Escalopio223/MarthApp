@@ -11,10 +11,12 @@ import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/evento_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
 import '../../domain/models/tarea_model.dart';
+import '../../domain/services/reparto_equitativo_service.dart';
 import '../controllers/planificador_controller.dart';
 import '../widgets/flat_calendar_header.dart';
 import '../widgets/flat_create_item_sheet.dart';
 import '../widgets/flat_event_card.dart';
+import '../widgets/flat_reparto_preview_sheet.dart';
 import '../widgets/flat_task_card.dart';
 
 /// Pantalla Principal Unificada del Planificador (Flat Design 2.0):
@@ -314,6 +316,42 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                         title: isSearching ? 'Tareas encontradas' : 'Tareas del Día',
                         count: tareasFiltradas.length,
                         icon: Icons.checklist_rounded,
+                        trailing: !isSearching && tareasFiltradas.isNotEmpty
+                            ? InkWell(
+                                onTap: () => _iniciarRepartoAutomatico(tareasFiltradas),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryAccent.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppTheme.primaryAccent.withOpacity(0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.auto_fix_high_rounded,
+                                        size: 13,
+                                        color: AppTheme.primaryAccent,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Autoasignar',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.primaryAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : null,
                       ),
                       const SizedBox(height: 8),
 
@@ -539,6 +577,62 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     );
   }
 
+  void _iniciarRepartoAutomatico(List<TareaModel> tareasDelDia) {
+    final members = _environmentController?.activeMembers ?? const [];
+    if (members.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay miembros en el espacio actual para balancear tareas.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final tareasNoAsignadas = tareasDelDia.where((t) => t.asignadoA == null).toList();
+    if (tareasNoAsignadas.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Todas las tareas de este día ya tienen un miembro asignado.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Calcular la distribución propuesta usando el servicio de dominio (LPT Greedy)
+    final resultado = RepartoEquitativoService.calcularRepartoEquitativo(
+      tareas: tareasDelDia,
+      miembros: members,
+      balancearSoloNoAsignadas: true,
+    );
+
+    if (resultado.asignacionesFinales.isEmpty) return;
+
+    FlatRepartoPreviewSheet.show(
+      context,
+      resultado: resultado,
+      onConfirm: () async {
+        final exito = await _controller.aplicarRepartoLote(
+          asignacionesFinales: resultado.asignacionesFinales,
+          usuariosParticipantes: members.map((m) => m.userId).toList(),
+        );
+
+        if (exito && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '¡${resultado.tareasNuevamenteRepartidas} tareas autoasignadas exitosamente!',
+              ),
+              backgroundColor: AppTheme.accentEmerald,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+    );
+  }
+
   Widget _buildFeedDateHeader(DateTime date) {
     return Row(
       children: [
@@ -577,6 +671,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
     required String title,
     required int count,
     required IconData icon,
+    Widget? trailing,
   }) {
     return Row(
       children: [
@@ -615,6 +710,10 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
             ),
           ),
         ),
+        if (trailing != null) ...[
+          const Spacer(),
+          trailing,
+        ],
       ],
     );
   }

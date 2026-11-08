@@ -14,6 +14,8 @@ class MiembroRepartoResumen {
   final int totalTareas;
   final int minutosTotales;
   final List<TareaModel> tareas;
+  final int tareasPreviamenteAsignadas;
+  final int minutosPreviamenteAsignados;
 
   const MiembroRepartoResumen({
     required this.userId,
@@ -22,7 +24,12 @@ class MiembroRepartoResumen {
     required this.totalTareas,
     required this.minutosTotales,
     required this.tareas,
+    this.tareasPreviamenteAsignadas = 0,
+    this.minutosPreviamenteAsignados = 0,
   });
+
+  int get nuevasTareasAsignadas => totalTareas - tareasPreviamenteAsignadas;
+  int get nuevosMinutosAsignados => minutosTotales - minutosPreviamenteAsignados;
 }
 
 /// Detalle de una tarea asignada en el reparto equitativo.
@@ -51,6 +58,7 @@ class ResultadoRepartoCalculado {
   final List<MiembroRepartoResumen> resumenMiembros;
   final int minutosTotales;
   final int tareasTotales;
+  final int tareasNuevamenteRepartidas;
 
   const ResultadoRepartoCalculado({
     required this.items,
@@ -58,6 +66,7 @@ class ResultadoRepartoCalculado {
     required this.resumenMiembros,
     required this.minutosTotales,
     required this.tareasTotales,
+    this.tareasNuevamenteRepartidas = 0,
   });
 
   /// Retorna un resultado vacío si no hay datos que procesar.
@@ -67,6 +76,7 @@ class ResultadoRepartoCalculado {
         resumenMiembros: [],
         minutosTotales: 0,
         tareasTotales: 0,
+        tareasNuevamenteRepartidas: 0,
       );
 }
 
@@ -77,51 +87,88 @@ class RepartoEquitativoService {
   static const int kTiempoEstimadoFallbackMinutos = 15;
 
   /// Ejecuta el algoritmo determinista de partición equitativa:
-  /// 1. Extrae y normaliza los tiempos estimados de cada tarea (con fallback coherente).
-  /// 2. Ordena de mayor a menor duración (LPT); desempate lexicográfico por ID.
-  /// 3. Asigna de forma voraz (Greedy) a quien acumule menor carga de tiempo.
+  /// 1. Considera las tareas que ya tienen un responsable asignado sumando sus minutos al balance inicial de cada miembro.
+  /// 2. Toma las tareas con `asignadoA == null` (o sin asignar).
+  /// 3. Normaliza duraciones usando el fallback de 15 minutos para valores <= 0.
+  /// 4. Ordena las no asignadas de mayor a menor duración (LPT) y las asigna iterativamente al integrante con menor carga acumulada.
   static ResultadoRepartoCalculado calcularRepartoEquitativo({
     required List<TareaModel> tareas,
     required List<EnvironmentMemberModel> miembros,
     int fallbackTiempoMinutos = kTiempoEstimadoFallbackMinutos,
+    bool balancearSoloNoAsignadas = true,
   }) {
     if (miembros.isEmpty || tareas.isEmpty) {
       return ResultadoRepartoCalculado.empty();
     }
 
-    // 1. Clonar y ordenar tareas: mayor duración primero, desempate por id ASC
-    final tareasOrdenadas = List<TareaModel>.from(tareas)..sort((a, b) {
-        final duracionA = a.tiempoEstimadoMinutos > 0
-            ? a.tiempoEstimadoMinutos
-            : fallbackTiempoMinutos;
-        final duracionB = b.tiempoEstimadoMinutos > 0
-            ? b.tiempoEstimadoMinutos
-            : fallbackTiempoMinutos;
-        final cmp = duracionB.compareTo(duracionA);
-        if (cmp != 0) return cmp;
-        return a.id.compareTo(b.id);
-      });
-
-    // 2. Inicializar acumuladores de carga en minutos por miembro
+    // Inicializar cargas y listas de tareas por miembro
     final Map<String, int> cargas = {
       for (final m in miembros) m.userId: 0,
     };
     final Map<String, List<TareaModel>> tareasPorMiembro = {
       for (final m in miembros) m.userId: [],
     };
+    final Map<String, int> conteoPrevioPorMiembro = {
+      for (final m in miembros) m.userId: 0,
+    };
+    final Map<String, int> minutosPreviosPorMiembro = {
+      for (final m in miembros) m.userId: 0,
+    };
 
     final List<ItemRepartoCalculado> items = [];
     final Map<String, String> asignacionesFinales = {};
-    int minutosTotales = 0;
 
-    // 3. Asignación Greedy (voraz balanceada)
-    for (final tarea in tareasOrdenadas) {
+    final List<TareaModel> tareasPendientesDeAsignar = [];
+
+    // Paso 1: Computar balance inicial con tareas ya asignadas
+    for (final tarea in tareas) {
       final minutos = tarea.tiempoEstimadoMinutos > 0
           ? tarea.tiempoEstimadoMinutos
           : fallbackTiempoMinutos;
-      minutosTotales += minutos;
 
-      // Buscar el miembro con menor carga acumulada
+      if (balancearSoloNoAsignadas && tarea.asignadoA != null && cargas.containsKey(tarea.asignadoA)) {
+        final userId = tarea.asignadoA!;
+        cargas[userId] = (cargas[userId] ?? 0) + minutos;
+        tareasPorMiembro[userId]!.add(tarea);
+        asignacionesFinales[tarea.id] = userId;
+        conteoPrevioPorMiembro[userId] = (conteoPrevioPorMiembro[userId] ?? 0) + 1;
+        minutosPreviosPorMiembro[userId] = (minutosPreviosPorMiembro[userId] ?? 0) + minutos;
+
+        items.add(
+          ItemRepartoCalculado(
+            tareaId: tarea.id,
+            tituloTarea: tarea.titulo,
+            usuarioAsignadoInicial: userId,
+            usuarioAsignadoFinal: userId,
+            tiempoMinutos: minutos,
+          ),
+        );
+      } else {
+        // Tarea sin asignar o a rebalancear
+        tareasPendientesDeAsignar.add(tarea);
+      }
+    }
+
+    // Paso 2: Ordenar tareas no asignadas de mayor a menor duración (LPT); desempate por id ASC
+    tareasPendientesDeAsignar.sort((a, b) {
+      final duracionA = a.tiempoEstimadoMinutos > 0
+          ? a.tiempoEstimadoMinutos
+          : fallbackTiempoMinutos;
+      final duracionB = b.tiempoEstimadoMinutos > 0
+          ? b.tiempoEstimadoMinutos
+          : fallbackTiempoMinutos;
+      final cmp = duracionB.compareTo(duracionA);
+      if (cmp != 0) return cmp;
+      return a.id.compareTo(b.id);
+    });
+
+    // Paso 3: Asignar iterativamente al integrante con menor tiempo acumulado
+    for (final tarea in tareasPendientesDeAsignar) {
+      final minutos = tarea.tiempoEstimadoMinutos > 0
+          ? tarea.tiempoEstimadoMinutos
+          : fallbackTiempoMinutos;
+
+      // Buscar el miembro con menor carga acumulada (desempate determinista por orden de lista)
       EnvironmentMemberModel mejorMiembro = miembros.first;
       int menorCarga = cargas[mejorMiembro.userId] ?? 0;
 
@@ -148,7 +195,7 @@ class RepartoEquitativoService {
       );
     }
 
-    // 4. Construir resumen estructurado por miembro
+    // Paso 4: Construir resumen estructurado por miembro
     final resumenMiembros = miembros.map((m) {
       final tareasDelMiembro = tareasPorMiembro[m.userId] ?? [];
       final minutos = cargas[m.userId] ?? 0;
@@ -159,15 +206,25 @@ class RepartoEquitativoService {
         totalTareas: tareasDelMiembro.length,
         minutosTotales: minutos,
         tareas: tareasDelMiembro,
+        tareasPreviamenteAsignadas: conteoPrevioPorMiembro[m.userId] ?? 0,
+        minutosPreviamenteAsignados: minutosPreviosPorMiembro[m.userId] ?? 0,
       );
     }).toList();
+
+    int totalMinutosGlobal = 0;
+    for (final t in tareas) {
+      totalMinutosGlobal += t.tiempoEstimadoMinutos > 0
+          ? t.tiempoEstimadoMinutos
+          : fallbackTiempoMinutos;
+    }
 
     return ResultadoRepartoCalculado(
       items: items,
       asignacionesFinales: asignacionesFinales,
       resumenMiembros: resumenMiembros,
-      minutosTotales: minutosTotales,
+      minutosTotales: totalMinutosGlobal,
       tareasTotales: tareas.length,
+      tareasNuevamenteRepartidas: tareasPendientesDeAsignar.length,
     );
   }
 
