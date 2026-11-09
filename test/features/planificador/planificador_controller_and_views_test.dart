@@ -682,11 +682,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verificar que las píldoras de estado del Smart Canvas están presentes
+      // Verificar que las píldoras de estado del Smart Canvas con Smart Labels están presentes
       expect(find.text('15 min'), findsOneWidget);
-      expect(find.text('No se repite'), findsOneWidget);
-      expect(find.text('Sin avisos'), findsOneWidget);
-      expect(find.text('+ Subtareas'), findsOneWidget);
+      expect(find.text('Repetir'), findsOneWidget);
+      expect(find.text('Avisos'), findsOneWidget);
+      expect(find.text('Subtareas'), findsOneWidget);
 
       // Abrir bandeja de duración y cambiar a 30 min
       await tester.tap(find.text('15 min'));
@@ -697,15 +697,14 @@ void main() {
       expect(find.text('30 min'), findsOneWidget);
 
       // Abrir bandeja de recordatorios
-      await tester.tap(find.text('Sin avisos'));
+      await tester.tap(find.text('Avisos'));
       await tester.pumpAndSettle();
       expect(find.text('1 día antes'), findsOneWidget);
       expect(find.text('3 días antes'), findsOneWidget);
       expect(find.text('1 semana antes'), findsOneWidget);
 
       // Abrir subtareas usando el finder del texto
-      final subtareasFinder = find.widgetWithText(InkWell, '+ Subtareas');
-      await tester.scrollUntilVisible(subtareasFinder, 100, scrollable: find.byType(Scrollable).last);
+      final subtareasFinder = find.widgetWithText(InkWell, 'Subtareas');
       await tester.tap(subtareasFinder);
       await tester.pumpAndSettle();
       expect(find.byType(SubtaskList), findsOneWidget);

@@ -707,7 +707,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. Lienzo de texto fluido (Sin cajas pesadas)
+        // 1. Lienzo de texto fluido transparente (Sin cajas oscuras de fondo ni bordes)
         TextField(
           controller: _taskTitleController,
           autofocus: true,
@@ -725,9 +725,13 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               fontSize: 19,
               fontWeight: FontWeight.w500,
             ),
+            filled: false,
+            fillColor: Colors.transparent,
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
             contentPadding: EdgeInsets.zero,
             isDense: true,
           ),
@@ -741,7 +745,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
         ],
         const SizedBox(height: 8),
 
-        // Textarea integrado para Notas / Descripción adicional
+        // Textarea integrado para Notas / Descripción adicional (transparente)
         TextField(
           controller: _taskDescController,
           maxLines: null,
@@ -758,9 +762,13 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               color: AppTheme.textSecondary.withOpacity(0.35),
               fontSize: 13.5,
             ),
+            filled: false,
+            fillColor: Colors.transparent,
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
+            errorBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
             contentPadding: EdgeInsets.zero,
             isDense: true,
           ),
@@ -768,7 +776,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         const SizedBox(height: 16),
 
-        // 2. Fila horizontal de Píldoras de Estado (Status Pills)
+        // 2. Wrap de Píldoras de Estado (Sin scroll horizontal, 100% visible en 2 líneas limpias)
         _buildStatusPillsRow(),
 
         // 3. Bandeja Contextual Inline (Single Inline Tray)
@@ -919,22 +927,25 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   // ===========================================================================
-  // Píldoras de Estado (Horizontal Status Pills)
+  // Píldoras de Estado (Wrap sin Scroll Horizontal + Smart Labels Acortadas)
   // ===========================================================================
 
   Widget _buildStatusPillsRow() {
-    // 1. Label de Fecha y Momento
+    // 1. Smart Label: Fecha y Momento
+    // Si el momento es "Cualquier momento", muestra únicamente "📅 Hoy" (o la fecha).
+    // Solo concatena si es distinto al valor por defecto.
     final dateLabel = _formatDateShort(_taskDate);
+    final isCustomTimeOfDay = _selectedTimeOfDay != 'anytime';
     final timeMap = {
-      'anytime': 'Cualquier momento',
       'morning': 'Mañana',
       'afternoon': 'Tarde',
       'night': 'Noche',
     };
-    final timeLabel = timeMap[_selectedTimeOfDay] ?? 'Cualquier momento';
-    final dateAndTimeString = '$dateLabel · $timeLabel';
+    final dateAndTimeString = isCustomTimeOfDay
+        ? '$dateLabel · ${timeMap[_selectedTimeOfDay] ?? _selectedTimeOfDay}'
+        : dateLabel;
 
-    // 2. Label de Responsable
+    // 2. Smart Label: Responsable
     String assigneeLabel = 'Sin asignar';
     if (_assignedTo != null) {
       final found = widget.miembros.where((m) => m.userId == _assignedTo);
@@ -943,118 +954,133 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
       }
     }
 
-    // 3. Label de Duración
-    final durationLabel = _selectedDurationMinutes > 0
-        ? '$_selectedDurationMinutes min'
-        : 'Sin tiempo';
+    // 3. Smart Label: Duración con icono descriptivo
+    // "⚡ 15 min", "⏳ 30 min", "⏳ 60 min" o "⏱️ Sin tiempo"
+    final String durationLabel;
+    final IconData durationIcon;
+    if (_selectedDurationMinutes == 15) {
+      durationLabel = '15 min';
+      durationIcon = Icons.bolt_rounded;
+    } else if (_selectedDurationMinutes == 30) {
+      durationLabel = '30 min';
+      durationIcon = Icons.hourglass_top_rounded;
+    } else if (_selectedDurationMinutes == 60) {
+      durationLabel = '60 min';
+      durationIcon = Icons.hourglass_full_rounded;
+    } else {
+      durationLabel = 'Sin tiempo';
+      durationIcon = Icons.timelapse_rounded;
+    }
 
-    // 4. Label de Proyecto
-    String projectLabel = 'Sin proyecto';
-    if (_selectedProyectoId != null) {
+    // 4. Smart Label: Proyecto
+    // Si no hay proyecto, muestra solo "Proyecto" en estilo apagado. Si hay uno elegido, su nombre.
+    final hasProject = _selectedProyectoId != null;
+    String projectLabel = 'Proyecto';
+    if (hasProject) {
       final found = widget.proyectos.where((p) => p.id == _selectedProyectoId);
       if (found.isNotEmpty) {
         projectLabel = found.first.nombre;
       }
     }
 
-    // 5. Label de Recurrencia
+    // 5. Smart Label: Recurrencia
+    // Si no se repite, muestra solo "Repetir" en estilo apagado.
+    final isRecurring = _recurrenceMode != 'none';
     final recMap = {
-      'none': 'No se repite',
       'daily': 'Diaria',
       'weekly': 'Semanal',
       'monthly': 'Mensual',
     };
-    final recLabel = recMap[_recurrenceMode] ?? 'No se repite';
+    final recLabel = isRecurring ? (recMap[_recurrenceMode] ?? 'Repetir') : 'Repetir';
 
-    // 6. Label de Recordatorios
-    final remLabel = _selectedReminderOffsets.isEmpty
-        ? 'Sin avisos'
-        : '${_selectedReminderOffsets.length} aviso${_selectedReminderOffsets.length > 1 ? 's' : ''}';
+    // 6. Smart Label: Recordatorios
+    // Si no hay avisos, muestra solo "Avisos" en estilo apagado.
+    final hasReminders = _selectedReminderOffsets.isNotEmpty;
+    final remLabel = hasReminders
+        ? '${_selectedReminderOffsets.length} aviso${_selectedReminderOffsets.length > 1 ? 's' : ''}'
+        : 'Avisos';
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          // Píldora 1: Fecha y Momento
+    // 7. Smart Label: Subtareas
+    final subtasksLabel = _taskChecklist.isNotEmpty
+        ? '${_taskChecklist.length} subtareas'
+        : 'Subtareas';
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        // Píldora 1: Fecha y Momento
+        _buildPillItem(
+          label: dateAndTimeString,
+          icon: Icons.calendar_today_rounded,
+          isActive: _activeSelector == ActiveTaskSelector.dateAndTime,
+          isConfigured: !_isToday(_taskDate) || isCustomTimeOfDay,
+          onTap: () => _toggleSelector(ActiveTaskSelector.dateAndTime),
+        ),
+
+        // Píldora 2: Responsable
+        _buildPillItem(
+          label: assigneeLabel,
+          icon: Icons.person_outline_rounded,
+          isActive: _activeSelector == ActiveTaskSelector.assignee,
+          isConfigured: _assignedTo != null,
+          onTap: () => _toggleSelector(ActiveTaskSelector.assignee),
+        ),
+
+        // Píldora 3: Duración
+        _buildPillItem(
+          label: durationLabel,
+          icon: durationIcon,
+          isActive: _activeSelector == ActiveTaskSelector.duration,
+          isConfigured: _selectedDurationMinutes > 0,
+          onTap: () => _toggleSelector(ActiveTaskSelector.duration),
+        ),
+
+        // Píldora 4: Proyecto (siempre visible si hay proyectos)
+        if (widget.proyectos.isNotEmpty)
           _buildPillItem(
-            label: dateAndTimeString,
-            icon: Icons.calendar_today_rounded,
-            isActive: _activeSelector == ActiveTaskSelector.dateAndTime,
-            isConfigured: !_isToday(_taskDate) || _selectedTimeOfDay != 'anytime',
-            onTap: () => _toggleSelector(ActiveTaskSelector.dateAndTime),
+            label: projectLabel,
+            icon: Icons.folder_outlined,
+            isActive: _activeSelector == ActiveTaskSelector.project,
+            isConfigured: hasProject,
+            onTap: () => _toggleSelector(ActiveTaskSelector.project),
           ),
-          const SizedBox(width: 6),
 
-          // Píldora 2: Responsable
-          _buildPillItem(
-            label: assigneeLabel,
-            icon: Icons.person_outline_rounded,
-            isActive: _activeSelector == ActiveTaskSelector.assignee,
-            isConfigured: _assignedTo != null,
-            onTap: () => _toggleSelector(ActiveTaskSelector.assignee),
-          ),
-          const SizedBox(width: 6),
+        // Píldora 5: Recurrencia
+        _buildPillItem(
+          label: recLabel,
+          icon: Icons.repeat_rounded,
+          isActive: _activeSelector == ActiveTaskSelector.recurrence,
+          isConfigured: isRecurring,
+          onTap: () => _toggleSelector(ActiveTaskSelector.recurrence),
+        ),
 
-          // Píldora 3: Duración
-          _buildPillItem(
-            label: durationLabel,
-            icon: Icons.bolt_rounded,
-            isActive: _activeSelector == ActiveTaskSelector.duration,
-            isConfigured: _selectedDurationMinutes > 0,
-            onTap: () => _toggleSelector(ActiveTaskSelector.duration),
-          ),
-          const SizedBox(width: 6),
+        // Píldora 6: Recordatorios relativos
+        _buildPillItem(
+          label: remLabel,
+          icon: hasReminders
+              ? Icons.notifications_active_rounded
+              : Icons.notifications_none_rounded,
+          isActive: _activeSelector == ActiveTaskSelector.reminders,
+          isConfigured: hasReminders,
+          onTap: () => _toggleSelector(ActiveTaskSelector.reminders),
+        ),
 
-          // Píldora 4: Proyecto (solo si hay proyectos)
-          if (widget.proyectos.isNotEmpty) ...[
-            _buildPillItem(
-              label: projectLabel,
-              icon: Icons.folder_outlined,
-              isActive: _activeSelector == ActiveTaskSelector.project,
-              isConfigured: _selectedProyectoId != null,
-              onTap: () => _toggleSelector(ActiveTaskSelector.project),
-            ),
-            const SizedBox(width: 6),
-          ],
-
-          // Píldora 5: Recurrencia
-          _buildPillItem(
-            label: recLabel,
-            icon: Icons.repeat_rounded,
-            isActive: _activeSelector == ActiveTaskSelector.recurrence,
-            isConfigured: _recurrenceMode != 'none',
-            onTap: () => _toggleSelector(ActiveTaskSelector.recurrence),
-          ),
-          const SizedBox(width: 6),
-
-          // Píldora 6: Recordatorios relativos
-          _buildPillItem(
-            label: remLabel,
-            icon: _selectedReminderOffsets.isNotEmpty
-                ? Icons.notifications_active_rounded
-                : Icons.notifications_none_rounded,
-            isActive: _activeSelector == ActiveTaskSelector.reminders,
-            isConfigured: _selectedReminderOffsets.isNotEmpty,
-            onTap: () => _toggleSelector(ActiveTaskSelector.reminders),
-          ),
-          const SizedBox(width: 6),
-
-          // Píldora 7: Subtareas / Checklist (+ Subtareas)
-          _buildPillItem(
-            label: _taskChecklist.isNotEmpty ? '${_taskChecklist.length} subtareas' : '+ Subtareas',
-            icon: Icons.add_task_rounded,
-            isActive: _showSubtasks,
-            isConfigured: _taskChecklist.isNotEmpty,
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() {
-                _showSubtasks = !_showSubtasks;
-                _activeSelector = ActiveTaskSelector.none;
-              });
-            },
-          ),
-        ],
-      ),
+        // Píldora 7: Subtareas / Checklist
+        _buildPillItem(
+          label: subtasksLabel,
+          icon: Icons.check_circle_outline_rounded,
+          isActive: _showSubtasks,
+          isConfigured: _taskChecklist.isNotEmpty,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() {
+              _showSubtasks = !_showSubtasks;
+              _activeSelector = ActiveTaskSelector.none;
+            });
+          },
+        ),
+      ],
     );
   }
 
