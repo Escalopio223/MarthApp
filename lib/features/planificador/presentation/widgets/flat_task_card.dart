@@ -383,46 +383,13 @@ class FlatTaskCard extends StatelessWidget {
       );
     }
 
-    final avatarData = member.avatarData;
-    if (avatarData != null) {
-      return Opacity(
-        opacity: isDone ? 0.6 : 1.0,
-        child: UserAvatar(
-          avatarData: avatarData,
-          username: member.username,
-          size: 26,
-          showBorder: false,
-        ),
-      );
-    }
-
-    final initial = member.username.isNotEmpty
-        ? member.username.substring(0, 1).toUpperCase()
-        : '?';
-
     return Opacity(
       opacity: isDone ? 0.6 : 1.0,
-      child: Container(
-        width: 26,
-        height: 26,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppTheme.primaryAccent.withOpacity(0.18),
-          border: Border.all(
-            color: AppTheme.primaryAccent.withOpacity(0.4),
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            initial,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryAccent,
-            ),
-          ),
-        ),
+      child: UserAvatar(
+        avatarData: member.avatarData,
+        username: member.username,
+        size: 26,
+        showBorder: false,
       ),
     );
   }
