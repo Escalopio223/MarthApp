@@ -149,10 +149,78 @@ class FlatTaskCard extends StatelessWidget {
 
                 // 4. Avatar o inicial del responsable asignado
                 _buildAssigneeAvatar(asignado, isDone),
+
+                // 5. Botón contextual para eliminar tarea
+                if (onDelete != null) ...[
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    color: AppTheme.textSecondary.withOpacity(0.5),
+                    splashRadius: 18,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    tooltip: 'Eliminar tarea',
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      _confirmarEliminacion(context);
+                    },
+                  ),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _confirmarEliminacion(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Eliminar Tarea',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar "${tarea.titulo}"?',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentCoral,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onDelete?.call();
+            },
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }

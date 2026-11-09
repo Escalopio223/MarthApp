@@ -240,6 +240,18 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
       currentUserId: _currentUserId,
       proyectos: _controller.proyectos,
       tareaToEdit: tarea,
+      onDeleteTask: () async {
+        await _controller.eliminarTarea(tarea.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Tarea "${tarea.titulo}" eliminada'),
+              backgroundColor: AppTheme.surfaceDark,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
       onCreateTask: ({
         required String titulo,
         DateTime? fechaLimite,

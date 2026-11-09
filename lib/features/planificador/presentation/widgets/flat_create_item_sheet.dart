@@ -37,6 +37,7 @@ class FlatCreateItemSheet extends StatefulWidget {
   final String? currentUserId;
   final List<ProyectoModel> proyectos;
   final TareaModel? tareaToEdit; // Si se proporciona, opera en modo edición
+  final VoidCallback? onDeleteTask; // Callback para eliminar la tarea en modo edición
   final Future<void> Function({
     required String titulo,
     DateTime? fechaLimite,
@@ -66,6 +67,7 @@ class FlatCreateItemSheet extends StatefulWidget {
     this.currentUserId,
     this.proyectos = const [],
     this.tareaToEdit,
+    this.onDeleteTask,
     required this.onCreateTask,
     required this.onCreateEvent,
   });
@@ -77,6 +79,7 @@ class FlatCreateItemSheet extends StatefulWidget {
     String? currentUserId,
     List<ProyectoModel> proyectos = const [],
     TareaModel? tareaToEdit,
+    VoidCallback? onDeleteTask,
     required Future<void> Function({
       required String titulo,
       DateTime? fechaLimite,
@@ -111,6 +114,7 @@ class FlatCreateItemSheet extends StatefulWidget {
         currentUserId: currentUserId,
         proyectos: proyectos,
         tareaToEdit: tareaToEdit,
+        onDeleteTask: onDeleteTask,
         onCreateTask: onCreateTask,
         onCreateEvent: onCreateEvent,
       ),
@@ -579,12 +583,26 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 20),
-                      color: AppTheme.textSecondary,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => Navigator.pop(context),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.onDeleteTask != null)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                            color: AppTheme.accentCoral,
+                            tooltip: 'Eliminar tarea',
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            constraints: const BoxConstraints(),
+                            onPressed: _confirmDeleteTask,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          color: AppTheme.textSecondary,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          constraints: const BoxConstraints(),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -890,38 +908,129 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         const SizedBox(height: 24),
 
-        // Botón principal de guardado
-        SizedBox(
-          height: 48,
-          child: ElevatedButton(
-            onPressed: _isSubmitting ? null : _submitTask,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryAccent,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: _isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+        // Botón principal de guardado y botón de eliminar (si está en modo edición)
+        Row(
+          children: [
+            if (_isEditingTask && widget.onDeleteTask != null) ...[
+              OutlinedButton(
+                onPressed: _confirmDeleteTask,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  side: BorderSide(
+                    color: AppTheme.accentCoral.withOpacity(0.5),
+                    width: 1,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  foregroundColor: AppTheme.accentCoral,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.accentCoral),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Eliminar',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.accentCoral,
+                      ),
                     ),
-                  )
-                : Text(
-                    _isEditingTask ? 'Actualizar Tarea' : 'Guardar Tarea',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submitTask,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryAccent,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-          ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _isEditingTask ? 'Actualizar Tarea' : 'Guardar Tarea',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  void _confirmDeleteTask() {
+    HapticFeedback.lightImpact();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Eliminar Tarea',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          '¿Estás seguro de que deseas eliminar esta tarea?',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentCoral,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(dialogCtx); // Cerrar diálogo
+              Navigator.pop(context); // Cerrar bottom sheet
+              widget.onDeleteTask?.call();
+            },
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
