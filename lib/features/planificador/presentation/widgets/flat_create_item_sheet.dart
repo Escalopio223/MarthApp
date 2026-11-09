@@ -10,34 +10,33 @@ import '../../domain/models/recordatorio_tarea_model.dart';
 import '../../domain/models/tarea_model.dart';
 import 'subtask_list.dart';
 
-/// Modal consolidado de creación y edición (Tarea / Evento / Cumpleaños) con estética Flat Design 2.0
-/// adaptado y optimizado para la gestión doméstica del hogar:
+/// Selector activo en la bandeja inline contextual
+enum ActiveTaskSelector {
+  none,
+  dateAndTime,
+  assignee,
+  duration,
+  project,
+  recurrence,
+  reminders,
+}
+
+/// Smart Canvas BottomSheet para creación y edición de tareas y eventos (estilo Linear / Things 3).
 ///
-/// 1. Bloque principal (siempre visible):
-///   - Tipo de entrada: [ Tarea ] | [ Evento / Cita ]
-///   - Título de la tarea (TextField con autofocus)
-///   - Fecha programada (Selector de fecha con acceso directo a "Hoy")
-///   - Momento del día (Chips): "Cualquier momento", "Mañana", "Tarde", "Noche"
-///   - Responsable asignado: Selector horizontal de convivientes o "Sin asignar"
-///   - Duración / Esfuerzo relativo (Chips): "Rápida" (15m), "Media" (30m), "Larga" (60m), "Sin tiempo" (0m)
-///   - Proyecto (opcional): Selector horizontal de proyecto o "Sin proyecto"
-///
-/// 2. Bloque "Opciones avanzadas" (acordeón colapsable):
-///   - ELIMINADOS: Prioridad y Categorías/Etiquetas
-///   - Recurrencia: "No se repite", "Diaria", "Semanal", "Mensual"
-///   - Toggle opcional: "Rotar responsable automáticamente" si es recurrente y hay miembros
-///   - Recordatorios simplificados (multiselección): "1 día antes", "3 días antes", "1 semana antes"
-///   - Notas / Descripción adicional (textarea multilínea)
-///   - Subtareas / Checklist interactivo (SubtaskList)
-///
-/// 3. Scroll y Teclado: SingleChildScrollView con padding dinámico en bottom para evitar RenderFlex overflow.
+/// Arquitectura visual:
+/// 1. Cabecera limpia con selector plano Tarea / Evento.
+/// 2. Lienzo de texto fluido sin cajas pesadas (título grande 19px + notas integradas 14px).
+/// 3. Barra de píldoras de estado horizontal compacta con resumen dinámico.
+/// 4. Bandeja contextual inline única desplegada mediante AnimatedSize + AnimatedSwitcher.
+/// 5. Módulos bajo demanda para Recurrencia, Recordatorios relativos y Subtareas interactivas.
+/// 6. Pie del modal con botón de guardado destacado y opción de eliminación en edición.
 class FlatCreateItemSheet extends StatefulWidget {
   final DateTime defaultDate;
   final List<EnvironmentMemberModel> miembros;
   final String? currentUserId;
   final List<ProyectoModel> proyectos;
-  final TareaModel? tareaToEdit; // Si se proporciona, opera en modo edición
-  final VoidCallback? onDeleteTask; // Callback para eliminar la tarea en modo edición
+  final TareaModel? tareaToEdit;
+  final VoidCallback? onDeleteTask;
   final Future<void> Function({
     required String titulo,
     DateTime? fechaLimite,
@@ -143,13 +142,14 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   // Momento del día: 'anytime' | 'morning' | 'afternoon' | 'night'
   String _selectedTimeOfDay = 'anytime';
 
-  // Duración / Esfuerzo relativo: 0, 15, 30, 60
+  // Duración estimada: 0, 15, 30, 60
   int _selectedDurationMinutes = 15;
 
   // ===========================================================================
-  // Estado Tarea: Opciones Avanzadas
+  // Smart Canvas: Bandeja Contextual Inline y Módulos Bajo Demanda
   // ===========================================================================
-  bool _showAdvancedTaskOptions = false;
+  ActiveTaskSelector _activeSelector = ActiveTaskSelector.none;
+  bool _showSubtasks = false;
 
   // Recurrencia: 'none' | 'daily' | 'weekly' | 'monthly'
   String _recurrenceMode = 'none';
@@ -193,6 +193,10 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
       _selectedProyectoId = t.proyectoId;
       _taskChecklist = List.from(t.checklist);
 
+      if (_taskChecklist.isNotEmpty) {
+        _showSubtasks = true;
+      }
+
       // Parsear momento del día
       final tod = t.timeOfDay;
       if (tod != null && ['anytime', 'morning', 'afternoon', 'night'].contains(tod)) {
@@ -232,15 +236,6 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           }
         }
       }
-
-      // Desplegar acordeón si tiene opciones avanzadas activas
-      if (_recurrenceMode != 'none' ||
-          _autoRotateAssignee ||
-          _selectedReminderOffsets.isNotEmpty ||
-          _taskChecklist.isNotEmpty ||
-          _taskDescController.text.isNotEmpty) {
-        _showAdvancedTaskOptions = true;
-      }
     }
   }
 
@@ -270,6 +265,11 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
       return 'Mañana';
     }
     return '${d.day}/${d.month}/${d.year}';
+  }
+
+  bool _isToday(DateTime d) {
+    final now = DateTime.now();
+    return d.year == now.year && d.month == now.month && d.day == now.day;
   }
 
   Future<void> _pickDate({required bool forTask}) async {
@@ -351,7 +351,6 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     }
   }
 
-  /// Construye la cadena rrule según la frecuencia seleccionada
   String? _buildRecurrencePattern() {
     switch (_recurrenceMode) {
       case 'daily':
@@ -365,28 +364,22 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     }
   }
 
-  /// Compone la descripción enriquecida con metadatos:
-  /// [time_of_day:...], [rrule:...], [auto_rotate:true] y el texto de notas.
   String? _composeTaskDescription() {
     final buffer = StringBuffer();
 
-    // Momento del día (si no es 'anytime')
     if (_selectedTimeOfDay != 'anytime') {
       buffer.write('[time_of_day:$_selectedTimeOfDay] ');
     }
 
-    // Recurrencia
     final rrule = _buildRecurrencePattern();
     if (rrule != null) {
       buffer.write('[rrule:$rrule] ');
     }
 
-    // Rotar responsable
     if (_recurrenceMode != 'none' && _autoRotateAssignee) {
       buffer.write('[auto_rotate:true] ');
     }
 
-    // Texto de notas libres
     final userNotes = _taskDescController.text.trim();
     if (userNotes.isNotEmpty) {
       buffer.write(userNotes);
@@ -396,14 +389,13 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     return result.isNotEmpty ? result : null;
   }
 
-  /// Convierte los chips seleccionados (1 día, 3 días, 1 semana) en modelos de recordatorios
   List<RecordatorioTareaModel> _buildRecordatoriosList() {
     final recordatorios = <RecordatorioTareaModel>[];
     final baseDate = DateTime(
       _taskDate.year,
       _taskDate.month,
       _taskDate.day,
-      9, // 09:00 AM hora predeterminada para notificaciones
+      9,
       0,
     );
 
@@ -530,6 +522,13 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     }
   }
 
+  void _toggleSelector(ActiveTaskSelector selector) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _activeSelector = _activeSelector == selector ? ActiveTaskSelector.none : selector;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
@@ -542,7 +541,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
         ),
         decoration: BoxDecoration(
           color: AppTheme.surfaceDark,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           border: Border.all(
             color: AppTheme.cardBorderColor.withOpacity(0.18),
             width: 1,
@@ -567,10 +566,10 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               ),
               const SizedBox(height: 14),
 
-              // Selector plano de tipo [ Tarea ] | [ Evento ] (Oculto en modo edición de tarea)
+              // Selector plano de tipo [ Tarea ] | [ Evento ] o Cabecera de Edición
               if (!_isEditingTask) ...[
                 _buildTypeSelector(),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
               ] else ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -611,7 +610,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
               // Formulario según tipo
               if (_selectedTypeIndex == 0)
-                _buildTaskForm()
+                _buildTaskSmartCanvas()
               else
                 _buildEventForm(),
             ],
@@ -701,214 +700,151 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   // ===========================================================================
-  // Formulario: Tarea (Diseño Optimizado para el Hogar)
+  // Smart Canvas: Tarea (Estilo Linear / Things 3)
   // ===========================================================================
 
-  Widget _buildTaskForm() {
+  Widget _buildTaskSmartCanvas() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 1. Título de la tarea
-        Text(
-          'Título de la tarea',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 6),
+        // 1. Lienzo de texto fluido (Sin cajas pesadas)
         TextField(
           controller: _taskTitleController,
           autofocus: true,
-          style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+          cursorColor: AppTheme.primaryAccent,
           decoration: InputDecoration(
-            hintText: 'Ej. Limpiar la cocina o fregar platos...',
-            hintStyle:
-                TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
-            filled: true,
-            fillColor: AppTheme.darkBackground,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+            hintText: '¿Qué hay que hacer?',
+            hintStyle: TextStyle(
+              color: AppTheme.textSecondary.withOpacity(0.45),
+              fontSize: 19,
+              fontWeight: FontWeight.w500,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  BorderSide(color: AppTheme.primaryAccent, width: 1.5),
-            ),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+            isDense: true,
           ),
         ),
         if (_taskError != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             _taskError!,
             style: const TextStyle(color: Colors.redAccent, fontSize: 12),
           ),
         ],
+        const SizedBox(height: 8),
+
+        // Textarea integrado para Notas / Descripción adicional
+        TextField(
+          controller: _taskDescController,
+          maxLines: null,
+          minLines: 1,
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 14,
+            height: 1.35,
+          ),
+          cursorColor: AppTheme.primaryAccent,
+          decoration: InputDecoration(
+            hintText: 'Añadir notas o detalles...',
+            hintStyle: TextStyle(
+              color: AppTheme.textSecondary.withOpacity(0.35),
+              fontSize: 13.5,
+            ),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: EdgeInsets.zero,
+            isDense: true,
+          ),
+        ),
 
         const SizedBox(height: 16),
 
-        // 2. Fecha programada (con acceso directo a Hoy)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Fecha programada',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
+        // 2. Fila horizontal de Píldoras de Estado (Status Pills)
+        _buildStatusPillsRow(),
+
+        // 3. Bandeja Contextual Inline (Single Inline Tray)
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: _buildInlineTray(),
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // 4. Módulo de Subtareas / Checklist interactivo bajo demanda
+        if (_showSubtasks) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppTheme.darkBackground,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppTheme.cardBorderColor.withOpacity(0.15),
+                width: 1,
               ),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Acceso directo a "Hoy"
-                if (!_isToday(_taskDate))
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6.0),
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() => _taskDate = DateTime.now());
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryAccent.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppTheme.primaryAccent.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          'Hoy',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryAccent,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                InkWell(
-                  onTap: () => _pickDate(forTask: true),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkBackground,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppTheme.cardBorderColor.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
                       children: [
                         Icon(
-                          Icons.calendar_today_rounded,
-                          size: 13,
+                          Icons.check_circle_outline_rounded,
+                          size: 15,
                           color: AppTheme.primaryAccent,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          _formatDateShort(_taskDate),
+                          'Subtareas (${_taskChecklist.where((i) => i.completado).length}/${_taskChecklist.length})',
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
                             color: AppTheme.textPrimary,
                           ),
                         ),
                       ],
                     ),
-                  ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      color: AppTheme.textSecondary,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        setState(() => _showSubtasks = false);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SubtaskList(
+                  items: _taskChecklist,
+                  onChanged: (items) {
+                    setState(() => _taskChecklist = items);
+                  },
                 ),
               ],
             ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-
-        // 3. Momento del día (NUEVO)
-        Text(
-          'Momento del día',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
           ),
-        ),
-        const SizedBox(height: 8),
-        _buildTimeOfDaySelector(),
-
-        const SizedBox(height: 16),
-
-        // 4. Responsable asignado (Convivientes o Sin asignar)
-        Text(
-          'Responsable asignado',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildAssigneeSelector(),
-
-        const SizedBox(height: 16),
-
-        // 5. Duración / Tiempo estimado (REFACTORIZADO A CHIPS RÁPIDOS)
-        Text(
-          'Duración / Esfuerzo estimado',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildDurationChips(),
-
-        // 6. Selector de Proyecto opcional
-        if (widget.proyectos.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            'Proyecto (opcional)',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildProjectSelector(),
         ],
 
-        const SizedBox(height: 16),
-
-        // 7. Acordeón / Desplegable Flat 2.0 de Opciones Avanzadas
-        _buildAdvancedTaskOptions(),
-
-        const SizedBox(height: 24),
-
-        // Botón principal de guardado y botón de eliminar (si está en modo edición)
+        // 5. Pie del modal con botón Guardar y Eliminar
         Row(
           children: [
             if (_isEditingTask && widget.onDeleteTask != null) ...[
@@ -982,6 +918,633 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     );
   }
 
+  // ===========================================================================
+  // Píldoras de Estado (Horizontal Status Pills)
+  // ===========================================================================
+
+  Widget _buildStatusPillsRow() {
+    // 1. Label de Fecha y Momento
+    final dateLabel = _formatDateShort(_taskDate);
+    final timeMap = {
+      'anytime': 'Cualquier momento',
+      'morning': 'Mañana',
+      'afternoon': 'Tarde',
+      'night': 'Noche',
+    };
+    final timeLabel = timeMap[_selectedTimeOfDay] ?? 'Cualquier momento';
+    final dateAndTimeString = '$dateLabel · $timeLabel';
+
+    // 2. Label de Responsable
+    String assigneeLabel = 'Sin asignar';
+    if (_assignedTo != null) {
+      final found = widget.miembros.where((m) => m.userId == _assignedTo);
+      if (found.isNotEmpty) {
+        assigneeLabel = found.first.username;
+      }
+    }
+
+    // 3. Label de Duración
+    final durationLabel = _selectedDurationMinutes > 0
+        ? '$_selectedDurationMinutes min'
+        : 'Sin tiempo';
+
+    // 4. Label de Proyecto
+    String projectLabel = 'Sin proyecto';
+    if (_selectedProyectoId != null) {
+      final found = widget.proyectos.where((p) => p.id == _selectedProyectoId);
+      if (found.isNotEmpty) {
+        projectLabel = found.first.nombre;
+      }
+    }
+
+    // 5. Label de Recurrencia
+    final recMap = {
+      'none': 'No se repite',
+      'daily': 'Diaria',
+      'weekly': 'Semanal',
+      'monthly': 'Mensual',
+    };
+    final recLabel = recMap[_recurrenceMode] ?? 'No se repite';
+
+    // 6. Label de Recordatorios
+    final remLabel = _selectedReminderOffsets.isEmpty
+        ? 'Sin avisos'
+        : '${_selectedReminderOffsets.length} aviso${_selectedReminderOffsets.length > 1 ? 's' : ''}';
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          // Píldora 1: Fecha y Momento
+          _buildPillItem(
+            label: dateAndTimeString,
+            icon: Icons.calendar_today_rounded,
+            isActive: _activeSelector == ActiveTaskSelector.dateAndTime,
+            isConfigured: !_isToday(_taskDate) || _selectedTimeOfDay != 'anytime',
+            onTap: () => _toggleSelector(ActiveTaskSelector.dateAndTime),
+          ),
+          const SizedBox(width: 6),
+
+          // Píldora 2: Responsable
+          _buildPillItem(
+            label: assigneeLabel,
+            icon: Icons.person_outline_rounded,
+            isActive: _activeSelector == ActiveTaskSelector.assignee,
+            isConfigured: _assignedTo != null,
+            onTap: () => _toggleSelector(ActiveTaskSelector.assignee),
+          ),
+          const SizedBox(width: 6),
+
+          // Píldora 3: Duración
+          _buildPillItem(
+            label: durationLabel,
+            icon: Icons.bolt_rounded,
+            isActive: _activeSelector == ActiveTaskSelector.duration,
+            isConfigured: _selectedDurationMinutes > 0,
+            onTap: () => _toggleSelector(ActiveTaskSelector.duration),
+          ),
+          const SizedBox(width: 6),
+
+          // Píldora 4: Proyecto (solo si hay proyectos)
+          if (widget.proyectos.isNotEmpty) ...[
+            _buildPillItem(
+              label: projectLabel,
+              icon: Icons.folder_outlined,
+              isActive: _activeSelector == ActiveTaskSelector.project,
+              isConfigured: _selectedProyectoId != null,
+              onTap: () => _toggleSelector(ActiveTaskSelector.project),
+            ),
+            const SizedBox(width: 6),
+          ],
+
+          // Píldora 5: Recurrencia
+          _buildPillItem(
+            label: recLabel,
+            icon: Icons.repeat_rounded,
+            isActive: _activeSelector == ActiveTaskSelector.recurrence,
+            isConfigured: _recurrenceMode != 'none',
+            onTap: () => _toggleSelector(ActiveTaskSelector.recurrence),
+          ),
+          const SizedBox(width: 6),
+
+          // Píldora 6: Recordatorios relativos
+          _buildPillItem(
+            label: remLabel,
+            icon: _selectedReminderOffsets.isNotEmpty
+                ? Icons.notifications_active_rounded
+                : Icons.notifications_none_rounded,
+            isActive: _activeSelector == ActiveTaskSelector.reminders,
+            isConfigured: _selectedReminderOffsets.isNotEmpty,
+            onTap: () => _toggleSelector(ActiveTaskSelector.reminders),
+          ),
+          const SizedBox(width: 6),
+
+          // Píldora 7: Subtareas / Checklist (+ Subtareas)
+          _buildPillItem(
+            label: _taskChecklist.isNotEmpty ? '${_taskChecklist.length} subtareas' : '+ Subtareas',
+            icon: Icons.add_task_rounded,
+            isActive: _showSubtasks,
+            isConfigured: _taskChecklist.isNotEmpty,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _showSubtasks = !_showSubtasks;
+                _activeSelector = ActiveTaskSelector.none;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPillItem({
+    required String label,
+    required IconData icon,
+    required bool isActive,
+    required bool isConfigured,
+    required VoidCallback onTap,
+  }) {
+    final effectiveColor = isActive
+        ? AppTheme.primaryAccent
+        : (isConfigured ? AppTheme.primaryAccent.withOpacity(0.9) : AppTheme.textSecondary);
+
+    final bgColor = isActive
+        ? AppTheme.primaryAccent.withOpacity(0.2)
+        : (isConfigured
+            ? AppTheme.primaryAccent.withOpacity(0.1)
+            : AppTheme.darkBackground);
+
+    final borderColor = isActive
+        ? AppTheme.primaryAccent
+        : (isConfigured
+            ? AppTheme.primaryAccent.withOpacity(0.35)
+            : AppTheme.cardBorderColor.withOpacity(0.18));
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6.5),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: borderColor,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: effectiveColor,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: isConfigured || isActive ? FontWeight.bold : FontWeight.w500,
+                color: isActive
+                    ? AppTheme.primaryAccent
+                    : (isConfigured ? AppTheme.textPrimary : AppTheme.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // Bandeja Contextual Inline (Single Inline Tray)
+  // ===========================================================================
+
+  Widget _buildInlineTray() {
+    if (_activeSelector == ActiveTaskSelector.none) {
+      return const SizedBox.shrink();
+    }
+
+    Widget content;
+    switch (_activeSelector) {
+      case ActiveTaskSelector.dateAndTime:
+        content = _buildDateAndTimeTrayContent();
+        break;
+      case ActiveTaskSelector.assignee:
+        content = _buildAssigneeTrayContent();
+        break;
+      case ActiveTaskSelector.duration:
+        content = _buildDurationTrayContent();
+        break;
+      case ActiveTaskSelector.project:
+        content = _buildProjectTrayContent();
+        break;
+      case ActiveTaskSelector.recurrence:
+        content = _buildRecurrenceTrayContent();
+        break;
+      case ActiveTaskSelector.reminders:
+        content = _buildRemindersTrayContent();
+        break;
+      case ActiveTaskSelector.none:
+        content = const SizedBox.shrink();
+        break;
+    }
+
+    return Container(
+      key: ValueKey('inline_tray_${_activeSelector.name}'),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.darkBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppTheme.primaryAccent.withOpacity(0.25),
+          width: 1,
+        ),
+      ),
+      child: content,
+    );
+  }
+
+  // Contenido de la bandeja: Fecha y Momento del día
+  Widget _buildDateAndTimeTrayContent() {
+    final isTodaySelected = _isToday(_taskDate);
+    final isTomorrowSelected = _formatDateShort(_taskDate) == 'Mañana';
+
+    final timeOptions = [
+      {'key': 'anytime', 'label': 'Cualquier momento', 'icon': Icons.all_inclusive_rounded},
+      {'key': 'morning', 'label': 'Mañana', 'icon': Icons.wb_sunny_outlined},
+      {'key': 'afternoon', 'label': 'Tarde', 'icon': Icons.wb_twilight_rounded},
+      {'key': 'night', 'label': 'Noche', 'icon': Icons.nightlight_outlined},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Fila 1: Accesos rápidos de fecha
+        Row(
+          children: [
+            _buildTrayChip(
+              label: 'Hoy',
+              isSelected: isTodaySelected,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _taskDate = DateTime.now());
+              },
+            ),
+            const SizedBox(width: 6),
+            _buildTrayChip(
+              label: 'Mañana',
+              isSelected: isTomorrowSelected,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _taskDate = DateTime.now().add(const Duration(days: 1)));
+              },
+            ),
+            const SizedBox(width: 6),
+            _buildTrayChip(
+              label: !isTodaySelected && !isTomorrowSelected
+                  ? _formatDateShort(_taskDate)
+                  : 'Elegir fecha...',
+              isSelected: !isTodaySelected && !isTomorrowSelected,
+              onTap: () => _pickDate(forTask: true),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Divider(height: 1, thickness: 1, color: Colors.white10),
+        const SizedBox(height: 10),
+
+        // Fila 2: Chips de momento del día
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: timeOptions.map((opt) {
+              final isSel = _selectedTimeOfDay == opt['key'];
+              return Padding(
+                padding: const EdgeInsets.only(right: 6.0),
+                child: _buildTrayChip(
+                  label: opt['label'] as String,
+                  icon: opt['icon'] as IconData,
+                  isSelected: isSel,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedTimeOfDay = opt['key'] as String;
+                    });
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Contenido de la bandeja: Responsable asignado
+  Widget _buildAssigneeTrayContent() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildTrayChip(
+            label: 'Sin asignar',
+            isSelected: _assignedTo == null,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _assignedTo = null;
+                _activeSelector = ActiveTaskSelector.none;
+              });
+            },
+          ),
+          const SizedBox(width: 6),
+          ...widget.miembros.map((m) {
+            final isSel = _assignedTo == m.userId;
+            return Padding(
+              padding: const EdgeInsets.only(right: 6.0),
+              child: _buildTrayChip(
+                label: m.username,
+                avatar: m.avatarData != null
+                    ? UserAvatar(
+                        avatarData: m.avatarData,
+                        username: m.username,
+                        size: 18,
+                        showBorder: false,
+                      )
+                    : null,
+                isSelected: isSel,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    _assignedTo = m.userId;
+                    _activeSelector = ActiveTaskSelector.none;
+                  });
+                },
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // Contenido de la bandeja: Duración estimada
+  Widget _buildDurationTrayContent() {
+    final options = [
+      {'label': 'Rápida (15 min)', 'minutes': 15, 'icon': Icons.bolt_rounded},
+      {'label': 'Media (30 min)', 'minutes': 30, 'icon': Icons.hourglass_top_rounded},
+      {'label': 'Larga (60 min)', 'minutes': 60, 'icon': Icons.hourglass_full_rounded},
+      {'label': 'Sin tiempo (0 min)', 'minutes': 0, 'icon': Icons.timelapse_rounded},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: options.map((opt) {
+          final mins = opt['minutes'] as int;
+          final isSel = _selectedDurationMinutes == mins;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 6.0),
+            child: _buildTrayChip(
+              label: opt['label'] as String,
+              icon: opt['icon'] as IconData,
+              isSelected: isSel,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _selectedDurationMinutes = mins;
+                  _activeSelector = ActiveTaskSelector.none;
+                });
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // Contenido de la bandeja: Proyectos
+  Widget _buildProjectTrayContent() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildTrayChip(
+            label: 'Sin proyecto',
+            isSelected: _selectedProyectoId == null,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _selectedProyectoId = null;
+                _activeSelector = ActiveTaskSelector.none;
+              });
+            },
+          ),
+          const SizedBox(width: 6),
+          ...widget.proyectos.map((p) {
+            final isSel = _selectedProyectoId == p.id;
+            return Padding(
+              padding: const EdgeInsets.only(right: 6.0),
+              child: _buildTrayChip(
+                label: p.nombre,
+                isSelected: isSel,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    _selectedProyectoId = p.id;
+                    _activeSelector = ActiveTaskSelector.none;
+                  });
+                },
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // Contenido de la bandeja: Recurrencia
+  Widget _buildRecurrenceTrayContent() {
+    const recurrenceOptions = [
+      {'key': 'none', 'label': 'No se repite'},
+      {'key': 'daily', 'label': 'Diaria'},
+      {'key': 'weekly', 'label': 'Semanal'},
+      {'key': 'monthly', 'label': 'Mensual'},
+    ];
+
+    final isRecurring = _recurrenceMode != 'none';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: recurrenceOptions.map((opt) {
+              final isSel = _recurrenceMode == opt['key'];
+              return Padding(
+                padding: const EdgeInsets.only(right: 6.0),
+                child: _buildTrayChip(
+                  label: opt['label']!,
+                  isSelected: isSel,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _recurrenceMode = opt['key']!;
+                      if (_recurrenceMode == 'none') {
+                        _autoRotateAssignee = false;
+                      }
+                    });
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        if (isRecurring && widget.miembros.length > 1) ...[
+          const SizedBox(height: 10),
+          const Divider(height: 1, thickness: 1, color: Colors.white10),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.sync_rounded,
+                    size: 15,
+                    color: _autoRotateAssignee
+                        ? AppTheme.primaryAccent
+                        : AppTheme.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Rotar responsable automáticamente',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              Switch.adaptive(
+                value: _autoRotateAssignee,
+                activeColor: AppTheme.primaryAccent,
+                onChanged: (val) {
+                  HapticFeedback.selectionClick();
+                  setState(() => _autoRotateAssignee = val);
+                },
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  // Contenido de la bandeja: Recordatorios
+  Widget _buildRemindersTrayContent() {
+    final reminderOptions = [
+      {'days': 1, 'label': '1 día antes'},
+      {'days': 3, 'label': '3 días antes'},
+      {'days': 7, 'label': '1 semana antes'},
+    ];
+
+    return Row(
+      children: reminderOptions.map((opt) {
+        final days = opt['days'] as int;
+        final isSel = _selectedReminderOffsets.contains(days);
+
+        return Padding(
+          padding: const EdgeInsets.only(right: 6.0),
+          child: _buildTrayChip(
+            label: opt['label'] as String,
+            icon: isSel
+                ? Icons.notifications_active_rounded
+                : Icons.notifications_none_rounded,
+            isSelected: isSel,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                if (isSel) {
+                  _selectedReminderOffsets.remove(days);
+                } else {
+                  _selectedReminderOffsets.add(days);
+                }
+              });
+            },
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildTrayChip({
+    required String label,
+    IconData? icon,
+    Widget? avatar,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryAccent.withOpacity(0.2)
+              : AppTheme.surfaceDark,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primaryAccent
+                : AppTheme.cardBorderColor.withOpacity(0.18),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (avatar != null) ...[
+              avatar,
+              const SizedBox(width: 5),
+            ] else if (icon != null) ...[
+              Icon(
+                icon,
+                size: 13,
+                color: isSelected ? AppTheme.primaryAccent : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? AppTheme.primaryAccent : AppTheme.textPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // Confirmación de Eliminación
+  // ===========================================================================
+
   void _confirmDeleteTask() {
     HapticFeedback.lightImpact();
     showDialog(
@@ -1020,8 +1583,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               ),
             ),
             onPressed: () {
-              Navigator.pop(dialogCtx); // Cerrar diálogo
-              Navigator.pop(context); // Cerrar bottom sheet
+              Navigator.pop(dialogCtx);
+              Navigator.pop(context);
               widget.onDeleteTask?.call();
             },
             child: const Text(
@@ -1030,713 +1593,6 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  bool _isToday(DateTime d) {
-    final now = DateTime.now();
-    return d.year == now.year && d.month == now.month && d.day == now.day;
-  }
-
-  // ===========================================================================
-  // Selector: Momento del día
-  // ===========================================================================
-
-  Widget _buildTimeOfDaySelector() {
-    final options = [
-      {'key': 'anytime', 'label': 'Cualquier momento', 'icon': Icons.all_inclusive_rounded},
-      {'key': 'morning', 'label': 'Mañana', 'icon': Icons.wb_sunny_outlined},
-      {'key': 'afternoon', 'label': 'Tarde', 'icon': Icons.wb_twilight_rounded},
-      {'key': 'night', 'label': 'Noche', 'icon': Icons.nightlight_outlined},
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: options.map((opt) {
-          final isSel = _selectedTimeOfDay == opt['key'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedTimeOfDay = opt['key'] as String);
-              },
-              borderRadius: BorderRadius.circular(10),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: isSel
-                      ? AppTheme.primaryAccent.withOpacity(0.18)
-                      : AppTheme.darkBackground,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isSel
-                        ? AppTheme.primaryAccent
-                        : AppTheme.cardBorderColor.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      opt['icon'] as IconData,
-                      size: 14,
-                      color: isSel
-                          ? AppTheme.primaryAccent
-                          : AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      opt['label'] as String,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                        color: isSel
-                            ? AppTheme.primaryAccent
-                            : AppTheme.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // Selector: Duración / Esfuerzo Relativo
-  // ===========================================================================
-
-  Widget _buildDurationChips() {
-    final options = [
-      {'label': 'Rápida (15 min)', 'minutes': 15, 'icon': Icons.bolt_rounded},
-      {'label': 'Media (30 min)', 'minutes': 30, 'icon': Icons.hourglass_top_rounded},
-      {'label': 'Larga (60 min)', 'minutes': 60, 'icon': Icons.hourglass_full_rounded},
-      {'label': 'Sin tiempo (0 min)', 'minutes': 0, 'icon': Icons.timelapse_rounded},
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: options.map((opt) {
-          final mins = opt['minutes'] as int;
-          final isSel = _selectedDurationMinutes == mins;
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedDurationMinutes = mins);
-              },
-              borderRadius: BorderRadius.circular(10),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: isSel
-                      ? AppTheme.primaryAccent.withOpacity(0.18)
-                      : AppTheme.darkBackground,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isSel
-                        ? AppTheme.primaryAccent
-                        : AppTheme.cardBorderColor.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      opt['icon'] as IconData,
-                      size: 13,
-                      color: isSel
-                          ? AppTheme.primaryAccent
-                          : AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      opt['label'] as String,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                        color: isSel
-                            ? AppTheme.primaryAccent
-                            : AppTheme.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // Opciones Avanzadas de Tarea (Consolidado y Simplificado)
-  // ===========================================================================
-
-  Widget _buildAdvancedTaskOptions() {
-    final totalConfigurados = (_recurrenceMode != 'none' ? 1 : 0) +
-        (_autoRotateAssignee ? 1 : 0) +
-        _selectedReminderOffsets.length +
-        _taskChecklist.length +
-        (_taskDescController.text.trim().isNotEmpty ? 1 : 0);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.darkBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppTheme.cardBorderColor.withOpacity(0.15),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(
-                  () => _showAdvancedTaskOptions = !_showAdvancedTaskOptions);
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 16,
-                    color: AppTheme.primaryAccent,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Opciones avanzadas',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (totalConfigurados > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      margin: const EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryAccent.withOpacity(0.18),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '$totalConfigurados config.',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryAccent,
-                        ),
-                      ),
-                    ),
-                  Icon(
-                    _showAdvancedTaskOptions
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    color: AppTheme.textSecondary,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_showAdvancedTaskOptions) ...[
-            const Divider(height: 1, thickness: 1, color: Colors.white10),
-            Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. Recurrencia / Repetición
-                  _buildRecurrenceSelector(),
-                  const SizedBox(height: 16),
-
-                  // 2. Recordatorios programados (Chips relativos)
-                  _buildRelativeRemindersSelector(),
-                  const SizedBox(height: 16),
-
-                  // 3. Notas / Descripción adicional
-                  Text(
-                    'Notas / Descripción adicional',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _taskDescController,
-                    maxLines: 2,
-                    style:
-                        TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'Detalles u observaciones...',
-                      hintStyle: TextStyle(
-                          color: AppTheme.textSecondary.withOpacity(0.5)),
-                      filled: true,
-                      fillColor: AppTheme.surfaceDark,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                            color: AppTheme.cardBorderColor.withOpacity(0.2)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                            color: AppTheme.cardBorderColor.withOpacity(0.2)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                            color: AppTheme.primaryAccent, width: 1.2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 4. Subtareas / Checklist interactivo
-                  SubtaskList(
-                    items: _taskChecklist,
-                    onChanged: (items) {
-                      setState(() => _taskChecklist = items);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // Selector de Recurrencia con Toggle de Rotación
-  // ===========================================================================
-
-  Widget _buildRecurrenceSelector() {
-    const recurrenceOptions = [
-      {'key': 'none', 'label': 'No se repite'},
-      {'key': 'daily', 'label': 'Diaria'},
-      {'key': 'weekly', 'label': 'Semanal'},
-      {'key': 'monthly', 'label': 'Mensual'},
-    ];
-
-    final isRecurring = _recurrenceMode != 'none';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Repetición / Recurrencia',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: recurrenceOptions.map((opt) {
-              final isSel = _recurrenceMode == opt['key'];
-              return Padding(
-                padding: const EdgeInsets.only(right: 6.0),
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() {
-                      _recurrenceMode = opt['key']!;
-                      if (_recurrenceMode == 'none') {
-                        _autoRotateAssignee = false;
-                      }
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isSel
-                          ? AppTheme.primaryAccent.withOpacity(0.18)
-                          : AppTheme.surfaceDark,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSel
-                            ? AppTheme.primaryAccent
-                            : AppTheme.cardBorderColor.withOpacity(0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      opt['label']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                        color: isSel
-                            ? AppTheme.primaryAccent
-                            : AppTheme.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-
-        // Toggle booleano opcional: "Rotar responsable automáticamente"
-        if (isRecurring && widget.miembros.length > 1) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceDark,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: AppTheme.cardBorderColor.withOpacity(0.15),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.sync_rounded,
-                      size: 16,
-                      color: _autoRotateAssignee
-                          ? AppTheme.primaryAccent
-                          : AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Rotar responsable automáticamente',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textPrimary,
-                        fontWeight: _autoRotateAssignee
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-                Switch.adaptive(
-                  value: _autoRotateAssignee,
-                  activeColor: AppTheme.primaryAccent,
-                  onChanged: (val) {
-                    HapticFeedback.selectionClick();
-                    setState(() => _autoRotateAssignee = val);
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  // ===========================================================================
-  // Selector de Recordatorios Relativos (3 opciones)
-  // ===========================================================================
-
-  Widget _buildRelativeRemindersSelector() {
-    final reminderOptions = [
-      {'days': 1, 'label': '1 día antes'},
-      {'days': 3, 'label': '3 días antes'},
-      {'days': 7, 'label': '1 semana antes'},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Recordatorios programados',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            if (_selectedReminderOffsets.isNotEmpty)
-              GestureDetector(
-                onTap: () => setState(() => _selectedReminderOffsets.clear()),
-                child: Text(
-                  'Limpiar avisos',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.accentCoral,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: reminderOptions.map((opt) {
-            final days = opt['days'] as int;
-            final isSel = _selectedReminderOffsets.contains(days);
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    if (isSel) {
-                      _selectedReminderOffsets.remove(days);
-                    } else {
-                      _selectedReminderOffsets.add(days);
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 140),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSel
-                        ? AppTheme.primaryAccent.withOpacity(0.18)
-                        : AppTheme.surfaceDark,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSel
-                          ? AppTheme.primaryAccent
-                          : AppTheme.cardBorderColor.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSel
-                            ? Icons.notifications_active_rounded
-                            : Icons.notifications_none_rounded,
-                        size: 13,
-                        color: isSel
-                            ? AppTheme.primaryAccent
-                            : AppTheme.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        opt['label'] as String,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight:
-                              isSel ? FontWeight.bold : FontWeight.w500,
-                          color: isSel
-                              ? AppTheme.primaryAccent
-                              : AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  // ===========================================================================
-  // Selector de Asignado y Proyecto
-  // ===========================================================================
-
-  Widget _buildAssigneeSelector() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          // Opción "Sin asignar"
-          _buildAssigneeChip(
-            title: 'Sin asignar',
-            avatar: null,
-            isSelected: _assignedTo == null,
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _assignedTo = null);
-            },
-          ),
-          const SizedBox(width: 8),
-
-          // Convivientes del entorno
-          ...widget.miembros.map((m) {
-            final isSelected = _assignedTo == m.userId;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: _buildAssigneeChip(
-                title: m.username,
-                avatar: m.avatarData != null
-                    ? UserAvatar(
-                        avatarData: m.avatarData,
-                        username: m.username,
-                        size: 20,
-                        showBorder: false,
-                      )
-                    : null,
-                isSelected: isSelected,
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _assignedTo = m.userId);
-                },
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAssigneeChip({
-    required String title,
-    required Widget? avatar,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primaryAccent.withOpacity(0.15)
-              : AppTheme.darkBackground,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryAccent
-                : AppTheme.cardBorderColor.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (avatar != null) ...[
-              avatar,
-              const SizedBox(width: 6),
-            ] else ...[
-              Icon(
-                Icons.person_outline_rounded,
-                size: 14,
-                color: isSelected
-                    ? AppTheme.primaryAccent
-                    : AppTheme.textSecondary,
-              ),
-              const SizedBox(width: 5),
-            ],
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color:
-                    isSelected ? AppTheme.primaryAccent : AppTheme.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProjectSelector() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _buildChipTag(
-            label: 'Sin proyecto',
-            isSelected: _selectedProyectoId == null,
-            onTap: () => setState(() => _selectedProyectoId = null),
-          ),
-          const SizedBox(width: 8),
-          ...widget.proyectos.map((p) {
-            final isSel = _selectedProyectoId == p.id;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: _buildChipTag(
-                label: p.nombre,
-                isSelected: isSel,
-                onTap: () => setState(() => _selectedProyectoId = p.id),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChipTag({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primaryAccent.withOpacity(0.15)
-              : AppTheme.darkBackground,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryAccent
-                : AppTheme.cardBorderColor.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? AppTheme.primaryAccent : AppTheme.textSecondary,
-          ),
-        ),
       ),
     );
   }
@@ -2196,7 +2052,6 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           ),
           const SizedBox(height: 12),
 
-          // Lista reordenable y editable de ideas
           if (_ideasRegaloList.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -2360,6 +2215,40 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
         _ideasRegaloList[index] = result.trim();
       });
     }
+  }
+
+  Widget _buildChipTag({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryAccent.withOpacity(0.15)
+              : AppTheme.darkBackground,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primaryAccent
+                : AppTheme.cardBorderColor.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? AppTheme.primaryAccent : AppTheme.textSecondary,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildReminderChip({

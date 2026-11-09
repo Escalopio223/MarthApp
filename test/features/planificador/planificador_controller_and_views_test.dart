@@ -610,8 +610,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tab Tarea activa por defecto
-      expect(find.text('Título de la tarea'), findsOneWidget);
+      // Tab Tarea activa por defecto con Smart Canvas
+      expect(find.byType(TextField), findsWidgets);
+      expect(find.text('¿Qué hay que hacer?'), findsOneWidget);
       expect(find.text('Guardar Tarea'), findsOneWidget);
 
       // Conmutar a tab Evento
@@ -681,30 +682,32 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verificar que los chips rápidos de duración están presentes
-      expect(find.text('Duración / Esfuerzo estimado'), findsOneWidget);
-      expect(find.text('Rápida (15 min)'), findsOneWidget);
-      expect(find.text('Media (30 min)'), findsOneWidget);
-      expect(find.text('Larga (60 min)'), findsOneWidget);
-      expect(find.text('Sin tiempo (0 min)'), findsOneWidget);
+      // Verificar que las píldoras de estado del Smart Canvas están presentes
+      expect(find.text('15 min'), findsOneWidget);
+      expect(find.text('No se repite'), findsOneWidget);
+      expect(find.text('Sin avisos'), findsOneWidget);
+      expect(find.text('+ Subtareas'), findsOneWidget);
 
-      // Verificar que el selector de momento del día está presente
-      expect(find.text('Momento del día'), findsOneWidget);
-      expect(find.text('Cualquier momento'), findsOneWidget);
-      expect(find.text('Mañana'), findsOneWidget);
-      expect(find.text('Tarde'), findsOneWidget);
-      expect(find.text('Noche'), findsOneWidget);
-
-      // Verificar que las Opciones Avanzadas de Tarea existen y se pueden desplegar
-      expect(find.text('Opciones avanzadas'), findsOneWidget);
-      await tester.tap(find.text('Opciones avanzadas'));
+      // Abrir bandeja de duración y cambiar a 30 min
+      await tester.tap(find.text('15 min'));
       await tester.pumpAndSettle();
-      expect(find.text('Repetición / Recurrencia'), findsOneWidget);
-      expect(find.text('Recordatorios programados'), findsOneWidget);
+      expect(find.text('Media (30 min)'), findsOneWidget);
+      await tester.tap(find.text('Media (30 min)'));
+      await tester.pumpAndSettle();
+      expect(find.text('30 min'), findsOneWidget);
+
+      // Abrir bandeja de recordatorios
+      await tester.tap(find.text('Sin avisos'));
+      await tester.pumpAndSettle();
       expect(find.text('1 día antes'), findsOneWidget);
       expect(find.text('3 días antes'), findsOneWidget);
       expect(find.text('1 semana antes'), findsOneWidget);
-      expect(find.text('Notas / Descripción adicional'), findsOneWidget);
+
+      // Abrir subtareas usando el finder del texto
+      final subtareasFinder = find.widgetWithText(InkWell, '+ Subtareas');
+      await tester.scrollUntilVisible(subtareasFinder, 100, scrollable: find.byType(Scrollable).last);
+      await tester.tap(subtareasFinder);
+      await tester.pumpAndSettle();
       expect(find.byType(SubtaskList), findsOneWidget);
 
       // Conmutar a tab Evento
