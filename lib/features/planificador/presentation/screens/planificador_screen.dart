@@ -419,7 +419,7 @@ class _PlanificadorScreenState extends State<PlanificadorScreen> {
                             tarea: t,
                             asignado: asignado,
                             onToggle: () => _controller.toggleTarea(t.id),
-                            onTap: () => _mostrarDetalleTarea(t),
+                            onTap: () => _abrirModalEdicionTarea(t),
                             onDelete: () => _controller.eliminarTarea(t.id),
                           );
                         }),
