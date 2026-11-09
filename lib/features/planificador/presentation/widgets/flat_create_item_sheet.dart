@@ -7,54 +7,30 @@ import '../../../profile/presentation/widgets/user_avatar.dart';
 import '../../domain/models/checklist_item_model.dart';
 import '../../domain/models/proyecto_model.dart';
 import '../../domain/models/recordatorio_tarea_model.dart';
-import '../../domain/models/recurrence_rule.dart';
 import '../../domain/models/tarea_model.dart';
-import 'recordatorios_selector_widget.dart';
 import 'subtask_list.dart';
-import 'tiempo_estimado_selector.dart';
 
-/// Niveles de prioridad disponibles para las tareas
-enum TaskPriorityLevel {
-  baja('Baja', Icons.keyboard_double_arrow_down_rounded, Color(0xFF10B981)),
-  media('Media', Icons.drag_handle_rounded, Color(0xFF38BDF8)),
-  alta('Alta', Icons.keyboard_double_arrow_up_rounded, Color(0xFFF59E0B)),
-  urgente('Urgente', Icons.priority_high_rounded, Color(0xFFEF4444));
-
-  final String label;
-  final IconData icon;
-  final Color color;
-
-  const TaskPriorityLevel(this.label, this.icon, this.color);
-
-  static TaskPriorityLevel? fromString(String? val) {
-    if (val == null) return null;
-    switch (val.toLowerCase()) {
-      case 'baja':
-        return TaskPriorityLevel.baja;
-      case 'media':
-        return TaskPriorityLevel.media;
-      case 'alta':
-        return TaskPriorityLevel.alta;
-      case 'urgente':
-        return TaskPriorityLevel.urgente;
-      default:
-        return null;
-    }
-  }
-}
-
-/// Modal unificado de creación y edición (Tarea / Evento / Cumpleaños) con estética Flat Design 2.0:
-/// - Selector de tipo en cabecera: [ Tarea ] | [ Evento / Cita ] (oculto en modo edición de tarea).
-/// - Selector de tiempo estimado con dropdowns configurables (1-60 y Minutos/Horas).
-/// - Selector de prioridad opcional (sin prioridad por defecto).
-/// - Opciones avanzadas completas:
-///   * Prioridad
-///   * Recurrencia / Repetición (No se repite, Diaria, Semanal, Mensual, Días específicos)
-///   * Taxonomía / Etiquetas temáticas del hogar
-///   * Notas / Descripción adicional
-///   * Recordatorios y Alertas configurables
-///   * Subtareas / Checklist interactivo
-/// - Apartado especial para Cumpleaños con lista de regalos Drag & Drop y editable.
+/// Modal consolidado de creación y edición (Tarea / Evento / Cumpleaños) con estética Flat Design 2.0
+/// adaptado y optimizado para la gestión doméstica del hogar:
+///
+/// 1. Bloque principal (siempre visible):
+///   - Tipo de entrada: [ Tarea ] | [ Evento / Cita ]
+///   - Título de la tarea (TextField con autofocus)
+///   - Fecha programada (Selector de fecha con acceso directo a "Hoy")
+///   - Momento del día (Chips): "Cualquier momento", "Mañana", "Tarde", "Noche"
+///   - Responsable asignado: Selector horizontal de convivientes o "Sin asignar"
+///   - Duración / Esfuerzo relativo (Chips): "Rápida" (15m), "Media" (30m), "Larga" (60m), "Sin tiempo" (0m)
+///   - Proyecto (opcional): Selector horizontal de proyecto o "Sin proyecto"
+///
+/// 2. Bloque "Opciones avanzadas" (acordeón colapsable):
+///   - ELIMINADOS: Prioridad y Categorías/Etiquetas
+///   - Recurrencia: "No se repite", "Diaria", "Semanal", "Mensual"
+///   - Toggle opcional: "Rotar responsable automáticamente" si es recurrente y hay miembros
+///   - Recordatorios simplificados (multiselección): "1 día antes", "3 días antes", "1 semana antes"
+///   - Notas / Descripción adicional (textarea multilínea)
+///   - Subtareas / Checklist interactivo (SubtaskList)
+///
+/// 3. Scroll y Teclado: SingleChildScrollView con padding dinámico en bottom para evitar RenderFlex overflow.
 class FlatCreateItemSheet extends StatefulWidget {
   final DateTime defaultDate;
   final List<EnvironmentMemberModel> miembros;
@@ -150,44 +126,40 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   int _selectedTypeIndex = 0;
   bool _isSubmitting = false;
 
-  // Estado Tarea: Campos Básicos
+  // ===========================================================================
+  // Estado Tarea: Campos Principales
+  // ===========================================================================
   final TextEditingController _taskTitleController = TextEditingController();
   final TextEditingController _taskDescController = TextEditingController();
   late DateTime _taskDate;
   String? _assignedTo;
-  int _selectedMinutes = 15;
   String? _selectedProyectoId;
   String? _taskError;
 
-  // Estado Tarea: Prioridad (null = Sin prioridad / Ninguna)
-  TaskPriorityLevel? _selectedPriority;
+  // Momento del día: 'anytime' | 'morning' | 'afternoon' | 'night'
+  String _selectedTimeOfDay = 'anytime';
 
-  // Estado Tarea: Etiquetas temáticas del hogar
-  static const List<String> _etiquetasSugeridas = [
-    'Limpieza',
-    'Cocina',
-    'Compras',
-    'Mantenimiento',
-    'Mascotas',
-    'Organización',
-    'Facturas',
-  ];
-  String? _selectedEtiqueta;
-  final TextEditingController _customTagController = TextEditingController();
-  bool _isAddingCustomTag = false;
+  // Duración / Esfuerzo relativo: 0, 15, 30, 60
+  int _selectedDurationMinutes = 15;
 
-  // Estado Tarea: Recurrencia / Repetición
-  // 'none' | 'daily' | 'weekly' | 'monthly' | 'specific_days'
-  String _recurrenceMode = 'none';
-  int _recurrenceInterval = 1;
-  final Set<int> _selectedDaysOfWeek = {}; // 1 = Lun, 7 = Dom
-
-  // Estado Tarea: Checklist & Recordatorios
-  List<ChecklistItemModel> _taskChecklist = [];
-  List<RecordatorioTareaModel> _taskRecordatorios = [];
+  // ===========================================================================
+  // Estado Tarea: Opciones Avanzadas
+  // ===========================================================================
   bool _showAdvancedTaskOptions = false;
 
-  // Estado Evento
+  // Recurrencia: 'none' | 'daily' | 'weekly' | 'monthly'
+  String _recurrenceMode = 'none';
+  bool _autoRotateAssignee = false;
+
+  // Recordatorios relativos (multiselección): offsets en días [1, 3, 7]
+  final Set<int> _selectedReminderOffsets = {};
+
+  // Checklist de subtareas
+  List<ChecklistItemModel> _taskChecklist = [];
+
+  // ===========================================================================
+  // Estado Evento / Cumpleaños
+  // ===========================================================================
   final TextEditingController _eventTitleController = TextEditingController();
   final TextEditingController _giftIdeaInputController = TextEditingController();
   late DateTime _eventDate;
@@ -213,20 +185,56 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
       _selectedTypeIndex = 0;
       _taskTitleController.text = t.titulo;
       _taskDescController.text = t.notasLimpias ?? '';
-      _selectedMinutes = t.tiempoEstimadoMinutos;
+      _selectedDurationMinutes = _normalizeDuration(t.tiempoEstimadoMinutos);
       _selectedProyectoId = t.proyectoId;
-      _selectedPriority = TaskPriorityLevel.fromString(t.prioridad);
-      _selectedEtiqueta = t.etiqueta;
       _taskChecklist = List.from(t.checklist);
-      _taskRecordatorios = List.from(t.recordatorios);
 
-      // Si tiene configuraciones avanzadas, desplegar acordeón para fácil acceso
-      if (_selectedPriority != null ||
-          _selectedEtiqueta != null ||
-          t.rruleString != null ||
+      // Parsear momento del día
+      final tod = t.timeOfDay;
+      if (tod != null && ['anytime', 'morning', 'afternoon', 'night'].contains(tod)) {
+        _selectedTimeOfDay = tod;
+      }
+
+      // Parsear recurrencia
+      final rrule = t.rruleString;
+      if (rrule != null) {
+        if (rrule.contains('FREQ=DAILY')) {
+          _recurrenceMode = 'daily';
+        } else if (rrule.contains('FREQ=WEEKLY')) {
+          _recurrenceMode = 'weekly';
+        } else if (rrule.contains('FREQ=MONTHLY')) {
+          _recurrenceMode = 'monthly';
+        }
+      }
+
+      _autoRotateAssignee = t.autoRotateAssignee;
+
+      // Parsear recordatorios relativos existentes
+      if (t.recordatorios.isNotEmpty && t.fechaLimite != null) {
+        final dLimite = DateTime(
+          t.fechaLimite!.year,
+          t.fechaLimite!.month,
+          t.fechaLimite!.day,
+        );
+        for (final r in t.recordatorios) {
+          final dNotif = DateTime(
+            r.fechaNotificacion.year,
+            r.fechaNotificacion.month,
+            r.fechaNotificacion.day,
+          );
+          final diff = dLimite.difference(dNotif).inDays;
+          if (diff == 1 || diff == 3 || diff == 7) {
+            _selectedReminderOffsets.add(diff);
+          }
+        }
+      }
+
+      // Desplegar acordeón si tiene opciones avanzadas activas
+      if (_recurrenceMode != 'none' ||
+          _autoRotateAssignee ||
+          _selectedReminderOffsets.isNotEmpty ||
           _taskChecklist.isNotEmpty ||
-          _taskRecordatorios.isNotEmpty ||
-          (_taskDescController.text.isNotEmpty)) {
+          _taskDescController.text.isNotEmpty) {
         _showAdvancedTaskOptions = true;
       }
     }
@@ -236,10 +244,16 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   void dispose() {
     _taskTitleController.dispose();
     _taskDescController.dispose();
-    _customTagController.dispose();
     _eventTitleController.dispose();
     _giftIdeaInputController.dispose();
     super.dispose();
+  }
+
+  int _normalizeDuration(int mins) {
+    if (mins <= 0) return 0;
+    if (mins <= 20) return 15;
+    if (mins <= 45) return 30;
+    return 60;
   }
 
   String _formatDateShort(DateTime d) {
@@ -310,7 +324,11 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   Future<void> _pickEndTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: _endTime ?? TimeOfDay(hour: (_startTime.hour + 1) % 24, minute: _startTime.minute),
+      initialTime: _endTime ??
+          TimeOfDay(
+            hour: (_startTime.hour + 1) % 24,
+            minute: _startTime.minute,
+          ),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -329,30 +347,42 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     }
   }
 
-  /// Compone la descripción enriquecida respetando el protocolo de almacenamiento:
-  /// Prioridad [priority:alta], Etiqueta [tag:Limpieza], Recurrencia [rrule:...] y notas libres.
+  /// Construye la cadena rrule según la frecuencia seleccionada
+  String? _buildRecurrencePattern() {
+    switch (_recurrenceMode) {
+      case 'daily':
+        return 'FREQ=DAILY;INTERVAL=1';
+      case 'weekly':
+        return 'FREQ=WEEKLY;INTERVAL=1';
+      case 'monthly':
+        return 'FREQ=MONTHLY;INTERVAL=1';
+      default:
+        return null;
+    }
+  }
+
+  /// Compone la descripción enriquecida con metadatos:
+  /// [time_of_day:...], [rrule:...], [auto_rotate:true] y el texto de notas.
   String? _composeTaskDescription() {
     final buffer = StringBuffer();
 
-    // Etiqueta
-    if (_selectedEtiqueta != null && _selectedEtiqueta!.trim().isNotEmpty) {
-      buffer.write('[tag:${_selectedEtiqueta!.trim()}] ');
-    }
-
-    // Prioridad (solo si el usuario la seleccionó explícitamente)
-    if (_selectedPriority != null) {
-      buffer.write('[priority:${_selectedPriority!.name}] ');
+    // Momento del día (si no es 'anytime')
+    if (_selectedTimeOfDay != 'anytime') {
+      buffer.write('[time_of_day:$_selectedTimeOfDay] ');
     }
 
     // Recurrencia
-    if (_recurrenceMode != 'none') {
-      final rrule = _buildRecurrenceRuleString();
-      if (rrule != null) {
-        buffer.write('[rrule:$rrule] ');
-      }
+    final rrule = _buildRecurrencePattern();
+    if (rrule != null) {
+      buffer.write('[rrule:$rrule] ');
     }
 
-    // Texto descriptivo adicional
+    // Rotar responsable
+    if (_recurrenceMode != 'none' && _autoRotateAssignee) {
+      buffer.write('[auto_rotate:true] ');
+    }
+
+    // Texto de notas libres
     final userNotes = _taskDescController.text.trim();
     if (userNotes.isNotEmpty) {
       buffer.write(userNotes);
@@ -362,24 +392,31 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     return result.isNotEmpty ? result : null;
   }
 
-  String? _buildRecurrenceRuleString() {
-    switch (_recurrenceMode) {
-      case 'daily':
-        return 'FREQ=DAILY;INTERVAL=$_recurrenceInterval';
-      case 'weekly':
-        return 'FREQ=WEEKLY;INTERVAL=$_recurrenceInterval';
-      case 'monthly':
-        return 'FREQ=MONTHLY;INTERVAL=$_recurrenceInterval';
-      case 'specific_days':
-        if (_selectedDaysOfWeek.isEmpty) {
-          return 'FREQ=WEEKLY;INTERVAL=1';
-        }
-        final days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
-        final byDays = _selectedDaysOfWeek.map((d) => days[d - 1]).join(',');
-        return 'FREQ=WEEKLY;BYDAY=$byDays';
-      default:
-        return null;
+  /// Convierte los chips seleccionados (1 día, 3 días, 1 semana) en modelos de recordatorios
+  List<RecordatorioTareaModel> _buildRecordatoriosList() {
+    final recordatorios = <RecordatorioTareaModel>[];
+    final baseDate = DateTime(
+      _taskDate.year,
+      _taskDate.month,
+      _taskDate.day,
+      9, // 09:00 AM hora predeterminada para notificaciones
+      0,
+    );
+
+    final sortedOffsets = _selectedReminderOffsets.toList()..sort();
+    for (final daysBefore in sortedOffsets) {
+      final notifDate = baseDate.subtract(Duration(days: daysBefore));
+      recordatorios.add(
+        RecordatorioTareaModel(
+          id: 'rec_${daysBefore}_${DateTime.now().millisecondsSinceEpoch}',
+          tareaId: widget.tareaToEdit?.id ?? '',
+          fechaNotificacion: notifDate,
+          horaNotificacion: '09:00',
+        ),
+      );
     }
+
+    return recordatorios;
   }
 
   Future<void> _submitTask() async {
@@ -396,15 +433,17 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
     try {
       final desc = _composeTaskDescription();
+      final recordatorios = _buildRecordatoriosList();
+
       await widget.onCreateTask(
         titulo: title,
         fechaLimite: _taskDate,
         asignadoA: _assignedTo,
-        tiempoEstimadoMinutos: _selectedMinutes,
+        tiempoEstimadoMinutos: _selectedDurationMinutes,
         proyectoId: _selectedProyectoId,
         descripcion: desc,
         checklist: _taskChecklist,
-        recordatorios: _taskRecordatorios,
+        recordatorios: recordatorios,
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -451,7 +490,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
       final recordatorios = <RecordatorioTareaModel>[];
       if (_reminderMinutesBefore != null) {
-        final notifTime = startDateTime.subtract(Duration(minutes: _reminderMinutesBefore!));
+        final notifTime =
+            startDateTime.subtract(Duration(minutes: _reminderMinutesBefore!));
         recordatorios.add(
           RecordatorioTareaModel(
             id: 'rec_${DateTime.now().millisecondsSinceEpoch}',
@@ -552,7 +592,10 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               ],
 
               // Formulario según tipo
-              if (_selectedTypeIndex == 0) _buildTaskForm() else _buildEventForm(),
+              if (_selectedTypeIndex == 0)
+                _buildTaskForm()
+              else
+                _buildEventForm(),
             ],
           ),
         ),
@@ -640,14 +683,14 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   // ===========================================================================
-  // Formulario: Tarea
+  // Formulario: Tarea (Diseño Optimizado para el Hogar)
   // ===========================================================================
 
   Widget _buildTaskForm() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Título
+        // 1. Título de la tarea
         Text(
           'Título de la tarea',
           style: TextStyle(
@@ -663,21 +706,26 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
           decoration: InputDecoration(
             hintText: 'Ej. Limpiar la cocina o fregar platos...',
-            hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+            hintStyle:
+                TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
             filled: true,
             fillColor: AppTheme.darkBackground,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+              borderSide:
+                  BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+              borderSide:
+                  BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.primaryAccent, width: 1.5),
+              borderSide:
+                  BorderSide(color: AppTheme.primaryAccent, width: 1.5),
             ),
           ),
         ),
@@ -691,7 +739,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         const SizedBox(height: 16),
 
-        // Fecha de ejecución
+        // 2. Fecha programada (con acceso directo a Hoy)
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -703,46 +751,98 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                 color: AppTheme.textSecondary,
               ),
             ),
-            InkWell(
-              onTap: () => _pickDate(forTask: true),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkBackground,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppTheme.cardBorderColor.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.calendar_today_rounded,
-                      size: 13,
-                      color: AppTheme.primaryAccent,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatDateShort(_taskDate),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Acceso directo a "Hoy"
+                if (!_isToday(_taskDate))
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6.0),
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _taskDate = DateTime.now());
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryAccent.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.primaryAccent.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          'Hoy',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryAccent,
+                          ),
+                        ),
                       ),
                     ),
-                  ],
+                  ),
+                InkWell(
+                  onTap: () => _pickDate(forTask: true),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkBackground,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.cardBorderColor.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          size: 13,
+                          color: AppTheme.primaryAccent,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _formatDateShort(_taskDate),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
 
         const SizedBox(height: 16),
 
-        // Selector de Responsable (Convivientes)
+        // 3. Momento del día (NUEVO)
+        Text(
+          'Momento del día',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildTimeOfDaySelector(),
+
+        const SizedBox(height: 16),
+
+        // 4. Responsable asignado (Convivientes o Sin asignar)
         Text(
           'Responsable asignado',
           style: TextStyle(
@@ -756,15 +856,19 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         const SizedBox(height: 16),
 
-        // Selector de Tiempo Estimado configurable con dos desplegables (número 1-60 y unidad Minutos/Horas)
-        TiempoEstimadoSelector(
-          initialMinutes: _selectedMinutes,
-          onChanged: (mins) {
-            setState(() => _selectedMinutes = mins);
-          },
+        // 5. Duración / Tiempo estimado (REFACTORIZADO A CHIPS RÁPIDOS)
+        Text(
+          'Duración / Esfuerzo estimado',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary,
+          ),
         ),
+        const SizedBox(height: 8),
+        _buildDurationChips(),
 
-        // Selector de Proyecto opcional
+        // 6. Selector de Proyecto opcional
         if (widget.proyectos.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
@@ -781,7 +885,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         const SizedBox(height: 16),
 
-        // Acordeón / Desplegable Flat 2.0 de Opciones Avanzadas
+        // 7. Acordeón / Desplegable Flat 2.0 de Opciones Avanzadas
         _buildAdvancedTaskOptions(),
 
         const SizedBox(height: 24),
@@ -821,16 +925,167 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
     );
   }
 
+  bool _isToday(DateTime d) {
+    final now = DateTime.now();
+    return d.year == now.year && d.month == now.month && d.day == now.day;
+  }
+
   // ===========================================================================
-  // Opciones Avanzadas de Tarea
+  // Selector: Momento del día
+  // ===========================================================================
+
+  Widget _buildTimeOfDaySelector() {
+    final options = [
+      {'key': 'anytime', 'label': 'Cualquier momento', 'icon': Icons.all_inclusive_rounded},
+      {'key': 'morning', 'label': 'Mañana', 'icon': Icons.wb_sunny_outlined},
+      {'key': 'afternoon', 'label': 'Tarde', 'icon': Icons.wb_twilight_rounded},
+      {'key': 'night', 'label': 'Noche', 'icon': Icons.nightlight_outlined},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: options.map((opt) {
+          final isSel = _selectedTimeOfDay == opt['key'];
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedTimeOfDay = opt['key'] as String);
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? AppTheme.primaryAccent.withOpacity(0.18)
+                      : AppTheme.darkBackground,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSel
+                        ? AppTheme.primaryAccent
+                        : AppTheme.cardBorderColor.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      opt['icon'] as IconData,
+                      size: 14,
+                      color: isSel
+                          ? AppTheme.primaryAccent
+                          : AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      opt['label'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                        color: isSel
+                            ? AppTheme.primaryAccent
+                            : AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // Selector: Duración / Esfuerzo Relativo
+  // ===========================================================================
+
+  Widget _buildDurationChips() {
+    final options = [
+      {'label': 'Rápida (15 min)', 'minutes': 15, 'icon': Icons.bolt_rounded},
+      {'label': 'Media (30 min)', 'minutes': 30, 'icon': Icons.hourglass_top_rounded},
+      {'label': 'Larga (60 min)', 'minutes': 60, 'icon': Icons.hourglass_full_rounded},
+      {'label': 'Sin tiempo (0 min)', 'minutes': 0, 'icon': Icons.timelapse_rounded},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: options.map((opt) {
+          final mins = opt['minutes'] as int;
+          final isSel = _selectedDurationMinutes == mins;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedDurationMinutes = mins);
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? AppTheme.primaryAccent.withOpacity(0.18)
+                      : AppTheme.darkBackground,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSel
+                        ? AppTheme.primaryAccent
+                        : AppTheme.cardBorderColor.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      opt['icon'] as IconData,
+                      size: 13,
+                      color: isSel
+                          ? AppTheme.primaryAccent
+                          : AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      opt['label'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                        color: isSel
+                            ? AppTheme.primaryAccent
+                            : AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // Opciones Avanzadas de Tarea (Consolidado y Simplificado)
   // ===========================================================================
 
   Widget _buildAdvancedTaskOptions() {
-    final totalConfigurados = (_selectedEtiqueta != null ? 1 : 0) +
-        (_recurrenceMode != 'none' ? 1 : 0) +
-        (_selectedPriority != null ? 1 : 0) +
-        _taskRecordatorios.length +
-        _taskChecklist.length;
+    final totalConfigurados = (_recurrenceMode != 'none' ? 1 : 0) +
+        (_autoRotateAssignee ? 1 : 0) +
+        _selectedReminderOffsets.length +
+        _taskChecklist.length +
+        (_taskDescController.text.trim().isNotEmpty ? 1 : 0);
 
     return Container(
       decoration: BoxDecoration(
@@ -846,11 +1101,13 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           InkWell(
             onTap: () {
               HapticFeedback.selectionClick();
-              setState(() => _showAdvancedTaskOptions = !_showAdvancedTaskOptions);
+              setState(
+                  () => _showAdvancedTaskOptions = !_showAdvancedTaskOptions);
             },
             borderRadius: BorderRadius.circular(12),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
                   Icon(
@@ -870,7 +1127,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                   const Spacer(),
                   if (totalConfigurados > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       margin: const EdgeInsets.only(right: 6),
                       decoration: BoxDecoration(
                         color: AppTheme.primaryAccent.withOpacity(0.18),
@@ -903,19 +1161,15 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Prioridad
-                  _buildPrioritySelector(),
-                  const SizedBox(height: 16),
-
-                  // 2. Recurrencia / Repetición
+                  // 1. Recurrencia / Repetición
                   _buildRecurrenceSelector(),
                   const SizedBox(height: 16),
 
-                  // 3. Taxonomía / Etiquetas del hogar
-                  _buildTagsSelector(),
+                  // 2. Recordatorios programados (Chips relativos)
+                  _buildRelativeRemindersSelector(),
                   const SizedBox(height: 16),
 
-                  // 4. Notas / Descripción adicional
+                  // 3. Notas / Descripción adicional
                   Text(
                     'Notas / Descripción adicional',
                     style: TextStyle(
@@ -928,40 +1182,36 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                   TextField(
                     controller: _taskDescController,
                     maxLines: 2,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+                    style:
+                        TextStyle(color: AppTheme.textPrimary, fontSize: 13),
                     decoration: InputDecoration(
                       hintText: 'Detalles u observaciones...',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                          color: AppTheme.textSecondary.withOpacity(0.5)),
                       filled: true,
                       fillColor: AppTheme.surfaceDark,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                        borderSide: BorderSide(
+                            color: AppTheme.cardBorderColor.withOpacity(0.2)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                        borderSide: BorderSide(
+                            color: AppTheme.cardBorderColor.withOpacity(0.2)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: AppTheme.primaryAccent, width: 1.2),
+                        borderSide: BorderSide(
+                            color: AppTheme.primaryAccent, width: 1.2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // 5. Recordatorios y Alertas configurables
-                  RecordatoriosSelectorWidget(
-                    recordatoriosIniciales: _taskRecordatorios,
-                    fechaLimite: _taskDate,
-                    onChanged: (recs) {
-                      setState(() => _taskRecordatorios = recs);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // 6. Subtareas / Checklist interactivo
+                  // 4. Subtareas / Checklist interactivo
                   SubtaskList(
                     items: _taskChecklist,
                     onChanged: (items) {
@@ -978,105 +1228,7 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   // ===========================================================================
-  // 1. Selector de Prioridad (Opcional, sin prioridad por defecto)
-  // ===========================================================================
-
-  Widget _buildPrioritySelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Prioridad',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            if (_selectedPriority != null)
-              GestureDetector(
-                onTap: () => setState(() => _selectedPriority = null),
-                child: Text(
-                  'Quitar prioridad',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.accentCoral,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceDark,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppTheme.cardBorderColor.withOpacity(0.15),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: TaskPriorityLevel.values.map((priority) {
-              final isSelected = _selectedPriority == priority;
-              return Expanded(
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() {
-                      // Toggle: si se toca la misma, se deselecciona
-                      _selectedPriority = isSelected ? null : priority;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
-                    padding: const EdgeInsets.symmetric(vertical: 7),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? priority.color.withOpacity(0.18)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected ? priority.color : Colors.transparent,
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          priority.icon,
-                          size: 13,
-                          color: isSelected ? priority.color : AppTheme.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          priority.label,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                            color: isSelected ? priority.color : AppTheme.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ===========================================================================
-  // 2. Selector de Recurrencia / Repetición
+  // Selector de Recurrencia con Toggle de Rotación
   // ===========================================================================
 
   Widget _buildRecurrenceSelector() {
@@ -1085,10 +1237,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
       {'key': 'daily', 'label': 'Diaria'},
       {'key': 'weekly', 'label': 'Semanal'},
       {'key': 'monthly', 'label': 'Mensual'},
-      {'key': 'specific_days', 'label': 'Días específicos'},
     ];
 
-    final diasSemanaNombres = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+    final isRecurring = _recurrenceMode != 'none';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1112,12 +1263,18 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                 child: InkWell(
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    setState(() => _recurrenceMode = opt['key']!);
+                    setState(() {
+                      _recurrenceMode = opt['key']!;
+                      if (_recurrenceMode == 'none') {
+                        _autoRotateAssignee = false;
+                      }
+                    });
                   },
                   borderRadius: BorderRadius.circular(8),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 140),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: isSel
                           ? AppTheme.primaryAccent.withOpacity(0.18)
@@ -1135,7 +1292,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                        color: isSel ? AppTheme.primaryAccent : AppTheme.textSecondary,
+                        color: isSel
+                            ? AppTheme.primaryAccent
+                            : AppTheme.textSecondary,
                       ),
                     ),
                   ),
@@ -1145,10 +1304,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           ),
         ),
 
-        // Configuración condicional: Intervalo (Diaria / Semanal / Mensual)
-        if (_recurrenceMode == 'daily' ||
-            _recurrenceMode == 'weekly' ||
-            _recurrenceMode == 'monthly') ...[
+        // Toggle booleano opcional: "Rotar responsable automáticamente"
+        if (isRecurring && widget.miembros.length > 1) ...[
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1163,109 +1320,38 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _recurrenceMode == 'daily'
-                      ? 'Repetir cada (días):'
-                      : _recurrenceMode == 'weekly'
-                          ? 'Repetir cada (semanas):'
-                          : 'Repetir cada (meses):',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                ),
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline_rounded, size: 18),
-                      color: _recurrenceInterval > 1
+                    Icon(
+                      Icons.sync_rounded,
+                      size: 16,
+                      color: _autoRotateAssignee
                           ? AppTheme.primaryAccent
-                          : AppTheme.textSecondary.withOpacity(0.3),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                      onPressed: _recurrenceInterval > 1
-                          ? () => setState(() => _recurrenceInterval -= 1)
-                          : null,
+                          : AppTheme.textSecondary,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        '$_recurrenceInterval',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Rotar responsable automáticamente',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textPrimary,
+                        fontWeight: _autoRotateAssignee
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                      color: AppTheme.primaryAccent,
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                      onPressed: () => setState(() => _recurrenceInterval += 1),
                     ),
                   ],
                 ),
+                Switch.adaptive(
+                  value: _autoRotateAssignee,
+                  activeColor: AppTheme.primaryAccent,
+                  onChanged: (val) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _autoRotateAssignee = val);
+                  },
+                ),
               ],
             ),
-          ),
-        ],
-
-        // Configuración condicional: Selección de días específicos
-        if (_recurrenceMode == 'specific_days') ...[
-          const SizedBox(height: 10),
-          Row(
-            children: List.generate(7, (index) {
-              final dayNum = index + 1; // 1 = Lun, 7 = Dom
-              final isDaySelected = _selectedDaysOfWeek.contains(dayNum);
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                  child: InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        if (isDaySelected) {
-                          _selectedDaysOfWeek.remove(dayNum);
-                        } else {
-                          _selectedDaysOfWeek.add(dayNum);
-                        }
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 140),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isDaySelected
-                            ? AppTheme.primaryAccent.withOpacity(0.2)
-                            : AppTheme.surfaceDark,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isDaySelected
-                              ? AppTheme.primaryAccent
-                              : AppTheme.cardBorderColor.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          diasSemanaNombres[index],
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isDaySelected ? FontWeight.bold : FontWeight.w600,
-                            color: isDaySelected
-                                ? AppTheme.primaryAccent
-                                : AppTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
           ),
         ],
       ],
@@ -1273,10 +1359,16 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
   }
 
   // ===========================================================================
-  // 3. Selector de Taxonomía / Etiquetas del Hogar
+  // Selector de Recordatorios Relativos (3 opciones)
   // ===========================================================================
 
-  Widget _buildTagsSelector() {
+  Widget _buildRelativeRemindersSelector() {
+    final reminderOptions = [
+      {'days': 1, 'label': '1 día antes'},
+      {'days': 3, 'label': '3 días antes'},
+      {'days': 7, 'label': '1 semana antes'},
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1284,18 +1376,18 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Categoría / Etiqueta del hogar',
+              'Recordatorios programados',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textSecondary,
               ),
             ),
-            if (_selectedEtiqueta != null)
+            if (_selectedReminderOffsets.isNotEmpty)
               GestureDetector(
-                onTap: () => setState(() => _selectedEtiqueta = null),
+                onTap: () => setState(() => _selectedReminderOffsets.clear()),
                 child: Text(
-                  'Quitar etiqueta',
+                  'Limpiar avisos',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppTheme.accentCoral,
@@ -1305,113 +1397,79 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
           ],
         ),
         const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              ..._etiquetasSugeridas.map((tag) {
-                final isSel = _selectedEtiqueta == tag;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6.0),
-                  child: _buildChipTag(
-                    label: '#$tag',
-                    isSelected: isSel,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _selectedEtiqueta = isSel ? null : tag;
-                      });
-                    },
-                  ),
-                );
-              }),
-              // Botón / Input para tag personalizado
-              if (!_isAddingCustomTag)
-                InkWell(
-                  onTap: () => setState(() => _isAddingCustomTag = true),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceDark,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppTheme.cardBorderColor.withOpacity(0.2),
-                        width: 1,
-                      ),
+        Row(
+          children: reminderOptions.map((opt) {
+            final days = opt['days'] as int;
+            final isSel = _selectedReminderOffsets.contains(days);
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    if (isSel) {
+                      _selectedReminderOffsets.remove(days);
+                    } else {
+                      _selectedReminderOffsets.add(days);
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 140),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSel
+                        ? AppTheme.primaryAccent.withOpacity(0.18)
+                        : AppTheme.surfaceDark,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSel
+                          ? AppTheme.primaryAccent
+                          : AppTheme.cardBorderColor.withOpacity(0.2),
+                      width: 1,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_rounded, size: 14, color: AppTheme.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Personalizada...',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textSecondary,
-                          ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSel
+                            ? Icons.notifications_active_rounded
+                            : Icons.notifications_none_rounded,
+                        size: 13,
+                        color: isSel
+                            ? AppTheme.primaryAccent
+                            : AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        opt['label'] as String,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight:
+                              isSel ? FontWeight.bold : FontWeight.w500,
+                          color: isSel
+                              ? AppTheme.primaryAccent
+                              : AppTheme.textSecondary,
                         ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SizedBox(
-                  width: 130,
-                  height: 32,
-                  child: TextField(
-                    controller: _customTagController,
-                    autofocus: true,
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
-                    decoration: InputDecoration(
-                      hintText: 'Etiqueta...',
-                      hintStyle: TextStyle(
-                        color: AppTheme.textSecondary.withOpacity(0.5),
-                        fontSize: 11,
                       ),
-                      filled: true,
-                      fillColor: AppTheme.surfaceDark,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.check_rounded, size: 14),
-                        color: AppTheme.primaryAccent,
-                        padding: EdgeInsets.zero,
-                        onPressed: () {
-                          final val = _customTagController.text.trim().replaceAll('#', '');
-                          if (val.isNotEmpty) {
-                            setState(() {
-                              _selectedEtiqueta = val;
-                              _isAddingCustomTag = false;
-                              _customTagController.clear();
-                            });
-                          } else {
-                            setState(() => _isAddingCustomTag = false);
-                          }
-                        },
-                      ),
-                    ),
-                    onSubmitted: (val) {
-                      final clean = val.trim().replaceAll('#', '');
-                      if (clean.isNotEmpty) {
-                        setState(() {
-                          _selectedEtiqueta = clean;
-                          _isAddingCustomTag = false;
-                          _customTagController.clear();
-                        });
-                      } else {
-                        setState(() => _isAddingCustomTag = false);
-                      }
-                    },
+                    ],
                   ),
                 ),
-            ],
-          ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
   }
+
+  // ===========================================================================
+  // Selector de Asignado y Proyecto
+  // ===========================================================================
 
   Widget _buildAssigneeSelector() {
     return SingleChildScrollView(
@@ -1492,7 +1550,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               Icon(
                 Icons.person_outline_rounded,
                 size: 14,
-                color: isSelected ? AppTheme.primaryAccent : AppTheme.textSecondary,
+                color: isSelected
+                    ? AppTheme.primaryAccent
+                    : AppTheme.textSecondary,
               ),
               const SizedBox(width: 5),
             ],
@@ -1501,7 +1561,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppTheme.primaryAccent : AppTheme.textPrimary,
+                color:
+                    isSelected ? AppTheme.primaryAccent : AppTheme.textPrimary,
               ),
             ),
           ],
@@ -1603,7 +1664,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
 
         // Título del evento
         Text(
-          _eventType == 'cumpleanos' ? 'Persona que cumple años' : 'Título del evento',
+          _eventType == 'cumpleanos'
+              ? 'Persona que cumple años'
+              : 'Título del evento',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -1619,21 +1682,26 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
             hintText: _eventType == 'cumpleanos'
                 ? 'Ej. Lucas, Mamá, Juan...'
                 : 'Ej. Médico 10:30, Cena familiar...',
-            hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+            hintStyle:
+                TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
             filled: true,
             fillColor: AppTheme.darkBackground,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+              borderSide:
+                  BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+              borderSide:
+                  BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppTheme.primaryAccent, width: 1.5),
+              borderSide:
+                  BorderSide(color: AppTheme.primaryAccent, width: 1.5),
             ),
           ),
         ),
@@ -1655,7 +1723,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
               onTap: () => _pickDate(forTask: false),
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppTheme.darkBackground,
                   borderRadius: BorderRadius.circular(8),
@@ -1726,7 +1795,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                       onTap: _pickStartTime,
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: AppTheme.darkBackground,
                           borderRadius: BorderRadius.circular(8),
@@ -1775,7 +1845,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                       onTap: _pickEndTime,
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: AppTheme.darkBackground,
                           borderRadius: BorderRadius.circular(8),
@@ -1885,7 +1956,9 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                     ),
                   )
                 : Text(
-                    _eventType == 'cumpleanos' ? 'Guardar Cumpleaños' : 'Guardar Evento',
+                    _eventType == 'cumpleanos'
+                        ? 'Guardar Cumpleaños'
+                        : 'Guardar Evento',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -1959,18 +2032,22 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                     ),
                     filled: true,
                     fillColor: AppTheme.surfaceDark,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                      borderSide: BorderSide(
+                          color: AppTheme.cardBorderColor.withOpacity(0.2)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.cardBorderColor.withOpacity(0.2)),
+                      borderSide: BorderSide(
+                          color: AppTheme.cardBorderColor.withOpacity(0.2)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.accentCoral, width: 1.2),
+                      borderSide:
+                          BorderSide(color: AppTheme.accentCoral, width: 1.2),
                     ),
                   ),
                   onSubmitted: (_) => _addGiftIdea(),
@@ -1991,7 +2068,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.add_rounded, size: 16, color: AppTheme.accentCoral),
+                      Icon(Icons.add_rounded,
+                          size: 16, color: AppTheme.accentCoral),
                       const SizedBox(width: 4),
                       Text(
                         'Añadir',
@@ -2042,7 +2120,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
                 return Container(
                   key: ValueKey('gift_idea_${index}_$idea'),
                   margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceDark,
                     borderRadius: BorderRadius.circular(8),
@@ -2128,7 +2207,10 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Editar idea de regalo',
-          style: TextStyle(color: AppTheme.textPrimary, fontSize: 15, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.bold),
         ),
         content: TextField(
           controller: controller,
@@ -2138,7 +2220,8 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
             hintText: 'Idea de regalo...',
             filled: true,
             fillColor: AppTheme.darkBackground,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           ),
           onSubmitted: (val) => Navigator.pop(ctx, val),
@@ -2146,12 +2229,14 @@ class _FlatCreateItemSheetState extends State<FlatCreateItemSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancelar', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text('Cancelar',
+                style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentCoral,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(ctx, controller.text),
             child: const Text('Guardar', style: TextStyle(color: Colors.white)),

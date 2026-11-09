@@ -113,13 +113,37 @@ class TareaModel {
     return null;
   }
 
-  /// Notas o texto limpio sin los metadatos [tag:...], [priority:...], [rrule:...]
+  /// Momento del día sugerido para la tarea: 'anytime' | 'morning' | 'afternoon' | 'night'
+  String? get timeOfDay {
+    if (descripcion == null || descripcion!.trim().isEmpty) return null;
+    final d = descripcion!.trim();
+    if (d.contains('[time_of_day:')) {
+      final start = d.indexOf('[time_of_day:') + 13;
+      final endTag = d.indexOf(']', start);
+      if (endTag != -1) {
+        final val = d.substring(start, endTag).trim().toLowerCase();
+        return val.isNotEmpty ? val : null;
+      }
+    }
+    return null;
+  }
+
+  /// Si la tarea recurrente rota de responsable automáticamente
+  bool get autoRotateAssignee {
+    if (descripcion == null || descripcion!.trim().isEmpty) return false;
+    final d = descripcion!.trim();
+    return d.contains('[auto_rotate:true]');
+  }
+
+  /// Notas o texto limpio sin los metadatos [tag:...], [priority:...], [rrule:...], [time_of_day:...], [auto_rotate:...]
   String? get notasLimpias {
     if (descripcion == null || descripcion!.trim().isEmpty) return null;
     var d = descripcion!.trim();
     d = d.replaceAll(RegExp(r'\[tag:[^\]]+\]'), '');
     d = d.replaceAll(RegExp(r'\[priority:[^\]]+\]'), '');
     d = d.replaceAll(RegExp(r'\[rrule:[^\]]+\]'), '');
+    d = d.replaceAll(RegExp(r'\[time_of_day:[^\]]+\]'), '');
+    d = d.replaceAll(RegExp(r'\[auto_rotate:[^\]]+\]'), '');
     d = d.trim();
     return d.isNotEmpty ? d : null;
   }
