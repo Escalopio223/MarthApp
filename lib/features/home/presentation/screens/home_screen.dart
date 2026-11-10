@@ -8,10 +8,12 @@ import '../../../../core/widgets/marth_app_logo.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../environments/presentation/controllers/environment_controller.dart';
 import '../../../environments/presentation/widgets/environment_selector_chip.dart';
-import '../../../environments/presentation/widgets/environments_home_view.dart';
 import '../../../friends/presentation/controllers/friends_controller.dart';
 import '../../../leisure/presentation/controllers/leisure_controller.dart';
 import '../../../leisure/presentation/screens/leisure_screen.dart';
+import '../../../food/infrastructure/services/food_service.dart';
+import '../../../food/presentation/controllers/food_controller.dart';
+import '../../../food/presentation/screens/food_screen.dart';
 import '../../../planificador/presentation/controllers/planificador_controller.dart';
 import '../../../planificador/presentation/screens/planificador_screen.dart';
 import '../../../profile/domain/models/avatar_data.dart';
@@ -55,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final EnvironmentController _environmentController;
   late final LeisureController _leisureController;
   late final PlanificadorController _planificadorController;
+  late final FoodController _foodController;
 
   late int _currentTabIndex;
   late final Set<int> _loadedIndices;
@@ -83,6 +86,9 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.planificadorController ?? PlanificadorController();
     _planificadorController.addListener(_onControllerUpdate);
 
+    _foodController = FoodController(repository: FoodService());
+    _foodController.addListener(_onControllerUpdate);
+
     final user = widget.authController.user;
     if (user != null) {
       if (widget.friendsController == null) {
@@ -104,6 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (widget.planificadorController == null && activeEnv != null) {
         _planificadorController.setEntorno(activeEnv.id);
+      }
+      if (activeEnv != null) {
+        _foodController.initialize(environmentId: activeEnv.id, userId: user.id);
       }
     }
 
@@ -141,6 +150,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (activeEnv != null) {
       _planificadorController.setEntorno(activeEnv.id);
+      final user = widget.authController.user;
+      if (user != null) {
+        _foodController.initialize(environmentId: activeEnv.id, userId: user.id);
+      }
     }
     if (mounted) setState(() {});
   }
@@ -153,6 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _environmentController.removeListener(_onEnvironmentChanged);
     _leisureController.removeListener(_onControllerUpdate);
     _planificadorController.removeListener(_onControllerUpdate);
+    _foodController.removeListener(_onControllerUpdate);
+    _foodController.dispose();
 
     if (widget.friendsController == null) {
       _friendsController.dispose();
@@ -212,7 +227,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = widget.authController.user;
-    final email = user?.email ?? 'Explorador';
     final pendingEnvCount = _environmentController.pendingInvitationsCount;
 
     return AppBackground(
@@ -243,16 +257,8 @@ class _HomeScreenState extends State<HomeScreen> {
         body: IndexedStack(
           index: _currentTabIndex,
           children: [
-            // Pestana 0: Vista redisenada y minimalista de entornos
-            EnvironmentsHomeView(
-              environmentController: _environmentController,
-              friendsController: _friendsController,
-              profileController: _profileController,
-              userEmail: email,
-              onNavigateToLeisure: () => _onTabSelected(1),
-              onNavigateToPlanificador: () => _onTabSelected(2),
-              onOpenSettings: () => _openSettings(context),
-            ),
+            // Pestana 0: Comidas & Lista de la Compra (Zero Friccion)
+            FoodScreen(controller: _foodController),
 
             // Pestana 1: Carga diferida de LeisureScreen
             _loadedIndices.contains(1)

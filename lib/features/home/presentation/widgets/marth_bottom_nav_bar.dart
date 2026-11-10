@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 
 /// Barra de navegacion inferior Claymorfica para MarthApp:
-/// - 2 pestanas esenciales: Entornos y Ocio
+/// - 3 pestanas esenciales: Comidas, Ocio y Planificador
 /// - 100% libre de Glassmorfismo y BackdropFilter para garantizar 60 FPS solidos
-/// - Badges interactivos para invitaciones pendientes y feedback haptico
+/// - Feedback haptico y transiciones limpias
 class MarthBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabSelected;
@@ -40,13 +40,13 @@ class MarthBottomNavBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Pestana 0: Entornos
+          // Pestana 0: Comidas & Compra
           _buildNavItem(
             index: 0,
-            icon: Icons.workspaces_outlined,
-            activeIcon: Icons.workspaces_rounded,
-            label: 'Entornos',
-            badgeCount: pendingInvitesCount,
+            icon: Icons.restaurant_outlined,
+            activeIcon: Icons.restaurant_rounded,
+            label: 'Comidas',
+            badgeCount: 0,
             onTap: () {
               HapticFeedback.selectionClick();
               onTabSelected(0);

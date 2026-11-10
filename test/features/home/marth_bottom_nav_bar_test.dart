@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:marth_app/features/home/presentation/widgets/marth_bottom_nav_bar.dart';
 
 void main() {
-  group('MarthBottomNavBar Tests (2-Tab)', () {
-    testWidgets('renders 2 navigation items: Entornos and Ocio', (tester) async {
+  group('MarthBottomNavBar Tests (3-Tab)', () {
+    testWidgets('renders 3 navigation items: Comidas, Ocio and Planificador', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -16,8 +16,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Entornos'), findsOneWidget);
+      expect(find.text('Comidas'), findsOneWidget);
       expect(find.text('Ocio'), findsOneWidget);
+      expect(find.text('Planificador'), findsOneWidget);
     });
 
     testWidgets('calls onTabSelected when Ocio tab is tapped', (tester) async {
@@ -41,7 +42,7 @@ void main() {
       expect(selectedIndex, equals(1));
     });
 
-    testWidgets('calls onTabSelected when Entornos tab is tapped', (tester) async {
+    testWidgets('calls onTabSelected when Comidas tab is tapped', (tester) async {
       int selectedIndex = 1;
       await tester.pumpWidget(
         MaterialApp(
@@ -56,26 +57,10 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Entornos'));
+      await tester.tap(find.text('Comidas'));
       await tester.pumpAndSettle();
 
       expect(selectedIndex, equals(0));
-    });
-
-    testWidgets('displays badge for pending invitations on Entornos tab', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            bottomNavigationBar: MarthBottomNavBar(
-              currentIndex: 0,
-              onTabSelected: (_) {},
-              pendingInvitesCount: 4,
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('4'), findsOneWidget);
     });
 
     testWidgets('strictly adheres to claymorphic system without BackdropFilter', (tester) async {
