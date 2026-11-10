@@ -84,3 +84,4 @@ CREATE POLICY shopping_items_env_member_policy ON public.shopping_items
             AND em.user_id = auth.uid()
         )
     );
+
