@@ -15,7 +15,21 @@ class MyDishesView extends StatefulWidget {
 
 class _MyDishesViewState extends State<MyDishesView> {
   final TextEditingController _searchController = TextEditingController();
-  String _query = '';
+
+  final List<String> _cuisines = [
+    'Todas',
+    'Española',
+    'Italiana',
+    'Mexicana',
+    'Turca',
+    'Asiática',
+    'Árabe / Oriente Medio',
+    'Peruana',
+    'Americana',
+    'Francesa',
+    'Griega',
+    'Internacional',
+  ];
 
   @override
   void dispose() {
@@ -25,27 +39,33 @@ class _MyDishesViewState extends State<MyDishesView> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.controller.dishes.where((d) {
-      if (_query.trim().isEmpty) return true;
-      return d.name.toLowerCase().contains(_query.trim().toLowerCase());
-    }).toList();
+    final filtered = widget.controller.dishes;
 
     return Column(
       children: [
         // Buscador y botón para nuevo plato
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (val) => setState(() => _query = val),
+                  onChanged: (val) => widget.controller.setFilters(query: val),
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Buscar en mis platos...',
+                    hintText: 'Buscar en catálogo (1.500+ platos)...',
                     hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 13),
                     prefixIcon: const Icon(Icons.search, color: Colors.white60, size: 18),
+                    suffixIcon: widget.controller.searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.white60, size: 16),
+                            onPressed: () {
+                              _searchController.clear();
+                              widget.controller.setFilters(query: '');
+                            },
+                          )
+                        : null,
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.04),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -66,7 +86,7 @@ class _MyDishesViewState extends State<MyDishesView> {
               ),
               const SizedBox(width: 8),
               IconButton(
-                tooltip: 'Crear nuevo plato',
+                tooltip: 'Crear nuevo plato casero',
                 onPressed: () {
                   EditDishModal.show(
                     context,
@@ -86,9 +106,117 @@ class _MyDishesViewState extends State<MyDishesView> {
           ),
         ),
 
+        // Filtros Rápidos: Temperatura (Frío/Caliente), Electrodoméstico y Cultura del plato
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Filtro Temperatura: Frío / Caliente
+                _buildFilterChip(
+                  label: widget.controller.selectedTemperature == 'Todos'
+                      ? '🌡️ Temp.'
+                      : (widget.controller.selectedTemperature == 'frío' ? '❄️ Frío' : '🔥 Caliente'),
+                  isSelected: widget.controller.selectedTemperature != 'Todos',
+                  onTap: () {
+                    final curr = widget.controller.selectedTemperature;
+                    if (curr == 'Todos') {
+                      widget.controller.setFilters(temperature: 'frío');
+                    } else if (curr == 'frío') {
+                      widget.controller.setFilters(temperature: 'caliente');
+                    } else {
+                      widget.controller.setFilters(temperature: 'Todos');
+                    }
+                  },
+                ),
+                const SizedBox(width: 6),
+
+                // Filtro Electrodoméstico
+                _buildFilterChip(
+                  label: widget.controller.selectedAppliance == 'Todos'
+                      ? '♨️ Aparato'
+                      : _applianceLabel(widget.controller.selectedAppliance),
+                  isSelected: widget.controller.selectedAppliance != 'Todos',
+                  onTap: () {
+                    const cycle = ['Todos', 'airfryer', 'oven', 'microwave', 'stovetop'];
+                    final nextIdx = (cycle.indexOf(widget.controller.selectedAppliance) + 1) % cycle.length;
+                    widget.controller.setFilters(appliance: cycle[nextIdx]);
+                  },
+                ),
+                const SizedBox(width: 8),
+                Container(width: 1, height: 18, color: Colors.white12),
+                const SizedBox(width: 8),
+
+                // Filtro Cultura
+                ..._cuisines.map((c) {
+                  final isSel = widget.controller.selectedCuisine == c;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: InkWell(
+                      onTap: () => widget.controller.setFilters(cuisine: c),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? AppTheme.primaryLiquid.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel ? AppTheme.primaryLiquid : Colors.white12,
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          c,
+                          style: TextStyle(
+                            color: isSel ? AppTheme.primaryLiquid : Colors.white70,
+                            fontSize: 12,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 4),
         const Divider(color: Colors.white10, height: 1),
 
-        // Lista limpia de platos
+        // Contador y lista de platos
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Row(
+            children: [
+              Text(
+                '${filtered.length} platos disponibles',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
+              ),
+              const Spacer(),
+              if (widget.controller.selectedCuisine != 'Todas' ||
+                  widget.controller.selectedTemperature != 'Todos' ||
+                  widget.controller.selectedAppliance != 'Todos' ||
+                  widget.controller.searchQuery.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    _searchController.clear();
+                    widget.controller.resetFilters();
+                  },
+                  child: Text(
+                    'Limpiar filtros',
+                    style: TextStyle(color: AppTheme.primaryLiquid.withValues(alpha: 0.9), fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        // Lista de platos
         Expanded(
           child: filtered.isEmpty
               ? Center(
@@ -98,9 +226,7 @@ class _MyDishesViewState extends State<MyDishesView> {
                       Icon(Icons.restaurant_outlined, size: 48, color: Colors.white.withValues(alpha: 0.15)),
                       const SizedBox(height: 12),
                       Text(
-                        _query.isEmpty
-                            ? 'No tienes platos guardados todavía.\nPúlsale a + para crear el primero.'
-                            : 'No se encontraron platos con ese nombre.',
+                        'No se encontraron platos con esos filtros.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
                       ),
@@ -108,7 +234,7 @@ class _MyDishesViewState extends State<MyDishesView> {
                   ),
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: filtered.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
@@ -121,7 +247,56 @@ class _MyDishesViewState extends State<MyDishesView> {
     );
   }
 
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryLiquid.withValues(alpha: 0.25)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryLiquid : Colors.white12,
+            width: 0.8,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? AppTheme.primaryLiquid : Colors.white,
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _applianceLabel(String app) {
+    switch (app) {
+      case 'airfryer':
+        return '🌀 Airfryer';
+      case 'oven':
+        return '🔥 Horno';
+      case 'microwave':
+        return '⚡ Microondas';
+      case 'stovetop':
+        return '🍳 Fuego';
+      default:
+        return '♨️ $app';
+    }
+  }
+
   Widget _buildDishCard(BuildContext context, DishModel dish) {
+    final isCold = dish.servingTemperature == 'frío';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -144,19 +319,39 @@ class _MyDishesViewState extends State<MyDishesView> {
                   ),
                 ),
               ),
+              if (dish.cuisine != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLiquid.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    dish.cuisine!,
+                    style: TextStyle(color: AppTheme.primaryLiquid, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: isCold
+                      ? Colors.lightBlueAccent.withValues(alpha: 0.15)
+                      : Colors.orangeAccent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '${dish.defaultServings} rac.',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                  isCold ? '❄️ Frío' : '🔥 Caliente',
+                  style: TextStyle(
+                    color: isCold ? Colors.lightBlueAccent : Colors.orangeAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
-              // Menú contextual: Editar o Eliminar
+              // Menú contextual
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, size: 18, color: Colors.white.withValues(alpha: 0.5)),
                 color: AppTheme.surfaceDark,
@@ -165,22 +360,7 @@ class _MyDishesViewState extends State<MyDishesView> {
                   side: BorderSide(color: AppTheme.cardBorderColor, width: 0.8),
                 ),
                 onSelected: (val) {
-                  if (val == 'edit') {
-                    EditDishModal.show(
-                      context,
-                      initialDish: dish,
-                      onSave: (name, defaultServings, ingredients) {
-                        widget.controller.saveDish(
-                          id: dish.id,
-                          name: name,
-                          defaultServings: defaultServings,
-                          ingredients: ingredients,
-                        );
-                      },
-                    );
-                  } else if (val == 'delete') {
-                    widget.controller.deleteDish(dish.id);
-                  } else if (val == 'send_ingredients') {
+                  if (val == 'send_ingredients') {
                     widget.controller.sendDishIngredients(dish);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -188,6 +368,8 @@ class _MyDishesViewState extends State<MyDishesView> {
                         duration: const Duration(seconds: 2),
                       ),
                     );
+                  } else if (val == 'delete' && !dish.isGlobal) {
+                    widget.controller.deleteDish(dish.id);
                   }
                 },
                 itemBuilder: (ctx) => [
@@ -201,26 +383,17 @@ class _MyDishesViewState extends State<MyDishesView> {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 16, color: Colors.white70),
-                        SizedBox(width: 8),
-                        Text('Editar plato', style: TextStyle(color: Colors.white, fontSize: 13)),
-                      ],
+                  if (!dish.isGlobal)
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
+                          SizedBox(width: 8),
+                          Text('Eliminar', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-                        SizedBox(width: 8),
-                        Text('Eliminar', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -232,7 +405,7 @@ class _MyDishesViewState extends State<MyDishesView> {
             Wrap(
               spacing: 6,
               runSpacing: 4,
-              children: dish.ingredients.map((ing) {
+              children: dish.ingredients.take(6).map((ing) {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(

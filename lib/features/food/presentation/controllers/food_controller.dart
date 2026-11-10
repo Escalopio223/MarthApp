@@ -17,6 +17,19 @@ class FoodController extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  // --- Filtros Activos de Búsqueda y Catálogo ---
+  String _searchQuery = '';
+  String get searchQuery => _searchQuery;
+
+  String _selectedCuisine = 'Todas';
+  String get selectedCuisine => _selectedCuisine;
+
+  String _selectedTemperature = 'Todos'; // 'Todos', 'frío', 'caliente'
+  String get selectedTemperature => _selectedTemperature;
+
+  String _selectedAppliance = 'Todos'; // 'Todos', 'airfryer', 'oven', 'microwave', 'stovetop'
+  String get selectedAppliance => _selectedAppliance;
+
   // --- Fecha Semanal ---
   late DateTime _weekStartDate;
   DateTime get weekStartDate => _weekStartDate;
@@ -86,10 +99,43 @@ class FoodController extends ChangeNotifier {
     }
   }
 
-  // --- Métodos de Platos (Dishes) ---
-  Future<void> loadDishes({String? query}) async {
+  // --- Métodos de Platos (Dishes) & Filtros ---
+  Future<void> setFilters({
+    String? query,
+    String? cuisine,
+    String? temperature,
+    String? appliance,
+  }) async {
+    if (query != null) _searchQuery = query;
+    if (cuisine != null) _selectedCuisine = cuisine;
+    if (temperature != null) _selectedTemperature = temperature;
+    if (appliance != null) _selectedAppliance = appliance;
+
+    await loadDishes();
+  }
+
+  void resetFilters() {
+    _searchQuery = '';
+    _selectedCuisine = 'Todas';
+    _selectedTemperature = 'Todos';
+    _selectedAppliance = 'Todos';
+    loadDishes();
+  }
+
+  Future<void> loadDishes({
+    String? query,
+    String? cuisine,
+    String? servingTemperature,
+    String? appliance,
+  }) async {
     if (_environmentId == null) return;
-    _dishes = await _repository.getDishes(_environmentId!, query: query);
+    _dishes = await _repository.getDishes(
+      _environmentId!,
+      query: query ?? _searchQuery,
+      cuisine: cuisine ?? _selectedCuisine,
+      servingTemperature: servingTemperature ?? _selectedTemperature,
+      appliance: appliance ?? _selectedAppliance,
+    );
     notifyListeners();
   }
 
@@ -98,6 +144,10 @@ class FoodController extends ChangeNotifier {
     required String name,
     int defaultServings = 2,
     required List<String> ingredients,
+    String? cuisine,
+    String? servingTemperature,
+    List<String> supportedAppliances = const [],
+    int? totalTimeMinutes,
   }) async {
     if (_environmentId == null) throw Exception('No environment');
     final dish = DishModel(
@@ -106,6 +156,10 @@ class FoodController extends ChangeNotifier {
       name: name.trim(),
       defaultServings: defaultServings,
       ingredients: ingredients,
+      cuisine: cuisine,
+      servingTemperature: servingTemperature,
+      supportedAppliances: supportedAppliances,
+      totalTimeMinutes: totalTimeMinutes,
       createdBy: _userId,
       createdAt: DateTime.now(),
     );
@@ -125,7 +179,6 @@ class FoodController extends ChangeNotifier {
   Future<void> deleteDish(String dishId) async {
     await _repository.deleteDish(dishId);
     _dishes.removeWhere((d) => d.id == dishId);
-    // Si algún slot referenciaba este dish, limpiarlo o recargar
     await loadWeeklyMenu();
     notifyListeners();
   }
@@ -170,8 +223,8 @@ class FoodController extends ChangeNotifier {
       environmentId: _environmentId!,
       slotDate: date,
       mealType: mealType,
-      dishId: dish?.id,
-      customDishName: customDishName,
+      dishId: (dish != null && !dish.isGlobal) ? dish.id : null,
+      customDishName: customDishName ?? (dish?.isGlobal == true ? dish?.name : null),
       servingsNote: servingsNote,
       dish: dish,
       createdBy: _userId,
@@ -286,18 +339,22 @@ class FoodController extends ChangeNotifier {
   Future<int> sendEntireWeekIngredients() async {
     if (_environmentId == null) return 0;
     int totalAdded = 0;
-    final processedDishIds = <String>{};
+    final processedDishNames = <String>{};
 
     for (final slot in _menuSlots) {
-      if (slot.dish != null && !processedDishIds.contains(slot.dish!.id)) {
-        processedDishIds.add(slot.dish!.id);
-        final added = await _repository.sendDishIngredientsToShoppingList(
-          environmentId: _environmentId!,
-          dishName: slot.dish!.name,
-          ingredients: slot.dish!.ingredients,
-          dishId: slot.dish!.id,
-        );
-        totalAdded += added;
+      final name = slot.displayName;
+      if (name.isNotEmpty && !processedDishNames.contains(name.toLowerCase())) {
+        processedDishNames.add(name.toLowerCase());
+        final ingredients = slot.dish?.ingredients ?? [];
+        if (ingredients.isNotEmpty) {
+          final added = await _repository.sendDishIngredientsToShoppingList(
+            environmentId: _environmentId!,
+            dishName: name,
+            ingredients: ingredients,
+            dishId: slot.dish?.id,
+          );
+          totalAdded += added;
+        }
       }
     }
 

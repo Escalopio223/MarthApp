@@ -16,7 +16,13 @@ class SelectDishModal extends StatefulWidget {
     bool syncIngredients,
     List<DateTime> repeatDates,
   ) onSelect;
-  final Function(String name, int defaultServings, List<String> ingredients) onCreateNewDish;
+  final Function(
+    String name,
+    int defaultServings,
+    List<String> ingredients, {
+    String? cuisine,
+    String? servingTemperature,
+  }) onCreateNewDish;
 
   const SelectDishModal({
     super.key,
@@ -41,7 +47,13 @@ class SelectDishModal extends StatefulWidget {
       bool syncIngredients,
       List<DateTime> repeatDates,
     ) onSelect,
-    required Function(String name, int defaultServings, List<String> ingredients) onCreateNewDish,
+    required Function(
+      String name,
+      int defaultServings,
+      List<String> ingredients, {
+      String? cuisine,
+      String? servingTemperature,
+    }) onCreateNewDish,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -65,13 +77,32 @@ class SelectDishModal extends StatefulWidget {
 class _SelectDishModalState extends State<SelectDishModal> {
   late TextEditingController _searchController;
   String _searchQuery = '';
+  String _selectedCuisine = 'Todas';
+  String _selectedTemperature = 'Todos'; // 'Todos', 'frío', 'caliente'
+  String _selectedAppliance = 'Todos';   // 'Todos', 'airfryer', 'oven', 'microwave', 'stovetop'
+
   DishModel? _selectedDish;
   String? _servingsNote;
   bool _syncIngredients = true;
   final Set<DateTime> _repeatDates = {};
 
-  // Días de la semana para batch cooking rápido
   late List<DateTime> _weekDays;
+
+  // Culturas principales para filtros rápidos
+  final List<String> _cuisines = [
+    'Todas',
+    'Española',
+    'Italiana',
+    'Mexicana',
+    'Turca',
+    'Asiática',
+    'Árabe / Oriente Medio',
+    'Peruana',
+    'Americana',
+    'Francesa',
+    'Griega',
+    'Internacional',
+  ];
 
   @override
   void initState() {
@@ -81,7 +112,6 @@ class _SelectDishModalState extends State<SelectDishModal> {
     _servingsNote = widget.currentSlot?.servingsNote ??
         (_selectedDish != null ? '${_selectedDish!.defaultServings} rac.' : null);
 
-    // Calcular días de la semana actual
     final clean = DateTime(widget.date.year, widget.date.month, widget.date.day);
     final monday = clean.subtract(Duration(days: clean.weekday - 1));
     _weekDays = List.generate(7, (i) => monday.add(Duration(days: i)));
@@ -112,16 +142,37 @@ class _SelectDishModalState extends State<SelectDishModal> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    // Filtrar platos localmente con los filtros seleccionados
     final filteredDishes = widget.dishes.where((d) {
-      if (_searchQuery.trim().isEmpty) return true;
-      return d.name.toLowerCase().contains(_searchQuery.trim().toLowerCase());
+      if (_searchQuery.trim().isNotEmpty) {
+        final q = _searchQuery.trim().toLowerCase();
+        final matchTitle = d.name.toLowerCase().contains(q);
+        final matchCuisine = d.cuisine?.toLowerCase().contains(q) ?? false;
+        final matchIng = d.ingredients.any((i) => i.toLowerCase().contains(q));
+        if (!matchTitle && !matchCuisine && !matchIng) return false;
+      }
+
+      if (_selectedCuisine != 'Todas') {
+        if (d.cuisine?.toLowerCase() != _selectedCuisine.toLowerCase()) return false;
+      }
+
+      if (_selectedTemperature != 'Todos') {
+        if (d.servingTemperature?.toLowerCase() != _selectedTemperature.toLowerCase()) return false;
+      }
+
+      if (_selectedAppliance != 'Todos') {
+        if (!d.supportedAppliances.contains(_selectedAppliance.toLowerCase())) return false;
+      }
+
+      return true;
     }).toList();
 
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
+        maxHeight: MediaQuery.of(context).size.height * 0.90,
       ),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + bottomInset),
+      padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + bottomInset),
       decoration: BoxDecoration(
         color: AppTheme.surfaceDark,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -142,7 +193,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Cabecera: Día y franja
           Row(
@@ -151,7 +202,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
                 '${widget.mealType.iconEmoji} ${widget.mealType.label}',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -168,6 +219,11 @@ class _SelectDishModalState extends State<SelectDishModal> {
                 ),
               ),
               const Spacer(),
+              Text(
+                '${filteredDishes.length} platos',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+              ),
+              const SizedBox(width: 6),
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close, color: Colors.white70, size: 20),
@@ -175,7 +231,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           // Buscador rápido
           TextField(
@@ -183,9 +239,18 @@ class _SelectDishModalState extends State<SelectDishModal> {
             onChanged: (val) => setState(() => _searchQuery = val),
             style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'Buscar plato o escribir plato nuevo...',
+              hintText: 'Buscar plato, ingrediente o cultura (ej. paella, tacos)...',
               hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 13),
               prefixIcon: const Icon(Icons.search, color: Colors.white60, size: 18),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.white60, size: 16),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.04),
               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -203,9 +268,87 @@ class _SelectDishModalState extends State<SelectDishModal> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          // Si seleccionó un plato o está configurando raciones/batch cooking
+          // Píldoras de Filtros: Temperatura (Frío/Caliente), Electrodoméstico y Cultura
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Filtro Temperatura: Frío / Caliente
+                _buildFilterChip(
+                  label: _selectedTemperature == 'Todos'
+                      ? '🌡️ Temp.'
+                      : (_selectedTemperature == 'frío' ? '❄️ Frío' : '🔥 Caliente'),
+                  isSelected: _selectedTemperature != 'Todos',
+                  onTap: () {
+                    setState(() {
+                      if (_selectedTemperature == 'Todos') {
+                        _selectedTemperature = 'frío';
+                      } else if (_selectedTemperature == 'frío') {
+                        _selectedTemperature = 'caliente';
+                      } else {
+                        _selectedTemperature = 'Todos';
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(width: 6),
+
+                // Filtro Electrodoméstico
+                _buildFilterChip(
+                  label: _selectedAppliance == 'Todos'
+                      ? '♨️ Aparato'
+                      : _applianceLabel(_selectedAppliance),
+                  isSelected: _selectedAppliance != 'Todos',
+                  onTap: () {
+                    const cycle = ['Todos', 'airfryer', 'oven', 'microwave', 'stovetop'];
+                    final nextIdx = (cycle.indexOf(_selectedAppliance) + 1) % cycle.length;
+                    setState(() => _selectedAppliance = cycle[nextIdx]);
+                  },
+                ),
+                const SizedBox(width: 8),
+                Container(width: 1, height: 20, color: Colors.white12),
+                const SizedBox(width: 8),
+
+                // Chips de Cultura
+                ..._cuisines.map((c) {
+                  final isSel = _selectedCuisine == c;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: InkWell(
+                      onTap: () => setState(() => _selectedCuisine = c),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? AppTheme.primaryLiquid.withValues(alpha: 0.2)
+                              : Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSel ? AppTheme.primaryLiquid : Colors.white12,
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          c,
+                          style: TextStyle(
+                            color: isSel ? AppTheme.primaryLiquid : Colors.white70,
+                            fontSize: 12,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Configuración del plato seleccionado (raciones, batch cooking)
           if (_selectedDish != null) ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -222,13 +365,23 @@ class _SelectDishModalState extends State<SelectDishModal> {
                       Icon(Icons.restaurant, color: AppTheme.primaryLiquid, size: 16),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(
-                          _selectedDish!.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedDish!.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (_selectedDish!.cuisine != null || _selectedDish!.servingTemperature != null)
+                              Text(
+                                '${_selectedDish!.cuisine ?? "Internacional"} · ${_selectedDish!.servingTemperature == "frío" ? "❄️ Servir frío" : "🔥 Servir caliente"}',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                              ),
+                          ],
                         ),
                       ),
                       GestureDetector(
@@ -236,7 +389,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
                         child: Text(
                           'Cambiar',
                           style: TextStyle(
-                            color: AppTheme.primaryLiquid.withValues(alpha: 0.8),
+                            color: AppTheme.primaryLiquid.withValues(alpha: 0.9),
                             fontSize: 12,
                           ),
                         ),
@@ -283,7 +436,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Repetir en otros días (Batch cooking rápido sin duplicar esfuerzo)
+                  // Repetir en otros días (Batch cooking)
                   Text(
                     'Poner también este mismo plato en:',
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
@@ -366,7 +519,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 44,
@@ -381,7 +534,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
               ),
             ),
           ] else ...[
-            // Lista de platos disponibles
+            // Lista de platos encontrados
             Expanded(
               child: ListView(
                 children: [
@@ -404,10 +557,18 @@ class _SelectDishModalState extends State<SelectDishModal> {
                             name: queryText,
                             defaultServings: 2,
                             ingredients: [],
+                            cuisine: _selectedCuisine != 'Todas' ? _selectedCuisine : null,
+                            servingTemperature: _selectedTemperature != 'Todos' ? _selectedTemperature : null,
                             createdAt: DateTime.now(),
                           ),
                           onSave: (name, defaultServings, ingredients) {
-                            widget.onCreateNewDish(name, defaultServings, ingredients);
+                            widget.onCreateNewDish(
+                              name,
+                              defaultServings,
+                              ingredients,
+                              cuisine: _selectedCuisine != 'Todas' ? _selectedCuisine : null,
+                              servingTemperature: _selectedTemperature != 'Todos' ? _selectedTemperature : null,
+                            );
                             Navigator.of(context).pop();
                           },
                         );
@@ -421,7 +582,7 @@ class _SelectDishModalState extends State<SelectDishModal> {
                       padding: const EdgeInsets.symmetric(vertical: 32),
                       child: Center(
                         child: Text(
-                          'No hay platos guardados todavía.\nEscribe arriba o crea tu primer plato.',
+                          'No hay platos que coincidan con los filtros seleccionados.',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
                         ),
@@ -430,16 +591,45 @@ class _SelectDishModalState extends State<SelectDishModal> {
 
                   ...filteredDishes.map((dish) {
                     final ingCount = dish.ingredients.length;
+                    final isCold = dish.servingTemperature == 'frío';
+
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                      leading: const Icon(Icons.restaurant_menu, color: Colors.white60, size: 20),
+                      leading: Icon(
+                        isCold ? Icons.ac_unit : Icons.restaurant_menu,
+                        color: isCold ? Colors.lightBlueAccent : Colors.white60,
+                        size: 20,
+                      ),
                       title: Text(
                         dish.name,
                         style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
                       ),
-                      subtitle: Text(
-                        ingCount > 0 ? '$ingCount ingredientes · ${dish.defaultServings} rac.' : '${dish.defaultServings} rac.',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                      subtitle: Row(
+                        children: [
+                          if (dish.cuisine != null) ...[
+                            Text(
+                              dish.cuisine!,
+                              style: TextStyle(color: AppTheme.primaryLiquid.withValues(alpha: 0.8), fontSize: 11),
+                            ),
+                            const Text(' · ', style: TextStyle(color: Colors.white30, fontSize: 11)),
+                          ],
+                          Text(
+                            isCold ? '❄️ Frío' : '🔥 Caliente',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                          ),
+                          if (dish.supportedAppliances.contains('airfryer')) ...[
+                            const Text(' · ', style: TextStyle(color: Colors.white30, fontSize: 11)),
+                            const Text('Airfryer', style: TextStyle(color: Colors.orangeAccent, fontSize: 11)),
+                          ] else if (dish.supportedAppliances.contains('oven')) ...[
+                            const Text(' · ', style: TextStyle(color: Colors.white30, fontSize: 11)),
+                            const Text('Horno', style: TextStyle(color: Colors.amberAccent, fontSize: 11)),
+                          ],
+                          const Text(' · ', style: TextStyle(color: Colors.white30, fontSize: 11)),
+                          Text(
+                            '$ingCount ing.',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
+                          ),
+                        ],
                       ),
                       onTap: () {
                         setState(() {
@@ -456,5 +646,52 @@ class _SelectDishModalState extends State<SelectDishModal> {
         ],
       ),
     );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryLiquid.withValues(alpha: 0.25)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryLiquid : Colors.white12,
+            width: 0.8,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? AppTheme.primaryLiquid : Colors.white,
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _applianceLabel(String app) {
+    switch (app) {
+      case 'airfryer':
+        return '🌀 Airfryer';
+      case 'oven':
+        return '🔥 Horno';
+      case 'microwave':
+        return '⚡ Microondas';
+      case 'stovetop':
+        return '🍳 Fuego';
+      default:
+        return '♨️ $app';
+    }
   }
 }

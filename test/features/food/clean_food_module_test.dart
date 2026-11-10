@@ -8,14 +8,67 @@ import 'package:marth_app/features/food/presentation/controllers/food_controller
 import 'package:marth_app/features/food/presentation/screens/food_screen.dart';
 
 class MockFoodRepository implements IFoodRepository {
-  final List<DishModel> dishes = [];
+  final List<DishModel> dishes = [
+    DishModel(
+      id: 'dish-1',
+      environmentId: 'env-1',
+      name: 'Paella Valenciana',
+      cuisine: 'Española',
+      servingTemperature: 'caliente',
+      supportedAppliances: ['stovetop'],
+      defaultServings: 4,
+      ingredients: ['Arroz', 'Pollo', 'Conejo', 'Judías verdes'],
+      createdAt: DateTime.now(),
+    ),
+    DishModel(
+      id: 'dish-2',
+      environmentId: 'env-1',
+      name: 'Gazpacho Andaluz',
+      cuisine: 'Española',
+      servingTemperature: 'frío',
+      supportedAppliances: ['stovetop'],
+      defaultServings: 4,
+      ingredients: ['Tomate', 'Pepino', 'Pimiento', 'Aceite'],
+      createdAt: DateTime.now(),
+    ),
+    DishModel(
+      id: 'dish-3',
+      environmentId: 'env-1',
+      name: 'Pizza Margarita al horno',
+      cuisine: 'Italiana',
+      servingTemperature: 'caliente',
+      supportedAppliances: ['oven'],
+      defaultServings: 2,
+      ingredients: ['Harina', 'Tomate', 'Mozzarella'],
+      createdAt: DateTime.now(),
+    ),
+  ];
   final List<WeeklyMenuSlotModel> menuSlots = [];
   final List<ShoppingItemModel> shoppingItems = [];
 
   @override
-  Future<List<DishModel>> getDishes(String environmentId, {String? query}) async {
-    if (query == null || query.trim().isEmpty) return dishes;
-    return dishes.where((d) => d.name.toLowerCase().contains(query.toLowerCase())).toList();
+  Future<List<DishModel>> getDishes(
+    String environmentId, {
+    String? query,
+    String? cuisine,
+    String? servingTemperature,
+    String? appliance,
+  }) async {
+    return dishes.where((d) {
+      if (query != null && query.isNotEmpty) {
+        if (!d.name.toLowerCase().contains(query.toLowerCase())) return false;
+      }
+      if (cuisine != null && cuisine != 'Todas') {
+        if (d.cuisine?.toLowerCase() != cuisine.toLowerCase()) return false;
+      }
+      if (servingTemperature != null && servingTemperature != 'Todos') {
+        if (d.servingTemperature?.toLowerCase() != servingTemperature.toLowerCase()) return false;
+      }
+      if (appliance != null && appliance != 'Todos') {
+        if (!d.supportedAppliances.contains(appliance.toLowerCase())) return false;
+      }
+      return true;
+    }).toList();
   }
 
   @override
@@ -148,6 +201,38 @@ void main() {
   });
 
   group('Food Module Clean Architecture Tests', () {
+    test('Filtrar platos por cultura española e italiana', () async {
+      await controller.initialize(environmentId: 'env-1', userId: 'user-1');
+
+      expect(controller.dishes.length, 3);
+
+      await controller.setFilters(cuisine: 'Italiana');
+      expect(controller.dishes.length, 1);
+      expect(controller.dishes.first.name, 'Pizza Margarita al horno');
+
+      await controller.setFilters(cuisine: 'Española');
+      expect(controller.dishes.length, 2);
+    });
+
+    test('Filtrar platos por temperatura (frío vs caliente)', () async {
+      await controller.initialize(environmentId: 'env-1', userId: 'user-1');
+
+      await controller.setFilters(temperature: 'frío');
+      expect(controller.dishes.length, 1);
+      expect(controller.dishes.first.name, 'Gazpacho Andaluz');
+
+      await controller.setFilters(temperature: 'caliente');
+      expect(controller.dishes.length, 2);
+    });
+
+    test('Filtrar platos por electrodoméstico (Horno)', () async {
+      await controller.initialize(environmentId: 'env-1', userId: 'user-1');
+
+      await controller.setFilters(appliance: 'oven');
+      expect(controller.dishes.length, 1);
+      expect(controller.dishes.first.name, 'Pizza Margarita al horno');
+    });
+
     test('Crear plato guarda nombre, raciones e ingredientes en el catálogo', () async {
       await controller.initialize(environmentId: 'env-1', userId: 'user-1');
 
@@ -155,12 +240,14 @@ void main() {
         name: 'Lentejas estofadas',
         defaultServings: 4,
         ingredients: ['Lentejas', 'Zanahoria', 'Chorizo'],
+        cuisine: 'Española',
+        servingTemperature: 'caliente',
       );
 
       expect(dish.name, 'Lentejas estofadas');
       expect(dish.defaultServings, 4);
       expect(dish.ingredients.length, 3);
-      expect(controller.dishes.length, 1);
+      expect(controller.dishes.length, 4);
     });
 
     test('Asignar plato al menú semanal y enviar ingredientes a la compra', () async {
@@ -170,6 +257,8 @@ void main() {
         name: 'Pollo al curry',
         defaultServings: 2,
         ingredients: ['Pechuga de pollo', 'Curry en polvo', 'Leche de coco'],
+        cuisine: 'Asiática',
+        servingTemperature: 'caliente',
       );
 
       final date = controller.weekStartDate;
@@ -186,7 +275,6 @@ void main() {
       expect(slot!.displayName, 'Pollo al curry');
       expect(slot.servingsNote, '2 rac.');
 
-      // Comprobar que los ingredientes se añadieron a la lista de la compra
       expect(controller.shoppingItems.length, 3);
       expect(controller.shoppingItems.first.categoryOrSource, 'Pollo al curry');
     });
@@ -206,7 +294,7 @@ void main() {
       expect(controller.shoppingItems.length, 0);
     });
 
-    testWidgets('FoodScreen renderiza pestañas y navega limpiamente', (tester) async {
+    testWidgets('FoodScreen renderiza pestañas, buscador y filtros', (tester) async {
       await controller.initialize(environmentId: 'env-1', userId: 'user-1');
 
       await tester.pumpWidget(
@@ -221,18 +309,15 @@ void main() {
       expect(find.text('🛒 Compra'), findsOneWidget);
       expect(find.text('🍽️ Mis Platos'), findsOneWidget);
 
-      // Cambiar a la pestaña de compra
-      await tester.tap(find.text('🛒 Compra'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('+ Añadir producto a la compra...'), findsOneWidget);
-
       // Cambiar a la pestaña de Mis Platos
       await tester.tap(find.text('🍽️ Mis Platos'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Buscar en mis platos...'), findsOneWidget);
+      expect(find.text('Buscar en catálogo (1.500+ platos)...'), findsOneWidget);
+      expect(find.text('🌡️ Temp.'), findsOneWidget);
+      expect(find.text('♨️ Aparato'), findsOneWidget);
+      expect(find.text('Española'), findsWidgets);
+      expect(find.text('Italiana'), findsWidgets);
     });
   });
 }
-

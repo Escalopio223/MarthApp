@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/dish_model.dart';
 import '../../domain/models/weekly_menu_slot_model.dart';
@@ -6,6 +8,7 @@ import '../../domain/repositories/i_food_repository.dart';
 
 class FoodService implements IFoodRepository {
   final SupabaseClient _client;
+  List<DishModel>? _cachedCatalog;
 
   FoodService({SupabaseClient? client})
       : _client = client ?? Supabase.instance.client;
@@ -14,34 +17,126 @@ class FoodService implements IFoodRepository {
     return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
+  /// Carga el catálogo global de 1.500 recetas desde el bundle local o Supabase
+  Future<List<DishModel>> _loadGlobalRecipes() async {
+    if (_cachedCatalog != null && _cachedCatalog!.isNotEmpty) {
+      return _cachedCatalog!;
+    }
+
+    try {
+      // Intentar primero desde Supabase si la tabla global_recipes está desplegada
+      final response = await _client
+          .from('global_recipes')
+          .select()
+          .limit(1500);
+
+      final list = response as List<dynamic>;
+      if (list.isNotEmpty) {
+        _cachedCatalog = list
+            .map((json) => DishModel.fromJson(json as Map<String, dynamic>).copyWith(isGlobal: true))
+            .toList();
+        return _cachedCatalog!;
+      }
+    } catch (_) {
+      // Si la tabla no está en Supabase aún, usar el asset precargado de 1.500 recetas
+    }
+
+    try {
+      final jsonlString = await rootBundle.loadString('assets/data/recipes_catalog.jsonl');
+      final lines = const LineSplitter().convert(jsonlString);
+      final recipes = <DishModel>[];
+
+      for (int i = 0; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+        try {
+          final data = json.decode(line) as Map<String, dynamic>;
+          recipes.add(DishModel.fromJson(data).copyWith(
+            id: 'global-recipe-$i',
+            isGlobal: true,
+          ));
+        } catch (_) {}
+      }
+
+      _cachedCatalog = recipes;
+      return _cachedCatalog!;
+    } catch (_) {
+      return [];
+    }
+  }
+
   // ==========================================
   // PLATOS (DISHES)
   // ==========================================
 
   @override
-  Future<List<DishModel>> getDishes(String environmentId, {String? query}) async {
+  Future<List<DishModel>> getDishes(
+    String environmentId, {
+    String? query,
+    String? cuisine,
+    String? servingTemperature,
+    String? appliance,
+  }) async {
+    final results = <DishModel>[];
+
+    // 1. Platos creados por los miembros de este entorno en Supabase
     try {
       var builder = _client
           .from('dishes')
           .select()
           .eq('environment_id', environmentId);
 
-      if (query != null && query.trim().isNotEmpty) {
-        builder = builder.ilike('name', '%${query.trim()}%');
-      }
-
       final response = await builder.order('name', ascending: true);
       final list = response as List<dynamic>;
-      return list.map((json) => DishModel.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      return [];
-    }
+      results.addAll(list.map((json) => DishModel.fromJson(json as Map<String, dynamic>)));
+    } catch (_) {}
+
+    // 2. Catálogo global de 1.500 recetas reales
+    final globalRecipes = await _loadGlobalRecipes();
+    results.addAll(globalRecipes);
+
+    // 3. Aplicar filtros en memoria
+    return results.where((dish) {
+      // Filtro de texto (búsqueda)
+      if (query != null && query.trim().isNotEmpty) {
+        final q = query.trim().toLowerCase();
+        final matchesName = dish.name.toLowerCase().contains(q);
+        final matchesCuisine = dish.cuisine?.toLowerCase().contains(q) ?? false;
+        final matchesIngredients = dish.ingredients.any((ing) => ing.toLowerCase().contains(q));
+        if (!matchesName && !matchesCuisine && !matchesIngredients) {
+          return false;
+        }
+      }
+
+      // Filtro por Cultura / Cocina
+      if (cuisine != null && cuisine.isNotEmpty && cuisine != 'Todas') {
+        if (dish.cuisine?.toLowerCase() != cuisine.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Filtro por Temperatura de servicio ("frío" | "caliente")
+      if (servingTemperature != null && servingTemperature.isNotEmpty && servingTemperature != 'Todos') {
+        if (dish.servingTemperature?.toLowerCase() != servingTemperature.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Filtro por Electrodoméstico / Método
+      if (appliance != null && appliance.isNotEmpty && appliance != 'Todos') {
+        if (!dish.supportedAppliances.contains(appliance.toLowerCase())) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
   }
 
   @override
   Future<DishModel> saveDish(DishModel dish) async {
-    final payload = dish.toJson(includeId: dish.id.isNotEmpty);
-    if (dish.id.isEmpty) {
+    final payload = dish.toJson(includeId: dish.id.isNotEmpty && !dish.isGlobal);
+    if (dish.id.isEmpty || dish.isGlobal) {
       final res = await _client.from('dishes').insert(payload).select().single();
       return DishModel.fromJson(res);
     } else {
@@ -190,7 +285,6 @@ class FoodService implements IFoodRepository {
   }) async {
     if (ingredients.isEmpty) return 0;
 
-    // Obtener ítems activos actuales para no duplicar si ya están sin tachar
     final currentActive = await _client
         .from('shopping_items')
         .select('name')
@@ -214,7 +308,7 @@ class FoodService implements IFoodRepository {
           'name': clean,
           'is_checked': false,
           'category_or_source': dishName.trim(),
-          'dish_id': dishId,
+          'dish_id': (dishId != null && !dishId.startsWith('global-')) ? dishId : null,
         });
         activeNames.add(clean.toLowerCase());
         addedCount++;
@@ -228,4 +322,3 @@ class FoodService implements IFoodRepository {
     return addedCount;
   }
 }
-

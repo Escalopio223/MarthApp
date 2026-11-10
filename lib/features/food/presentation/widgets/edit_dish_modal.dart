@@ -69,9 +69,7 @@ class _EditDishModalState extends State<EditDishModal> {
   }
 
   void _submit() {
-    // Si quedó texto sin añadir en el input de ingrediente, añadirlo
     _addIngredient();
-
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
@@ -95,7 +93,6 @@ class _EditDishModalState extends State<EditDishModal> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drag handle
           Center(
             child: Container(
               width: 36,
@@ -107,8 +104,6 @@ class _EditDishModalState extends State<EditDishModal> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Título de la cabecera
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -128,8 +123,6 @@ class _EditDishModalState extends State<EditDishModal> {
             ],
           ),
           const SizedBox(height: 16),
-
-          // 1. Nombre del plato
           TextField(
             controller: _nameController,
             autofocus: !isEditing,
@@ -155,8 +148,6 @@ class _EditDishModalState extends State<EditDishModal> {
             ),
           ),
           const SizedBox(height: 14),
-
-          // Selector de raciones por defecto
           Row(
             children: [
               Text(
@@ -192,14 +183,11 @@ class _EditDishModalState extends State<EditDishModal> {
             ],
           ),
           const SizedBox(height: 14),
-
-          // 2. Ingredientes necesarios
           Text(
             'Ingredientes necesarios',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
           ),
           const SizedBox(height: 8),
-
           Row(
             children: [
               Expanded(
@@ -236,8 +224,6 @@ class _EditDishModalState extends State<EditDishModal> {
             ],
           ),
           const SizedBox(height: 10),
-
-          // Lista de chips de ingredientes
           if (_ingredients.isNotEmpty)
             Wrap(
               spacing: 6,
@@ -259,10 +245,7 @@ class _EditDishModalState extends State<EditDishModal> {
                 );
               }).toList(),
             ),
-
           const SizedBox(height: 20),
-
-          // Botón Guardar
           SizedBox(
             width: double.infinity,
             height: 46,

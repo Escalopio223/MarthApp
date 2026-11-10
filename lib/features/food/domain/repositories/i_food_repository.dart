@@ -4,7 +4,13 @@ import '../models/shopping_item_model.dart';
 
 abstract class IFoodRepository {
   // --- Platos (Dishes) ---
-  Future<List<DishModel>> getDishes(String environmentId, {String? query});
+  Future<List<DishModel>> getDishes(
+    String environmentId, {
+    String? query,
+    String? cuisine,
+    String? servingTemperature,
+    String? appliance,
+  });
   Future<DishModel> saveDish(DishModel dish);
   Future<void> deleteDish(String dishId);
 

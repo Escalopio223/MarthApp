@@ -260,11 +260,13 @@ class WeeklyMenuView extends StatelessWidget {
               );
             }
           },
-          onCreateNewDish: (name, servings, ingredients) async {
+          onCreateNewDish: (name, servings, ingredients, {cuisine, servingTemperature}) async {
             final savedDish = await controller.saveDish(
               name: name,
               defaultServings: servings,
               ingredients: ingredients,
+              cuisine: cuisine,
+              servingTemperature: servingTemperature,
             );
             await controller.assignDishToSlot(
               date: date,
