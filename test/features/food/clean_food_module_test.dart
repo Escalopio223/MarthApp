@@ -206,29 +206,29 @@ void main() {
 
       expect(controller.dishes.length, 3);
 
-      await controller.setFilters(cuisine: 'Italiana');
+      controller.setFilters(cuisine: 'Italiana');
       expect(controller.dishes.length, 1);
       expect(controller.dishes.first.name, 'Pizza Margarita al horno');
 
-      await controller.setFilters(cuisine: 'Española');
+      controller.setFilters(cuisine: 'Española');
       expect(controller.dishes.length, 2);
     });
 
     test('Filtrar platos por temperatura (frío vs caliente)', () async {
       await controller.initialize(environmentId: 'env-1', userId: 'user-1');
 
-      await controller.setFilters(temperature: 'frío');
+      controller.setFilters(temperature: 'frío');
       expect(controller.dishes.length, 1);
       expect(controller.dishes.first.name, 'Gazpacho Andaluz');
 
-      await controller.setFilters(temperature: 'caliente');
+      controller.setFilters(temperature: 'caliente');
       expect(controller.dishes.length, 2);
     });
 
     test('Filtrar platos por electrodoméstico (Horno)', () async {
       await controller.initialize(environmentId: 'env-1', userId: 'user-1');
 
-      await controller.setFilters(appliance: 'oven');
+      controller.setFilters(appliance: 'oven');
       expect(controller.dishes.length, 1);
       expect(controller.dishes.first.name, 'Pizza Margarita al horno');
     });

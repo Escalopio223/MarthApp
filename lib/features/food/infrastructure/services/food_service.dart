@@ -23,48 +23,49 @@ class FoodService implements IFoodRepository {
   String _shoppingStorageKey(String envId) => 'local_shopping_items_$envId';
   String _dishesStorageKey(String envId) => 'local_dishes_$envId';
 
-  /// Carga el catálogo global de 1.500 recetas desde Supabase o el asset local
+  /// Carga el catálogo global de 1.500 recetas (memoria persistente instantánea)
   Future<List<DishModel>> _loadGlobalRecipes() async {
     if (_cachedCatalog != null && _cachedCatalog!.isNotEmpty) {
       return _cachedCatalog!;
     }
 
     try {
-      final response = await _client
-          .from('global_recipes')
-          .select()
-          .limit(1500);
-
-      final list = response as List<dynamic>;
-      if (list.isNotEmpty) {
-        _cachedCatalog = list
-            .map((json) => DishModel.fromJson(json as Map<String, dynamic>).copyWith(isGlobal: true))
-            .toList();
-        return _cachedCatalog!;
-      }
-    } catch (_) {}
-
-    try {
-      final jsonlString = await rootBundle.loadString('assets/data/recipes_catalog.jsonl');
-      final lines = const LineSplitter().convert(jsonlString);
+      final jsonString = await rootBundle.loadString('assets/data/recipes_catalog.json');
+      final list = json.decode(jsonString) as List<dynamic>;
       final recipes = <DishModel>[];
 
-      for (int i = 0; i < lines.length; i++) {
-        final line = lines[i].trim();
-        if (line.isEmpty) continue;
-        try {
-          final data = json.decode(line) as Map<String, dynamic>;
-          recipes.add(DishModel.fromJson(data).copyWith(
-            id: 'global-recipe-$i',
-            isGlobal: true,
-          ));
-        } catch (_) {}
+      for (int i = 0; i < list.length; i++) {
+        final data = list[i] as Map<String, dynamic>;
+        recipes.add(DishModel.fromJson(data).copyWith(
+          id: 'global-recipe-$i',
+          isGlobal: true,
+        ));
       }
 
       _cachedCatalog = recipes;
       return _cachedCatalog!;
     } catch (_) {
-      return [];
+      // Fallback a JSONL si hiciera falta
+      try {
+        final jsonlString = await rootBundle.loadString('assets/data/recipes_catalog.jsonl');
+        final lines = const LineSplitter().convert(jsonlString);
+        final recipes = <DishModel>[];
+
+        for (int i = 0; i < lines.length; i++) {
+          final line = lines[i].trim();
+          if (line.isEmpty) continue;
+          final data = json.decode(line) as Map<String, dynamic>;
+          recipes.add(DishModel.fromJson(data).copyWith(
+            id: 'global-recipe-$i',
+            isGlobal: true,
+          ));
+        }
+
+        _cachedCatalog = recipes;
+        return _cachedCatalog!;
+      } catch (_) {
+        return [];
+      }
     }
   }
 
@@ -82,14 +83,15 @@ class FoodService implements IFoodRepository {
   }) async {
     final results = <DishModel>[];
 
-    // 1. Platos creados por los miembros (Supabase con fallback local)
+    // 1. Platos creados por los miembros (Supabase con timeout estricto de 800ms)
     bool fetchedFromRemote = false;
     try {
       final response = await _client
           .from('dishes')
           .select()
           .eq('environment_id', environmentId)
-          .order('name', ascending: true);
+          .order('name', ascending: true)
+          .timeout(const Duration(milliseconds: 800));
       final list = response as List<dynamic>;
       results.addAll(list.map((json) => DishModel.fromJson(json as Map<String, dynamic>)));
       fetchedFromRemote = true;

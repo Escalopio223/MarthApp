@@ -35,7 +35,7 @@ class FoodController extends ChangeNotifier {
   DateTime get weekStartDate => _weekStartDate;
   DateTime get weekEndDate => _weekStartDate.add(const Duration(days: 6));
 
-  // --- Estado: Platos ---
+  List<DishModel> _allDishes = [];
   List<DishModel> _dishes = [];
   List<DishModel> get dishes => _dishes;
 
@@ -100,18 +100,19 @@ class FoodController extends ChangeNotifier {
   }
 
   // --- Métodos de Platos (Dishes) & Filtros ---
-  Future<void> setFilters({
+  void setFilters({
     String? query,
     String? cuisine,
     String? temperature,
     String? appliance,
-  }) async {
+  }) {
     if (query != null) _searchQuery = query;
     if (cuisine != null) _selectedCuisine = cuisine;
     if (temperature != null) _selectedTemperature = temperature;
     if (appliance != null) _selectedAppliance = appliance;
 
-    await loadDishes();
+    _applyFiltersInMemory();
+    notifyListeners();
   }
 
   void resetFilters() {
@@ -119,7 +120,62 @@ class FoodController extends ChangeNotifier {
     _selectedCuisine = 'Todas';
     _selectedTemperature = 'Todos';
     _selectedAppliance = 'Todos';
-    loadDishes();
+    _applyFiltersInMemory();
+    notifyListeners();
+  }
+
+  void _applyFiltersInMemory() {
+    final filtered = _allDishes.where((dish) {
+      if (_searchQuery.trim().isNotEmpty) {
+        final q = _searchQuery.trim().toLowerCase();
+        final matchesName = dish.name.toLowerCase().contains(q);
+        final matchesCuisine = dish.cuisine?.toLowerCase().contains(q) ?? false;
+        final matchesIngredients = dish.ingredients.any((ing) => ing.toLowerCase().contains(q));
+        if (!matchesName && !matchesCuisine && !matchesIngredients) {
+          return false;
+        }
+      }
+
+      if (_selectedCuisine != 'Todas') {
+        if (dish.cuisine?.toLowerCase() != _selectedCuisine.toLowerCase()) {
+          return false;
+        }
+      }
+
+      if (_selectedTemperature != 'Todos') {
+        if (dish.servingTemperature?.toLowerCase() != _selectedTemperature.toLowerCase()) {
+          return false;
+        }
+      }
+
+      if (_selectedAppliance != 'Todos') {
+        if (!dish.supportedAppliances.contains(_selectedAppliance.toLowerCase())) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    // Ordenar por relevancia si hay búsqueda activa
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      filtered.sort((a, b) {
+        final aStarts = a.name.toLowerCase().startsWith(q);
+        final bStarts = b.name.toLowerCase().startsWith(q);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        final aContains = a.name.toLowerCase().contains(q);
+        final bContains = b.name.toLowerCase().contains(q);
+        if (aContains && !bContains) return -1;
+        if (!aContains && bContains) return 1;
+
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    }
+
+    _dishes = filtered;
   }
 
   Future<void> loadDishes({
@@ -129,13 +185,8 @@ class FoodController extends ChangeNotifier {
     String? appliance,
   }) async {
     if (_environmentId == null) return;
-    _dishes = await _repository.getDishes(
-      _environmentId!,
-      query: query ?? _searchQuery,
-      cuisine: cuisine ?? _selectedCuisine,
-      servingTemperature: servingTemperature ?? _selectedTemperature,
-      appliance: appliance ?? _selectedAppliance,
-    );
+    _allDishes = await _repository.getDishes(_environmentId!);
+    _applyFiltersInMemory();
     notifyListeners();
   }
 
@@ -165,20 +216,22 @@ class FoodController extends ChangeNotifier {
     );
 
     final saved = await _repository.saveDish(dish);
-    final idx = _dishes.indexWhere((d) => d.id == saved.id);
-    if (idx != -1) {
-      _dishes[idx] = saved;
+    final allIdx = _allDishes.indexWhere((d) => d.id == saved.id);
+    if (allIdx != -1) {
+      _allDishes[allIdx] = saved;
     } else {
-      _dishes.add(saved);
-      _dishes.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      _allDishes.add(saved);
+      _allDishes.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     }
+    _applyFiltersInMemory();
     notifyListeners();
     return saved;
   }
 
   Future<void> deleteDish(String dishId) async {
     await _repository.deleteDish(dishId);
-    _dishes.removeWhere((d) => d.id == dishId);
+    _allDishes.removeWhere((d) => d.id == dishId);
+    _applyFiltersInMemory();
     await loadWeeklyMenu();
     notifyListeners();
   }
