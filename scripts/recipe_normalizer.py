@@ -21,12 +21,6 @@ UNITS_REGEX = re.compile(
     re.IGNORECASE
 )
 
-# Palabras adicionales y conectores a eliminar
-CONNECTORS_REGEX = re.compile(
-    r'\b(de|del|en|para|al|a|la|el|los|las|un|una|unos|unas|con|sin|y|o)\b',
-    re.IGNORECASE
-)
-
 # Frases sobre preparación o condimentos irrelevantes
 DESCRIPTORS_REGEX = re.compile(
     r'\b('
@@ -75,39 +69,50 @@ def parse_iso_duration(duration_str: Optional[str]) -> Optional[int]:
 
 def clean_single_ingredient(raw_text: str) -> Optional[str]:
     """
-    Limpia un string de ingrediente (ej. '400 gramos de pechuga de pollo en dados')
-    dejando solo el nombre del producto ('Pechuga de pollo').
+    Limpia un string de ingrediente (ej. '⅓ taza de queso mozzarella o queso blanco rallado')
+    dejando solo el nombre natural del producto ('Queso mozzarella').
     """
     if not raw_text or not isinstance(raw_text, str):
         return None
 
-    cleaned = raw_text.strip()
-    # Eliminar contenido entre paréntesis (ej. "(opcional)", "(unos 200g)")
-    cleaned = re.sub(r'\(.*?\)', '', cleaned)
+    # 1. Eliminar paréntesis (ej. "(opcional)", "(unos 200g)")
+    cleaned = re.sub(r'\(.*?\)', '', raw_text).strip()
 
-    # Eliminar números, fracciones y caracteres especiales
+    # 2. Quedarse con la opción principal si hay alternativas con ' o ', ' u ', ' / '
+    # Ej: 'queso mozzarella o queso blanco' -> 'queso mozzarella'
+    cleaned = re.split(r'\s+(?:o|u|/)\s+', cleaned, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+
+    # 3. Eliminar números, fracciones y caracteres especiales
     cleaned = re.sub(r'[\d½¼¾⅓⅔⅛/\-.,:+*%]', ' ', cleaned)
 
-    # Eliminar unidades de medida
+    # 4. Eliminar unidades de medida
     cleaned = UNITS_REGEX.sub(' ', cleaned)
 
-    # Eliminar descriptores de preparación
+    # 5. Eliminar descriptores de preparación (picado, rallado, etc.)
     cleaned = DESCRIPTORS_REGEX.sub(' ', cleaned)
 
-    # Eliminar conectores sobrantes
-    words = cleaned.split()
-    clean_words = []
-    for w in words:
-        w_lower = w.lower()
-        if not CONNECTORS_REGEX.fullmatch(w_lower) and len(w) > 1:
-            clean_words.append(w_lower)
+    # 6. Normalizar espacios
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
 
-    result = " ".join(clean_words).strip().capitalize()
+    # 7. Limpiar partículas de inicio superfluas (ej. "de pechuga de pollo" -> "Pechuga de pollo")
+    cleaned = re.sub(r'^(?:de|del|el|la|los|las|un|una|unos|unas)\s+', '', cleaned, flags=re.IGNORECASE).strip()
+
+    # 8. Deduplicar palabras repetidas en el mismo ingrediente
+    words = cleaned.split()
+    seen = set()
+    dedup = []
+    for w in words:
+        wl = w.lower()
+        if wl not in seen:
+            seen.add(wl)
+            dedup.append(w)
+
+    result = " ".join(dedup).strip().capitalize()
 
     if not result or len(result) < 3:
         return None
 
-    # Excluir agua / sal / pimienta básicas
+    # Excluir agua / sal básicas
     if result.lower() in BASIC_STAPLES_TO_SKIP:
         return None
 
@@ -132,7 +137,6 @@ def extract_cooking_methods_and_steps(
             elif isinstance(item, str) and item.strip():
                 raw_steps.append(item.strip())
     elif isinstance(instructions, str) and instructions.strip():
-        # Separar por saltos de línea o puntos
         lines = [s.strip() for s in re.split(r'\n+|\.\s+', instructions) if len(s.strip()) > 5]
         raw_steps = lines if lines else [instructions.strip()]
 
@@ -146,7 +150,6 @@ def extract_cooking_methods_and_steps(
     has_micro = bool(MICROWAVE_TERMS.search(full_text))
     has_stovetop = bool(STOVETOP_TERMS.search(full_text))
 
-    # Extracción de temperaturas y tiempos
     temp_matches = [int(m) for m in TEMP_REGEX.findall(full_text) if 60 <= int(m) <= 260]
     time_matches = [int(m) for m in TIME_REGEX.findall(full_text) if 1 <= int(m) <= 180]
 
@@ -174,7 +177,6 @@ def extract_cooking_methods_and_steps(
             'time_minutes': dominant_time or 5,
         }
 
-    # Si no tiene ninguno de los 3 electrodomésticos, o se detectó fuego tradicional
     if not supported or has_stovetop:
         supported.append('stovetop')
         method_data['stovetop'] = {
@@ -191,26 +193,25 @@ def extract_cooking_methods_and_steps(
 
 
 def normalize_recipe_record(raw_recipe: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """
-    Normaliza un registro de receta de schema.org o dataset:
-    Valida campos obligatorios y genera shopping_ingredients y supported_appliances.
-    """
     title = (raw_recipe.get('name') or raw_recipe.get('title') or '').strip()
     if not title or len(title) < 3:
         return None
 
     source_url = raw_recipe.get('url') or raw_recipe.get('source_url') or f"generated://{hash(title)}"
 
-    # Ingredientes detallados originales
     raw_ingredients = raw_recipe.get('recipeIngredient') or raw_recipe.get('ingredients') or []
     if isinstance(raw_ingredients, str):
-        raw_ingredients = [i.strip() for i in raw_ingredients.split('\n') if i.strip()]
+        raw_ingredients = [i.strip() for i in re.split(r'[\r\n]+|\s{3,}', raw_ingredients) if i.strip()]
 
-    detailed_ingredients = [str(i).strip() for i in raw_ingredients if str(i).strip()]
+    detailed_ingredients = []
+    for item in raw_ingredients:
+        if isinstance(item, str):
+            parts = [p.strip() for p in re.split(r'[\r\n]+|\s{3,}', item) if p.strip()]
+            detailed_ingredients.extend(parts)
+
     if not detailed_ingredients:
         return None
 
-    # Limpieza de ingredientes para lista de compra
     shopping_set = set()
     shopping_list = []
     for raw_ing in detailed_ingredients:
@@ -219,23 +220,19 @@ def normalize_recipe_record(raw_recipe: Dict[str, Any]) -> Optional[Dict[str, An
             shopping_set.add(cleaned.lower())
             shopping_list.append(cleaned)
 
-    # Si la lista de la compra quedó vacía, rescatar los 3 primeros nombres simples
     if not shopping_list:
         for raw_ing in detailed_ingredients[:4]:
             fallback = re.sub(r'[\d½¼¾⅓⅔⅛/\-.,:+*]', '', raw_ing).strip()
             if len(fallback) > 3:
                 shopping_list.append(fallback[:30].capitalize())
 
-    # Instrucciones y electrodomésticos
     raw_instructions = raw_recipe.get('recipeInstructions') or raw_recipe.get('instructions') or []
     appliances, instructions_payload = extract_cooking_methods_and_steps(title, raw_instructions)
 
-    # Duración
     total_time = raw_recipe.get('total_time_minutes')
     if total_time is None and raw_recipe.get('totalTime'):
         total_time = parse_iso_duration(raw_recipe.get('totalTime'))
     if total_time is None:
-        # Fallback de tiempo según appliance
         total_time = 30
 
     cuisine = raw_recipe.get('recipeCuisine') or raw_recipe.get('cuisine') or 'Internacional'
