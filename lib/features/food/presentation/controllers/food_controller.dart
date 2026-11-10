@@ -31,7 +31,7 @@ class FoodController extends ChangeNotifier {
   String get selectedAppliance => _selectedAppliance;
 
   // --- Fecha Semanal ---
-  late DateTime _weekStartDate;
+  DateTime _weekStartDate = _getMondayOfWeek(DateTime.now());
   DateTime get weekStartDate => _weekStartDate;
   DateTime get weekEndDate => _weekStartDate.add(const Duration(days: 6));
 

@@ -111,9 +111,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (widget.planificadorController == null && activeEnv != null) {
         _planificadorController.setEntorno(activeEnv.id);
       }
-      if (activeEnv != null) {
-        _foodController.initialize(environmentId: activeEnv.id, userId: user.id);
-      }
+      final envId = activeEnv?.id ?? 'default-env';
+      _foodController.initialize(environmentId: envId, userId: user.id);
+    } else {
+      _foodController.initialize(environmentId: 'guest-env', userId: 'guest');
     }
 
     // Escucha activa de notificaciones pulsadas (Push & Local)

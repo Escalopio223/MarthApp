@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/dish_model.dart';
 import '../../domain/models/weekly_menu_slot_model.dart';
@@ -17,14 +18,18 @@ class FoodService implements IFoodRepository {
     return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
-  /// Carga el catálogo global de 1.500 recetas desde el bundle local o Supabase
+  // Claves de SharedPreferences para persistencia local de respaldo
+  String _slotsStorageKey(String envId) => 'local_menu_slots_$envId';
+  String _shoppingStorageKey(String envId) => 'local_shopping_items_$envId';
+  String _dishesStorageKey(String envId) => 'local_dishes_$envId';
+
+  /// Carga el catálogo global de 1.500 recetas desde Supabase o el asset local
   Future<List<DishModel>> _loadGlobalRecipes() async {
     if (_cachedCatalog != null && _cachedCatalog!.isNotEmpty) {
       return _cachedCatalog!;
     }
 
     try {
-      // Intentar primero desde Supabase si la tabla global_recipes está desplegada
       final response = await _client
           .from('global_recipes')
           .select()
@@ -37,9 +42,7 @@ class FoodService implements IFoodRepository {
             .toList();
         return _cachedCatalog!;
       }
-    } catch (_) {
-      // Si la tabla no está en Supabase aún, usar el asset precargado de 1.500 recetas
-    }
+    } catch (_) {}
 
     try {
       final jsonlString = await rootBundle.loadString('assets/data/recipes_catalog.jsonl');
@@ -79,25 +82,36 @@ class FoodService implements IFoodRepository {
   }) async {
     final results = <DishModel>[];
 
-    // 1. Platos creados por los miembros de este entorno en Supabase
+    // 1. Platos creados por los miembros (Supabase con fallback local)
+    bool fetchedFromRemote = false;
     try {
-      var builder = _client
+      final response = await _client
           .from('dishes')
           .select()
-          .eq('environment_id', environmentId);
-
-      final response = await builder.order('name', ascending: true);
+          .eq('environment_id', environmentId)
+          .order('name', ascending: true);
       final list = response as List<dynamic>;
       results.addAll(list.map((json) => DishModel.fromJson(json as Map<String, dynamic>)));
+      fetchedFromRemote = true;
     } catch (_) {}
 
-    // 2. Catálogo global de 1.500 recetas reales
+    if (!fetchedFromRemote) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_dishesStorageKey(environmentId));
+        if (raw != null) {
+          final list = json.decode(raw) as List<dynamic>;
+          results.addAll(list.map((j) => DishModel.fromJson(j as Map<String, dynamic>)));
+        }
+      } catch (_) {}
+    }
+
+    // 2. Catálogo global de 1.500 recetas
     final globalRecipes = await _loadGlobalRecipes();
     results.addAll(globalRecipes);
 
-    // 3. Aplicar filtros en memoria
+    // 3. Aplicar filtros
     final filtered = results.where((dish) {
-      // Filtro de texto (búsqueda)
       if (query != null && query.trim().isNotEmpty) {
         final q = query.trim().toLowerCase();
         final matchesName = dish.name.toLowerCase().contains(q);
@@ -108,21 +122,18 @@ class FoodService implements IFoodRepository {
         }
       }
 
-      // Filtro por Cultura / Cocina
       if (cuisine != null && cuisine.isNotEmpty && cuisine != 'Todas') {
         if (dish.cuisine?.toLowerCase() != cuisine.toLowerCase()) {
           return false;
         }
       }
 
-      // Filtro por Temperatura de servicio ("frío" | "caliente")
       if (servingTemperature != null && servingTemperature.isNotEmpty && servingTemperature != 'Todos') {
         if (dish.servingTemperature?.toLowerCase() != servingTemperature.toLowerCase()) {
           return false;
         }
       }
 
-      // Filtro por Electrodoméstico / Método
       if (appliance != null && appliance.isNotEmpty && appliance != 'Todos') {
         if (!dish.supportedAppliances.contains(appliance.toLowerCase())) {
           return false;
@@ -132,8 +143,7 @@ class FoodService implements IFoodRepository {
       return true;
     }).toList();
 
-    // 4. Ordenar por relevancia si hay un término de búsqueda:
-    // Los platos cuyo TÍTULO contiene la búsqueda van primero; después los que solo lo tienen en ingredientes.
+    // 4. Ordenar por relevancia
     if (query != null && query.trim().isNotEmpty) {
       final q = query.trim().toLowerCase();
       filtered.sort((a, b) {
@@ -157,23 +167,46 @@ class FoodService implements IFoodRepository {
   @override
   Future<DishModel> saveDish(DishModel dish) async {
     final payload = dish.toJson(includeId: dish.id.isNotEmpty && !dish.isGlobal);
-    if (dish.id.isEmpty || dish.isGlobal) {
-      final res = await _client.from('dishes').insert(payload).select().single();
-      return DishModel.fromJson(res);
-    } else {
-      final res = await _client
-          .from('dishes')
-          .update(payload)
-          .eq('id', dish.id)
-          .select()
-          .single();
-      return DishModel.fromJson(res);
+    try {
+      if (dish.id.isEmpty || dish.isGlobal) {
+        final res = await _client.from('dishes').insert(payload).select().single();
+        return DishModel.fromJson(res);
+      } else {
+        final res = await _client
+            .from('dishes')
+            .update(payload)
+            .eq('id', dish.id)
+            .select()
+            .single();
+        return DishModel.fromJson(res);
+      }
+    } catch (_) {
+      // Fallback local
+      final prefs = await SharedPreferences.getInstance();
+      final key = _dishesStorageKey(dish.environmentId);
+      final raw = prefs.getString(key);
+      final list = raw != null ? (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>() : <Map<String, dynamic>>[];
+      
+      final toSave = dish.id.isEmpty
+          ? dish.copyWith(id: 'local-dish-${DateTime.now().millisecondsSinceEpoch}')
+          : dish;
+      
+      final idx = list.indexWhere((m) => m['id'] == toSave.id);
+      if (idx != -1) {
+        list[idx] = toSave.toJson();
+      } else {
+        list.add(toSave.toJson());
+      }
+      await prefs.setString(key, json.encode(list));
+      return toSave;
     }
   }
 
   @override
   Future<void> deleteDish(String dishId) async {
-    await _client.from('dishes').delete().eq('id', dishId);
+    try {
+      await _client.from('dishes').delete().eq('id', dishId);
+    } catch (_) {}
   }
 
   // ==========================================
@@ -186,10 +219,10 @@ class FoodService implements IFoodRepository {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    try {
-      final startStr = _formatDate(startDate);
-      final endStr = _formatDate(endDate);
+    final startStr = _formatDate(startDate);
+    final endStr = _formatDate(endDate);
 
+    try {
       final response = await _client
           .from('weekly_menu_slots')
           .select('*, dishes(*)')
@@ -200,29 +233,82 @@ class FoodService implements IFoodRepository {
 
       final list = response as List<dynamic>;
       return list.map((json) => WeeklyMenuSlotModel.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      return [];
+    } catch (_) {
+      // Fallback local de SharedPreferences
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_slotsStorageKey(environmentId));
+        if (raw == null) return [];
+
+        final list = (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+        return list.map((m) => WeeklyMenuSlotModel.fromJson(m)).where((s) {
+          final sDate = _formatDate(s.slotDate);
+          return sDate.compareTo(startStr) >= 0 && sDate.compareTo(endStr) <= 0;
+        }).toList();
+      } catch (_) {
+        return [];
+      }
     }
   }
 
   @override
   Future<WeeklyMenuSlotModel> upsertMenuSlot(WeeklyMenuSlotModel slot) async {
     final payload = slot.toJson(includeId: slot.id.isNotEmpty);
-    final response = await _client
-        .from('weekly_menu_slots')
-        .upsert(
-          payload,
-          onConflict: 'environment_id,slot_date,meal_type',
-        )
-        .select('*, dishes(*)')
-        .single();
+    try {
+      final response = await _client
+          .from('weekly_menu_slots')
+          .upsert(
+            payload,
+            onConflict: 'environment_id,slot_date,meal_type',
+          )
+          .select('*, dishes(*)')
+          .single();
 
-    return WeeklyMenuSlotModel.fromJson(response);
+      return WeeklyMenuSlotModel.fromJson(response);
+    } catch (_) {
+      // Fallback local en SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final key = _slotsStorageKey(slot.environmentId);
+      final raw = prefs.getString(key);
+      final list = raw != null ? (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>() : <Map<String, dynamic>>[];
+
+      final dateStr = _formatDate(slot.slotDate);
+      final slotId = slot.id.isNotEmpty ? slot.id : 'local-slot-${DateTime.now().millisecondsSinceEpoch}';
+      final toSave = slot.copyWith(id: slotId);
+
+      final idx = list.indexWhere((m) =>
+          m['slot_date'] == dateStr && m['meal_type'] == slot.mealType.dbValue);
+
+      if (idx != -1) {
+        list[idx] = toSave.toJson();
+      } else {
+        list.add(toSave.toJson());
+      }
+
+      await prefs.setString(key, json.encode(list));
+      return toSave;
+    }
   }
 
   @override
   Future<void> clearMenuSlot(String slotId) async {
-    await _client.from('weekly_menu_slots').delete().eq('id', slotId);
+    try {
+      await _client.from('weekly_menu_slots').delete().eq('id', slotId);
+    } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Limpiar en todas las claves locales posibles
+      final keys = prefs.getKeys().where((k) => k.startsWith('local_menu_slots_'));
+      for (final k in keys) {
+        final raw = prefs.getString(k);
+        if (raw != null) {
+          final list = (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+          list.removeWhere((m) => m['id'] == slotId);
+          await prefs.setString(k, json.encode(list));
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -240,6 +326,7 @@ class FoodService implements IFoodRepository {
         dishId: sourceSlot.dishId,
         customDishName: sourceSlot.customDishName,
         servingsNote: sourceSlot.servingsNote,
+        dish: sourceSlot.dish,
         createdBy: sourceSlot.createdBy,
         createdAt: DateTime.now(),
       );
@@ -263,38 +350,107 @@ class FoodService implements IFoodRepository {
 
       final list = response as List<dynamic>;
       return list.map((json) => ShoppingItemModel.fromJson(json as Map<String, dynamic>)).toList();
-    } catch (e) {
-      return [];
+    } catch (_) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString(_shoppingStorageKey(environmentId));
+        if (raw == null) return [];
+        final list = (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+        return list.map((m) => ShoppingItemModel.fromJson(m)).toList();
+      } catch (_) {
+        return [];
+      }
     }
   }
 
   @override
   Future<ShoppingItemModel> addShoppingItem(ShoppingItemModel item) async {
     final payload = item.toJson(includeId: item.id.isNotEmpty);
-    final res = await _client.from('shopping_items').insert(payload).select().single();
-    return ShoppingItemModel.fromJson(res);
+    try {
+      final res = await _client.from('shopping_items').insert(payload).select().single();
+      return ShoppingItemModel.fromJson(res);
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _shoppingStorageKey(item.environmentId);
+      final raw = prefs.getString(key);
+      final list = raw != null ? (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>() : <Map<String, dynamic>>[];
+
+      final toSave = item.id.isNotEmpty
+          ? item
+          : item.copyWith(id: 'local-shop-${DateTime.now().millisecondsSinceEpoch}');
+
+      list.insert(0, toSave.toJson());
+      await prefs.setString(key, json.encode(list));
+      return toSave;
+    }
   }
 
   @override
   Future<void> toggleShoppingItem({required String itemId, required bool isChecked}) async {
-    await _client
-        .from('shopping_items')
-        .update({'is_checked': isChecked})
-        .eq('id', itemId);
+    try {
+      await _client
+          .from('shopping_items')
+          .update({'is_checked': isChecked})
+          .eq('id', itemId);
+    } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('local_shopping_items_'));
+      for (final k in keys) {
+        final raw = prefs.getString(k);
+        if (raw != null) {
+          final list = (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+          final idx = list.indexWhere((m) => m['id'] == itemId);
+          if (idx != -1) {
+            list[idx]['is_checked'] = isChecked;
+            await prefs.setString(k, json.encode(list));
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   @override
   Future<void> deleteShoppingItem(String itemId) async {
-    await _client.from('shopping_items').delete().eq('id', itemId);
+    try {
+      await _client.from('shopping_items').delete().eq('id', itemId);
+    } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys().where((k) => k.startsWith('local_shopping_items_'));
+      for (final k in keys) {
+        final raw = prefs.getString(k);
+        if (raw != null) {
+          final list = (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+          list.removeWhere((m) => m['id'] == itemId);
+          await prefs.setString(k, json.encode(list));
+        }
+      }
+    } catch (_) {}
   }
 
   @override
   Future<void> clearCompletedShoppingItems(String environmentId) async {
-    await _client
-        .from('shopping_items')
-        .delete()
-        .eq('environment_id', environmentId)
-        .eq('is_checked', true);
+    try {
+      await _client
+          .from('shopping_items')
+          .delete()
+          .eq('environment_id', environmentId)
+          .eq('is_checked', true);
+    } catch (_) {}
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = _shoppingStorageKey(environmentId);
+      final raw = prefs.getString(key);
+      if (raw != null) {
+        final list = (json.decode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+        list.removeWhere((m) => m['is_checked'] == true);
+        await prefs.setString(key, json.encode(list));
+      }
+    } catch (_) {}
   }
 
   @override
@@ -306,38 +462,30 @@ class FoodService implements IFoodRepository {
   }) async {
     if (ingredients.isEmpty) return 0;
 
-    final currentActive = await _client
-        .from('shopping_items')
-        .select('name')
-        .eq('environment_id', environmentId)
-        .eq('is_checked', false);
-
-    final activeNames = (currentActive as List<dynamic>)
-        .map((e) => (e['name'] as String? ?? '').trim().toLowerCase())
-        .where((n) => n.isNotEmpty)
-        .toSet();
-
     int addedCount = 0;
-    final toInsert = <Map<String, dynamic>>[];
+    final currentItems = await getShoppingItems(environmentId);
+    final activeNames = currentItems
+        .where((i) => !i.isChecked)
+        .map((i) => i.name.trim().toLowerCase())
+        .toSet();
 
     for (final ing in ingredients) {
       final clean = ing.trim();
       if (clean.isEmpty) continue;
       if (!activeNames.contains(clean.toLowerCase())) {
-        toInsert.add({
-          'environment_id': environmentId,
-          'name': clean,
-          'is_checked': false,
-          'category_or_source': dishName.trim(),
-          'dish_id': (dishId != null && !dishId.startsWith('global-')) ? dishId : null,
-        });
+        final newItem = ShoppingItemModel(
+          id: '',
+          environmentId: environmentId,
+          name: clean,
+          isChecked: false,
+          categoryOrSource: dishName.trim(),
+          dishId: (dishId != null && !dishId.startsWith('global-')) ? dishId : null,
+          createdAt: DateTime.now(),
+        );
+        await addShoppingItem(newItem);
         activeNames.add(clean.toLowerCase());
         addedCount++;
       }
-    }
-
-    if (toInsert.isNotEmpty) {
-      await _client.from('shopping_items').insert(toInsert);
     }
 
     return addedCount;
