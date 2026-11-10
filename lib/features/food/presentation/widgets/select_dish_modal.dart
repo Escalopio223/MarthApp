@@ -168,6 +168,24 @@ class _SelectDishModalState extends State<SelectDishModal> {
       return true;
     }).toList();
 
+    // Priorizar coincidencia en el título sobre coincidencia secundaria en ingredientes
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      filteredDishes.sort((a, b) {
+        final aTitleStarts = a.name.toLowerCase().startsWith(q);
+        final bTitleStarts = b.name.toLowerCase().startsWith(q);
+        if (aTitleStarts && !bTitleStarts) return -1;
+        if (!aTitleStarts && bTitleStarts) return 1;
+
+        final aTitleContains = a.name.toLowerCase().contains(q);
+        final bTitleContains = b.name.toLowerCase().contains(q);
+        if (aTitleContains && !bTitleContains) return -1;
+        if (!aTitleContains && bTitleContains) return 1;
+
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    }
+
     return Container(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.90,

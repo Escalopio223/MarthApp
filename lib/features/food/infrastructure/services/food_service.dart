@@ -96,7 +96,7 @@ class FoodService implements IFoodRepository {
     results.addAll(globalRecipes);
 
     // 3. Aplicar filtros en memoria
-    return results.where((dish) {
+    final filtered = results.where((dish) {
       // Filtro de texto (búsqueda)
       if (query != null && query.trim().isNotEmpty) {
         final q = query.trim().toLowerCase();
@@ -131,6 +131,27 @@ class FoodService implements IFoodRepository {
 
       return true;
     }).toList();
+
+    // 4. Ordenar por relevancia si hay un término de búsqueda:
+    // Los platos cuyo TÍTULO contiene la búsqueda van primero; después los que solo lo tienen en ingredientes.
+    if (query != null && query.trim().isNotEmpty) {
+      final q = query.trim().toLowerCase();
+      filtered.sort((a, b) {
+        final aTitleStarts = a.name.toLowerCase().startsWith(q);
+        final bTitleStarts = b.name.toLowerCase().startsWith(q);
+        if (aTitleStarts && !bTitleStarts) return -1;
+        if (!aTitleStarts && bTitleStarts) return 1;
+
+        final aTitleContains = a.name.toLowerCase().contains(q);
+        final bTitleContains = b.name.toLowerCase().contains(q);
+        if (aTitleContains && !bTitleContains) return -1;
+        if (!aTitleContains && bTitleContains) return 1;
+
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    }
+
+    return filtered;
   }
 
   @override
